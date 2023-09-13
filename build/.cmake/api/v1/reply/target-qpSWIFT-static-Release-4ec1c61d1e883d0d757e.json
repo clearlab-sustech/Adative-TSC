@@ -1,0 +1,452 @@
+{
+	"archive" : {},
+	"artifacts" : 
+	[
+		{
+			"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpSWIFT/bin/arc/libqpSWIFT.a"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"install",
+			"target_compile_options",
+			"include_directories"
+		],
+		"files" : 
+		[
+			"PoplarLib/third_party/qpSWIFT/CMakeLists.txt",
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 58,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 93,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 61,
+				"parent" : 0
+			},
+			{
+				"file" : 1
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 27,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 28,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 29,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 30,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 31,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 32,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 33,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 34,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 35,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 36,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 39,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 40,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 41,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 17,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 37,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 42,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 43,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 44,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 45,
+				"parent" : 4
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 46,
+				"parent" : 4
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-O3 -fPIC -ggdb  -march=native -std=gnu99 -I. -O3 -DNDEBUG -fPIC"
+				},
+				{
+					"backtrace" : 3,
+					"fragment" : "-O3"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 5,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./data"
+				},
+				{
+					"backtrace" : 6,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./controller"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./estimator"
+				},
+				{
+					"backtrace" : 8,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./gait"
+				},
+				{
+					"backtrace" : 9,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./planner"
+				},
+				{
+					"backtrace" : 10,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./Perception"
+				},
+				{
+					"backtrace" : 11,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./user"
+				},
+				{
+					"backtrace" : 12,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./utility"
+				},
+				{
+					"backtrace" : 13,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./lcm"
+				},
+				{
+					"backtrace" : 14,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./Hardware"
+				},
+				{
+					"backtrace" : 15,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./third_party/ParamHandler"
+				},
+				{
+					"backtrace" : 16,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./third_party/aliengo_sdk"
+				},
+				{
+					"backtrace" : 17,
+					"path" : "/home/otsd/Desktop/Adative-TSC/build"
+				},
+				{
+					"backtrace" : 18,
+					"isSystem" : true,
+					"path" : "/opt/openrobots/include"
+				},
+				{
+					"backtrace" : 19,
+					"isSystem" : true,
+					"path" : "/usr/include/eigen3"
+				},
+				{
+					"backtrace" : 20,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/include"
+				},
+				{
+					"backtrace" : 21,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpOASES/include"
+				},
+				{
+					"backtrace" : 22,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/eiquadprog/include"
+				},
+				{
+					"backtrace" : 23,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpSWIFT/include"
+				},
+				{
+					"backtrace" : 24,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/third_party/aliengo_sdk/include"
+				}
+			],
+			"language" : "C",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16
+			]
+		}
+	],
+	"id" : "qpSWIFT-static::@10fa64b8ad823e301119",
+	"install" : 
+	{
+		"destinations" : 
+		[
+			{
+				"backtrace" : 2,
+				"path" : "lib"
+			}
+		],
+		"prefix" : 
+		{
+			"path" : "/usr/local"
+		}
+	},
+	"name" : "qpSWIFT-static",
+	"nameOnDisk" : "libqpSWIFT.a",
+	"paths" : 
+	{
+		"build" : "PoplarLib/third_party/qpSWIFT",
+		"source" : "PoplarLib/third_party/qpSWIFT"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_1.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_aat.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_defaults.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_global.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_order.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_post_tree.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_valid.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_2.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_control.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_dump.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_info.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_postorder.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/amd_preprocess.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/ldl.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/timer.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/Auxilary.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "PoplarLib/third_party/qpSWIFT/src/qpSWIFT.c",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "STATIC_LIBRARY"
+}

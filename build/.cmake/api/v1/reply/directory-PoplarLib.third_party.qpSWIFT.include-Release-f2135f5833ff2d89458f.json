@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "PoplarLib/third_party/qpSWIFT/include",
+		"source" : "PoplarLib/third_party/qpSWIFT/include"
+	}
+}

@@ -1,0 +1,17 @@
+struct ConsideredPlane {
+    int16_t num;
+    int16_t id[num];
+}
+
+struct DebugInfo_lcm {
+    double pFootholds[12];
+    double pFootholds_MRH[12];
+    double pSwingTraj[600];
+    boolean foothold_planner_state;
+    int16_t swing_planner_state;
+    double foot_planner_time;
+    double cmd_velocity;
+    double planned_velocity[3];
+    ConsideredPlane considered_plane[4];
+    int16_t selected_plane_id[4];
+}

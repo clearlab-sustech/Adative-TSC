@@ -1,0 +1,683 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "ctrl"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_executable",
+			"link_directories",
+			"target_link_libraries",
+			"set_target_properties",
+			"include",
+			"find_package",
+			"find_dependency",
+			"include_directories"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt",
+			"third_party/ParamHandler/CMakeLists.txt",
+			"/opt/openrobots/lib/cmake/pinocchio/pinocchioTargets.cmake",
+			"/opt/openrobots/lib/cmake/pinocchio/pinocchioConfig.cmake",
+			"/opt/openrobots/lib/cmake/hpp-fcl/hpp-fclTargets.cmake",
+			"/opt/openrobots/lib/cmake/hpp-fcl/hpp-fclConfig.cmake",
+			"/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeFindDependencyMacro.cmake",
+			"/opt/ros/noetic/share/octomap/octomap-targets.cmake",
+			"/opt/ros/noetic/share/octomap/octomap-config.cmake",
+			"PoplarLib/CMakeLists.txt",
+			"PoplarLib/third_party/qpSWIFT/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 60,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 56,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 61,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 59,
+				"parent" : 0
+			},
+			{
+				"file" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 268,
+				"parent" : 5
+			},
+			{
+				"command" : 5,
+				"file" : 0,
+				"line" : 14,
+				"parent" : 0
+			},
+			{
+				"file" : 3,
+				"parent" : 7
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 172,
+				"parent" : 8
+			},
+			{
+				"file" : 2,
+				"parent" : 9
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 56,
+				"parent" : 10
+			},
+			{
+				"command" : 6,
+				"file" : 3,
+				"line" : 159,
+				"parent" : 8
+			},
+			{
+				"command" : 5,
+				"file" : 6,
+				"line" : 47,
+				"parent" : 12
+			},
+			{
+				"file" : 5,
+				"parent" : 13
+			},
+			{
+				"command" : 4,
+				"file" : 5,
+				"line" : 168,
+				"parent" : 14
+			},
+			{
+				"file" : 4,
+				"parent" : 15
+			},
+			{
+				"command" : 3,
+				"file" : 4,
+				"line" : 56,
+				"parent" : 16
+			},
+			{
+				"command" : 6,
+				"file" : 5,
+				"line" : 155,
+				"parent" : 14
+			},
+			{
+				"command" : 5,
+				"file" : 6,
+				"line" : 47,
+				"parent" : 18
+			},
+			{
+				"file" : 8,
+				"parent" : 19
+			},
+			{
+				"command" : 4,
+				"file" : 8,
+				"line" : 77,
+				"parent" : 20
+			},
+			{
+				"file" : 7,
+				"parent" : 21
+			},
+			{
+				"command" : 3,
+				"file" : 7,
+				"line" : 69,
+				"parent" : 22
+			},
+			{
+				"file" : 9
+			},
+			{
+				"command" : 2,
+				"file" : 9,
+				"line" : 45,
+				"parent" : 24
+			},
+			{
+				"file" : 10
+			},
+			{
+				"command" : 2,
+				"file" : 10,
+				"line" : 70,
+				"parent" : 26
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 27,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 28,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 29,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 30,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 31,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 32,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 33,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 34,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 35,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 36,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 39,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 40,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 41,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 17,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 37,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 42,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 43,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 44,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 45,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 46,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-O3 -no-pie -ggdb -march=native -mavx -mfma -ffast-math -fopenmp -pthread -lpthread -O3 -DNDEBUG"
+				},
+				{
+					"fragment" : "-std=gnu++11"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 3,
+					"define" : "BOOST_MPL_LIMIT_LIST_SIZE=30"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "BOOST_MPL_LIMIT_VECTOR_SIZE=30"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "HPP_FCL_HAS_OCTOMAP"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "HPP_FCL_HAVE_OCTOMAP"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "OCTOMAP_MAJOR_VERSION=1"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "OCTOMAP_MINOR_VERSION=9"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "OCTOMAP_PATCH_VERSION=3"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "PINOCCHIO_WITH_HPP_FCL"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "PINOCCHIO_WITH_URDFDOM"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 28,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./data"
+				},
+				{
+					"backtrace" : 29,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./controller"
+				},
+				{
+					"backtrace" : 30,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./estimator"
+				},
+				{
+					"backtrace" : 31,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./gait"
+				},
+				{
+					"backtrace" : 32,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./planner"
+				},
+				{
+					"backtrace" : 33,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./Perception"
+				},
+				{
+					"backtrace" : 34,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./user"
+				},
+				{
+					"backtrace" : 35,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./utility"
+				},
+				{
+					"backtrace" : 36,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./lcm"
+				},
+				{
+					"backtrace" : 37,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./Hardware"
+				},
+				{
+					"backtrace" : 38,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./third_party/ParamHandler"
+				},
+				{
+					"backtrace" : 39,
+					"path" : "/home/otsd/Desktop/Adative-TSC/./third_party/aliengo_sdk"
+				},
+				{
+					"backtrace" : 40,
+					"path" : "/home/otsd/Desktop/Adative-TSC/build"
+				},
+				{
+					"backtrace" : 41,
+					"isSystem" : true,
+					"path" : "/opt/openrobots/include"
+				},
+				{
+					"backtrace" : 42,
+					"isSystem" : true,
+					"path" : "/usr/include/eigen3"
+				},
+				{
+					"backtrace" : 43,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/include"
+				},
+				{
+					"backtrace" : 44,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpOASES/include"
+				},
+				{
+					"backtrace" : 45,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/eiquadprog/include"
+				},
+				{
+					"backtrace" : 46,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpSWIFT/include"
+				},
+				{
+					"backtrace" : 47,
+					"isSystem" : true,
+					"path" : "/home/otsd/Desktop/Adative-TSC/third_party/aliengo_sdk/include"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "/opt/ros/noetic/include"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "11"
+			},
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "ClimbStairsLib::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "dynacore_yaml-cpp::@a4c25512854fe563e91c"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "dynacore_param_handler::@a4c25512854fe563e91c"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "PoplarLib::@ef6bb28e992fc4ebc79a"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "eiquadprog::@aa1c69be63f87cd9b744"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "qpOASES::@c18159b0f32d481d172f"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "qpSWIFT-shared::@10fa64b8ad823e301119"
+		}
+	],
+	"id" : "ctrl::@6890427a1f51a3e7e1df",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-O3 -no-pie -ggdb -march=native -mavx -mfma -ffast-math -fopenmp -pthread -lpthread -O3 -DNDEBUG",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-L/home/otsd/Desktop/Adative-TSC/./third_party/aliengo_sdk/lib",
+				"role" : "libraryPath"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/home/otsd/Desktop/Adative-TSC/./third_party/aliengo_sdk/lib:/home/otsd/Desktop/Adative-TSC/build:/home/otsd/Desktop/Adative-TSC/build/third_party/ParamHandler:/home/otsd/Desktop/Adative-TSC/build/PoplarLib:/opt/openrobots/lib:/opt/ros/noetic/lib:/home/otsd/Desktop/Adative-TSC/build/PoplarLib/third_party/eiquadprog:/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpSWIFT/bin/lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "libClimbStairsLib.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "third_party/ParamHandler/libdynacore_param_handler.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 6,
+				"fragment" : "third_party/ParamHandler/libdynacore_yaml-cpp.so.0.5.3",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "-lrt",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "-lpthread",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "-lmatio",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PoplarLib/libPoplarLib.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PoplarLib/third_party/qpOASES/libs/libqpOASES.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "/opt/openrobots/lib/libpinocchio.so.2.6.20",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_filesystem.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_system.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/liburdfdom_sensor.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/liburdfdom_model_state.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/liburdfdom_model.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/liburdfdom_world.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libconsole_bridge.so.0.4",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/opt/openrobots/lib/libhpp-fcl.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 11,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_serialization.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 17,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_chrono.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 17,
+				"fragment" : "/opt/ros/noetic/lib/liboctomap.so.1.9.8",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 23,
+				"fragment" : "/opt/ros/noetic/lib/liboctomath.so.1.9.8",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 25,
+				"fragment" : "PoplarLib/third_party/eiquadprog/libeiquadprog.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 25,
+				"fragment" : "/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpSWIFT/bin/lib/libqpSWIFT.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 27,
+				"fragment" : "-lm",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 27,
+				"fragment" : "-lrt -ldl",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "-llcm",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "-lunitree_legged_sdk_amd64",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"name" : "ctrl",
+	"nameOnDisk" : "ctrl",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "main.cpp",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "EXECUTABLE"
+}

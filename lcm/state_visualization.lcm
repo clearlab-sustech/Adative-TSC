@@ -1,0 +1,5 @@
+struct StateVis
+{
+    double qpos[19];
+    double vbody[3];
+}

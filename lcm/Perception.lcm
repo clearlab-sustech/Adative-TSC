@@ -1,0 +1,19 @@
+struct Plane_lcm {
+    double A[3];
+    int16_t bound_num;
+    double Bs[6][3];
+    double Vertexs[6][2];
+    double center[3];
+}
+
+struct PerceptionLocation_lcm {
+    double pos[3];
+    double quat[4];
+}
+
+struct PerceptionTerrain_lcm {
+    Plane_lcm planes[30];
+    double pos[3];
+    double quat[4];
+    int16_t plane_num;
+}

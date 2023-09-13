@@ -1,0 +1,385 @@
+{
+	"inputs" : 
+	[
+		{
+			"path" : "CMakeLists.txt"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "build/CMakeFiles/3.25.0/CMakeSystem.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeSystemSpecificInitialize.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "build/CMakeFiles/3.25.0/CMakeCCompiler.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "build/CMakeFiles/3.25.0/CMakeCXXCompiler.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeSystemSpecificInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeGenericSystem.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeInitializeConfigs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Platform/Linux.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Platform/UnixPaths.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeCInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeLanguageInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Compiler/GNU-C.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Compiler/GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Platform/Linux-GNU-C.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Platform/Linux-GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeCommonLanguageInclude.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeCXXInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeLanguageInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Compiler/GNU-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Compiler/GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Platform/Linux-GNU-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Platform/Linux-GNU.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeCommonLanguageInclude.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/pinocchio/pinocchioConfigVersion.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/pinocchio/pinocchioConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/pinocchio/cxx-standard.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeFindDependencyMacro.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/cmake/eigen3/Eigen3ConfigVersion.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/cmake/eigen3/Eigen3Config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/cmake/eigen3/Eigen3Targets.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/x86_64-linux-gnu/urdfdom_headers/cmake/urdfdom_headers-config-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/x86_64-linux-gnu/urdfdom_headers/cmake/urdfdom_headers-config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/x86_64-linux-gnu/urdfdom/cmake/urdfdom-config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/x86_64-linux-gnu/console_bridge/cmake/console_bridge-config-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/x86_64-linux-gnu/console_bridge/cmake/console_bridge-config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/x86_64-linux-gnu/console_bridge/cmake/console_bridge-targets.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/x86_64-linux-gnu/console_bridge/cmake/console_bridge-targets-none.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/FindBoost.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/hpp-fcl/hpp-fclConfigVersion.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/hpp-fcl/hpp-fclConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/hpp-fcl/cxx-standard.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeFindDependencyMacro.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/cmake/eigen3/Eigen3ConfigVersion.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/cmake/eigen3/Eigen3Config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/usr/lib/cmake/eigen3/Eigen3Targets.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/FindBoost.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/FindPackageHandleStandardArgs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/FindPackageMessage.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/noetic/share/octomap/octomap-config-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/noetic/share/octomap/octomap-config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/noetic/share/octomap/octomap-targets.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/noetic/share/octomap/octomap-targets-none.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/hpp-fcl/hpp-fclTargets.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/hpp-fcl/hpp-fclTargets-release.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "build/cmake/tmp-cxx-standard.cpp"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/pinocchio/pinocchioTargets.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/pinocchio/pinocchioTargets-release.cmake"
+		},
+		{
+			"path" : "config.h.cmake"
+		},
+		{
+			"path" : "third_party/CMakeLists.txt"
+		},
+		{
+			"path" : "third_party/ParamHandler/CMakeLists.txt"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CheckCXXCompilerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CheckCXXSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Internal/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Internal/CheckCompilerFlag.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Internal/CheckFlagCommonConfig.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/Internal/CheckSourceCompiles.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake"
+		},
+		{
+			"path" : "third_party/aliengo_sdk/CMakeLists.txt"
+		},
+		{
+			"path" : "sim/CMakeLists.txt"
+		},
+		{
+			"path" : "PoplarLib/CMakeLists.txt"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/pinocchio/pinocchioConfigVersion.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/openrobots/lib/cmake/pinocchio/pinocchioConfig.cmake"
+		},
+		{
+			"path" : "PoplarLib/path.h.cmake"
+		},
+		{
+			"path" : "PoplarLib/third_party/CMakeLists.txt"
+		},
+		{
+			"path" : "PoplarLib/third_party/eiquadprog/CMakeLists.txt"
+		},
+		{
+			"path" : "PoplarLib/third_party/qpOASES/CMakeLists.txt"
+		},
+		{
+			"path" : "PoplarLib/third_party/qpSWIFT/CMakeLists.txt"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/GNUInstallDirs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/CMakePackageConfigHelpers.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "/home/otsd/.local/lib/python3.8/site-packages/cmake/data/share/cmake-3.25/Modules/WriteBasicConfigVersionFile.cmake"
+		},
+		{
+			"path" : "PoplarLib/third_party/qpSWIFT/src/CMakeLists.txt"
+		},
+		{
+			"path" : "PoplarLib/third_party/qpSWIFT/include/CMakeLists.txt"
+		}
+	],
+	"kind" : "cmakeFiles",
+	"paths" : 
+	{
+		"build" : "/home/otsd/Desktop/Adative-TSC/build",
+		"source" : "/home/otsd/Desktop/Adative-TSC"
+	},
+	"version" : 
+	{
+		"major" : 1,
+		"minor" : 0
+	}
+}

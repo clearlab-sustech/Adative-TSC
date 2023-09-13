@@ -1,0 +1,130 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"PoplarLib/third_party/qpSWIFT/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 93,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 102,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 111,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 127,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 133,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpSWIFT/bin/arc/libqpSWIFT.a"
+			],
+			"targetId" : "qpSWIFT-static::@10fa64b8ad823e301119",
+			"targetIndex" : 27,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"/home/otsd/Desktop/Adative-TSC/PoplarLib/third_party/qpSWIFT/bin/lib/libqpSWIFT.so"
+			],
+			"targetId" : "qpSWIFT-shared::@10fa64b8ad823e301119",
+			"targetIndex" : 26,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "include/qpSWIFT",
+			"paths" : 
+			[
+				"PoplarLib/third_party/qpSWIFT/include/amd.h",
+				"PoplarLib/third_party/qpSWIFT/include/amd_internal.h",
+				"PoplarLib/third_party/qpSWIFT/include/SuiteSparse_config.h",
+				"PoplarLib/third_party/qpSWIFT/include/ldl.h",
+				"PoplarLib/third_party/qpSWIFT/include/GlobalOptions.h",
+				"PoplarLib/third_party/qpSWIFT/include/timer.h",
+				"PoplarLib/third_party/qpSWIFT/include/Auxilary.h",
+				"PoplarLib/third_party/qpSWIFT/include/qpSWIFT.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/qpSWIFT",
+			"exportName" : "qpSWIFT",
+			"exportTargets" : 
+			[
+				{
+					"id" : "qpSWIFT-static::@10fa64b8ad823e301119",
+					"index" : 27
+				},
+				{
+					"id" : "qpSWIFT-shared::@10fa64b8ad823e301119",
+					"index" : 26
+				}
+			],
+			"paths" : 
+			[
+				"PoplarLib/third_party/qpSWIFT/CMakeFiles/Export/eb55a057b4451d4e6e7013af56f21bf3/qpSWIFT-targets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/qpSWIFT",
+			"paths" : 
+			[
+				"build/PoplarLib/third_party/qpSWIFT/qpSWIFTConfig.cmake"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "PoplarLib/third_party/qpSWIFT",
+		"source" : "PoplarLib/third_party/qpSWIFT"
+	}
+}

@@ -1,0 +1,16 @@
+Mar. 31
+TEST(LoadParameters, string_load) // Succeed
+TEST(LoadParameters, vector_load) // Succeed
+TEST(LoadParameters, value_load) // Succeed
+TEST(RobotModel, link_name) // Fail
+TEST(RobotModel, joint_name) // Fail
+TEST(RobotModel, LinkID) // Fail
+TEST(Estimator, FloatingBaseState) // Succeed
+TEST(Estimator, JointsState) // Succeed
+TEST(Estimator, EndEffectorState) // Succeed
+TEST(GaitScheduler, GaitData_STANCE) // Fail
+TEST(GaitScheduler, GaitData_TROTTING) // TODO
+TEST(Planner, FootPlanner) // TODO
+TEST(Planner, CoMPlanner) // Fail
+TEST(Controller, WBC)  // TODO
+

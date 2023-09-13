@@ -1,0 +1,203 @@
+//
+// Created by nimapng on 7/23/21.
+//
+
+#include "LegController.h"
+
+#define FIX_WHEEL
+
+LegController::LegController(const EstimatedState *estimatedState, const RobotModelData *robotModelData,
+                             const TasksData *tasksData, const GaitData *gaitData, JointsCmd *jointsCmd,
+                             const UserParameterHandler *param) : estimatedState(estimatedState),
+                                                                  robotModelData(robotModelData),
+                                                                  tasksData(tasksData),
+                                                                  gaitData(gaitData),
+                                                                  jointsCmd(jointsCmd),
+                                                                  param(param) {
+}
+
+void LegController::run() {
+    Matrix<double, 12, 18> Jc_all;
+    for (int i = 0; i < 4; i++) {
+        Jc_all.block(3 * i, 0, 3, 18) = robotModelData->Je[i]; // TODO Jc
+    }
+
+    Vec4Int footID;
+    footID << robotModelData->flwID, robotModelData->frwID, robotModelData->hlwID, robotModelData->hrwID;
+
+    DMat Mf = robotModelData->M.topLeftCorner<6, 6>();
+    Vec6 qddot_f;
+    qddot_f << estimatedState->floatingBaseState.aBody, estimatedState->floatingBaseState.R_wb.transpose() *
+                                                        tasksData->comTaskData.angAccWorld;
+    Vec12 qddot_J;
+    qddot_J.setZero();
+
+    Vec6 spatialAcc_com;
+    spatialAcc_com << estimatedState->floatingBaseState.R_wb.transpose() * tasksData->comTaskData.linAccWorld -
+                      estimatedState->floatingBaseState.omegaBody.cross(estimatedState->floatingBaseState.vBody)
+                      + estimatedState->floatingBaseState.R_wb.transpose() *
+                        (50 * (tasksData->comTaskData.pos - estimatedState->floatingBaseState.pos) +
+                         5.0 * (tasksData->comTaskData.vWorld - estimatedState->floatingBaseState.vWorld)),
+            estimatedState->floatingBaseState.R_wb.transpose() * tasksData->comTaskData.angAccWorld;
+
+    int k = 0;
+    for (int i = 0; i < 4; i++) {
+        if (gaitData->swingTimeRemain[i] > 0.) // swing
+        {
+            jointsCmd->Kp.segment(3 * i, 3) << 30, 30, 30;
+            jointsCmd->Kd.segment(3 * i, 3) << 1.0, 1.0, 1.0;
+            DMat J_inv = robotModelData->Je[i].middleCols(i * 3 + 6, 3).inverse();
+            Vec3 delta_q = J_inv * (tasksData->footTaskData[i].pos - estimatedState->footState[i].pos);
+            // Vec3 qd_des = J_inv * (tasksData->footTaskData[i].vWorld - tasksData->comTaskData.vWorld);
+            Vec3 qd_des = J_inv * (tasksData->footTaskData[i].vWorld - estimatedState->floatingBaseState.vWorld);
+            jointsCmd->qpos_des.segment(3 * i, 3) = estimatedState->jointsState.qpos.segment(3 * i, 3) + delta_q;
+            jointsCmd->qvel_des.segment(3 * i, 3) = qd_des;
+
+            Vec3 temp;
+            Mat3 Kp_sw; //Kp_swing_world
+            temp << 200, 200, 200;
+            Kp_sw = temp.asDiagonal();
+            Mat3 Kd_sw; //Kd_swing_world
+            temp << 20, 20, 20;
+            Kd_sw = temp.asDiagonal();
+
+            Vec3 a_des = Kp_sw * (tasksData->footTaskData[i].pos -  estimatedState->footState[i].pos)
+                         + Kd_sw * (tasksData->footTaskData[i].vWorld - estimatedState->footState[i].vWorld) +
+                         tasksData->footTaskData[i].linAccWorld - robotModelData->Je_dot_q_dot[i];
+            qddot_J.segment(3 * i, 3) = J_inv * (a_des - robotModelData->Je[i].leftCols(6) * qddot_f);
+
+            DMat D = robotModelData->M.block<3, 6>(6 + 3 * i, 6);
+            DMat Mj = robotModelData->M.block<3, 3>(6 + 3 * i, 6 + 3 * i);
+            jointsCmd->tau_ff.segment(3 * i, 3) =
+                    D * qddot_f + Mj * qddot_J.segment(3 * i, 3) + robotModelData->bias.segment(6 + 3 * i, 3);
+        } else // stance
+        {
+            k++;
+            DMat J_inv = robotModelData->Je[i].middleCols(i * 3 + 6, 3).inverse();
+            qddot_J.segment(3 * i, 3) =
+                    J_inv * (-robotModelData->Je[i].leftCols(6) * spatialAcc_com - robotModelData->Je_dot_q_dot[i]);
+            jointsCmd->Kp.segment(3 * i, 3) = 0.0 * Vec3::Ones();
+            jointsCmd->Kd.segment(3 * i, 3) = 0.1 * Vec3::Ones();
+            jointsCmd->qpos_des.segment(3 * i, 3) = estimatedState->jointsState.qpos.segment(3 * i, 3);
+            jointsCmd->qvel_des.segment(3 * i, 3).setZero();
+        }
+    }
+
+    Mat3 Ibody;
+    double mass;
+    Ibody << 0.155919, -0.000957476, -0.0047469,
+            -0.000957476, 0.831677, 0.000276135,
+            -0.0047469, 0.000276135, 0.942546;
+    mass = 20.638;
+    Vec6 bias_star;
+    bias_star.setZero();
+    bias_star(2) = 1;
+    bias_star = mass * (9.81) * bias_star;
+
+    Mat6 Mf_star;
+    Mf_star.setZero();
+    Mf_star.topLeftCorner<3, 3>().diagonal().fill(mass);
+    Mf_star.bottomRightCorner<3, 3>() = Ibody;
+
+
+    Vec18 qddot_des;
+    qddot_des << spatialAcc_com, qddot_J;
+    DVec force_ref = tasksData->forcesTaskData.forces_ref;
+    DVec wrench_sw = robotModelData->M.topRightCorner<6, 12>() * qddot_J + (Mf - Mf_star) * spatialAcc_com +
+                     robotModelData->bias.head(6) - bias_star;
+    DMat Jcs(3 * k, 18);
+    k = 0;
+    for (int i = 0; i < 4; i++) {
+        if (gaitData->stanceTimeRemain[i] > 0) {
+            Jcs.middleRows(3 * k, 3) = robotModelData->Je[i];
+            k++;
+        }
+    }
+    DMat JfT = Jcs.leftCols(6).transpose();
+    DVec force_delta = JfT.transpose() * (JfT * JfT.transpose()).inverse() * wrench_sw;
+    // std::cout << "force_delta: " << force_delta.transpose() << std::endl;
+    k = 0;
+    for (int i = 0; i++; i < 4) {
+        if (gaitData->stanceTimeRemain[i] > 0) {
+            force_ref.segment(3 * i, 3) += force_delta.segment(k * 3, 3);
+            k++;
+        }
+    }
+    std::cout << "bias_comp: " << (Jcs.rightCols(12).transpose() * force_delta).transpose() << std::endl;
+
+
+    jointsCmd->tau_ff = -Jc_all.block(0, 6, 12, 12).transpose() * force_ref +
+                        robotModelData->bias.tail(12);
+    // std::cout << "wrench_sw: " << wrench_sw.transpose() << std::endl;
+    // std::cout << "wrench_sw1: " << ((Mf - Mf_star) * spatialAcc_com).transpose() << std::endl;
+    // std::cout << "wrench_sw2: " << (robotModelData->bias.head(6) - bias_star).transpose() << std::endl;
+    // std::cout << "bias.head: " << (robotModelData->bias.head(6)).transpose() << std::endl;
+    // std::cout << "bias_star: " << (bias_star).transpose() << std::endl;
+    // std::cout << "bias_inertia: " << robotModelData->M.topRightCorner<6, 12>() * Jc_all.rightCols(12).inverse() * Jc_all.leftCols(6) << std::endl;
+
+    toRobot();
+
+
+}
+
+void LegController::toRobot() {
+    for (int i(0); i < 12; i++) {
+        double tau = jointsCmd->tau_ff[i] +
+                     jointsCmd->Kp[i] * (jointsCmd->qpos_des[i] - estimatedState->jointsState.qpos[i]) +
+                     jointsCmd->Kd[i] *
+                     (jointsCmd->qvel_des[i] - estimatedState->jointsState.qvel[i]);
+        if (abs(tau) > 40) {
+            jointsCmd->tau_ff[i] = 40 * abs(tau) / tau;
+        } else {
+            jointsCmd->tau_ff[i] = tau;
+        }
+        //        jointsCmd->tau_ff[i] = tau;
+    }
+}
+
+/* ---------- swing test -------------*/
+
+void LegController::swingTest(size_t leg) {
+    Vec4Int footID;
+    footID << robotModelData->flwID, robotModelData->frwID, robotModelData->hlwID, robotModelData->hrwID;
+    jointsCmd->tau_ff.setZero();
+    if (gaitData->swingTimeRemain[leg] > 0.) {
+        if (first) {
+            first = false;
+            footSwingTrajectory.setInitialPosition(
+                    estimatedState->footState[leg].pos - estimatedState->floatingBaseState.pos);
+            footSwingTrajectory.setFinalPosition(
+                    estimatedState->footState[leg].pos - estimatedState->floatingBaseState.pos);
+            footSwingTrajectory.setHeight(0.05);
+            std::cout << "s: "
+                      << (estimatedState->footState[leg].pos - estimatedState->floatingBaseState.pos).transpose()
+                      << std::endl;
+        }
+
+        double swingPhase = 1 - gaitData->swingTimeRemain[leg] / gaitData->swingTime[leg];
+        footSwingTrajectory.computeSwingTrajectoryBezier(swingPhase, gaitData->swingTime[leg]);
+
+        jointsCmd->Kp.segment(4 * leg, 4) << 30, 30, 30, 500;
+        jointsCmd->Kd.segment(4 * leg, 4) << 1.0, 1.0, 1.0, 5;
+        DMat J_inv = robotModelData->Je[leg].middleCols(leg * 4 + 6, 3).inverse();
+        Vec3 delta_q = J_inv * (footSwingTrajectory.getPosition() -
+                                ( estimatedState->footState[0].pos -
+                                 estimatedState->floatingBaseState.pos));
+        Vec3 qd_des = J_inv * footSwingTrajectory.getVelocity();
+        jointsCmd->qpos_des.segment(4 * leg, 3) = estimatedState->jointsState.qpos.segment(4 * leg, 3) + delta_q;
+        jointsCmd->qvel_des.segment(4 * leg, 3) = qd_des;
+        for (int i = leg * 4; i < leg * 4 + 4; i++) {
+            double tau = robotModelData->generalizedGravity[i] +
+                         jointsCmd->Kp[i] * (jointsCmd->qpos_des[i] - estimatedState->jointsState.qpos[i]) +
+                         jointsCmd->Kd[i] *
+                         (jointsCmd->qvel_des[i] - estimatedState->jointsState.qvel[i]);
+            if (abs(tau) > 40) {
+                jointsCmd->tau_ff[i] = 40 * abs(tau) / tau;
+            } else {
+                jointsCmd->tau_ff[i] = tau;
+            }
+        }
+    } else {
+        jointsCmd->tau_ff.setZero();
+    }
+}

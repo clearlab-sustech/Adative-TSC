@@ -1,0 +1,55 @@
+horizons: 16
+ctrl_num: 11  # 0->wbc, 1->Jacobia_Trans, 2->PDStance, 3->PDSitdown, 11->Damping mode
+urdf: "config/urdf/aliengo.urdf"
+
+fl_foot: "FL_foot"
+fr_foot: "FR_foot"
+hl_foot: "RL_foot"
+hr_foot: "RR_foot"
+
+fl_hip: "FL_hip"
+fr_hip: "FR_hip"
+hl_hip: "RL_hip"
+hr_hip: "RR_hip"
+
+base: "trunk"
+
+# Q_rpy: [5, 5, 20]
+# Q_pos: [10, 10, 60]
+# Q_omega: [0, 0, 0.3]10
+# Q_vel: [0.2, 0.2, 0.2]
+mu: 0.5
+
+# Q_rpy: [ 3, 6, 10 ]
+# Q_pos: [ 20, 20, 50 ]
+# Q_omega: [ 0.02, 0.02, 0.3 ]
+# Q_vel: [ 0.2, 0.2, 0.1 ]
+
+Q_rpy: [ 3, 6, 5 ]
+Q_pos: [ 20, 20, 50 ]
+Q_omega: [ 0.3, 0.3, 0.3 ]
+Q_vel: [ 0.2, 0.2, 0.2]
+
+# Q_rpy: [ 1.0, 1.0, 10 ]
+# Q_pos: [ 10, 10, 50 ]
+# Q_omega: [ 0.02, 0.02, 0.3 ]
+# Q_vel: [ 0.2, 0.2, 0.1 ]
+
+# Q_rpy: [ 15, 15, 40 ]
+# Q_pos: [ 20, 20, 50 ]
+# Q_omega: [ 0.0, 0.2, 0.3 ]
+# Q_vel: [ 0.2, 0.2, 0.1 ]
+
+dt: 0.002
+dtMPC: 0.04
+
+rw: 0.0  # radius of wheel
+
+swing_height: 0.1
+
+body_height: 0.35
+
+pub_estimatedState: true
+
+P_parameter_for_test: 30.0
+D_parameter_for_test: 2.0
