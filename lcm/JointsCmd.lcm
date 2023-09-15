@@ -1,7 +1,0 @@
-struct JointsCmd_lcm {
-    double Kp[12];
-    double Kd[12];
-    double qpos_des[12];
-    double qvel_des[12];
-    double tau_ff[12];
-}
