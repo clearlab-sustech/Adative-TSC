@@ -1,5 +1,9 @@
 # Adative-TSC (ROS2)
-![log](https://user-images.githubusercontent.com/38805251/268448999-a8dab68a-11d3-4140-a132-593469565648.png)
+<p align="center">
+    <img align="center" src="https://user-images.githubusercontent.com/38805251/268449315-614a213d-ad61-4f85-a576-136343012022.png" width="200" height="150">
+</p>
+
+
 
 This study primarily concentrates on enhancing the feedback gains employed in task-space control of legged robots, specifically for the floating-base task. The selection of optimal feedback gains directly correlates with improved tracking performance in locomotion. This paper presents a novel approach that involves the utilization of a well-suited template model and sensitivity analysis to calculate state-dependent feedback gains for the floating-base task. The effectiveness of the proposed feedback gains is demonstrated through extensive simulations conducted in MuJoCo, as well as real-world experiments conducted on the Aliengo robot, showcasing remarkable enhancements in tracking performance.
 
