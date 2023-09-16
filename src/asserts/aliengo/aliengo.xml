@@ -8,9 +8,6 @@
         <default class="visual">
             <geom contype="0" conaffinity="0" group="1" type="mesh" rgba="0.9 0.9 0.9 1.0" />
         </default>
-        <default class="visual_es">
-            <geom contype="0" conaffinity="0" group="1" type="mesh" rgba="0.4 0.5 0.5 0.1" />
-        </default>
         <joint damping="0.01" armature="0.01" />
         <geom contype="1" conaffinity="1" friction="1.0 0.3 0.3" rgba="0.5 0.6 0.7 0" margin="0.001"
             group="0" />
@@ -57,7 +54,7 @@
                 quat="-3.12625e-05 0.708321 0.00247254 0.705886" mass="9.042"
                 diaginertia="0.174706 0.161175 0.033357" />
             <joint type="free" />
-            <geom class="visual" mesh="trunk" rgba="0.8 0.8 0.8 0.8" />
+            <geom class="visual" mesh="trunk" />
             <geom size="0.18 0.075 0.056" type="box" rgba="0.2 0.2 0.2 0" />
             <geom size="0.0005 0.0005 0.0005" type="box" contype="0" conaffinity="0" group="1"
                 rgba="0.8 0 0 0" />
@@ -70,7 +67,7 @@
                     diaginertia="0.00558695 0.00491009 0.00290132" />
                 <joint name="FL_hip_joint" pos="0 0 0" axis="1 0 0" limited="true"
                     range="-1.22173 1.22173" />
-                <geom class="visual" mesh="hip" rgba="0.8 0.8 0.8 0.8" />
+                <geom class="visual" mesh="hip" />
                 <geom size="0.046 0.0209" pos="0 0.083 0" quat="0.707107 0.707107 0 0"
                     type="cylinder" rgba="0.2 0.2 0.2 0" />
                 <body name="FL_thigh" pos="0 0.083 0">
@@ -78,7 +75,7 @@
                         quat="0.717987 -0.031246 -0.0335669 0.694544" mass="0.639"
                         diaginertia="0.0058474 0.00571186 0.000324584" />
                     <joint name="FL_thigh_joint" pos="0 0 0" axis="0 1 0" />
-                    <geom class="visual" mesh="thigh" rgba="0.8 0.8 0.8 0.8" />
+                    <geom class="visual" mesh="thigh" />
                     <geom size="0.125 0.0187 0.0215" pos="0 0 -0.125" quat="0.707107 0 0.707107 0"
                         type="box" rgba="0.2 0.2 0.2 0" />
                     <body name="FL_calf" pos="0 0 -0.25">
@@ -94,7 +91,7 @@
                         <geom name="fl_foot" size="0.0165" pos="0 0 -0.25" contype="0"
                             conaffinity="0" group="1" rgba="0 0 0 1" />
                         <geom size="0.0255" pos="0 0 -0.25" rgba="0 0 0 1" />
-                        <site name="fl_tc" size="0.0265" pos="0 0 -0.25" rgba="0 1 0 0.6" />
+                        <site name="fl_tc" size="0.0265" pos="0 0 -0.25" rgba="0.4 0.4 0.95 0.6" />
 
                     </body>
                 </body>
@@ -106,7 +103,7 @@
                     diaginertia="0.00558695 0.00491009 0.00290132" />
                 <joint name="FR_hip_joint" pos="0 0 0" axis="1 0 0" limited="true"
                     range="-1.22173 1.22173" />
-                <geom quat="0 1 0 0" class="visual" mesh="hip" rgba="0.8 0.8 0.8 0.8" />
+                <geom quat="0 1 0 0" class="visual" mesh="hip" />
                 <geom size="0.046 0.0209" pos="0 -0.083 0" quat="0.707107 0.707107 0 0"
                     type="cylinder" rgba="0.2 0.2 0.2 0" />
                 <body name="FR_thigh" pos="0 -0.083 0">
@@ -114,7 +111,7 @@
                         quat="0.694544 -0.0335669 -0.031246 0.717987" mass="0.639"
                         diaginertia="0.0058474 0.00571186 0.000324584" />
                     <joint name="FR_thigh_joint" pos="0 0 0" axis="0 1 0" />
-                    <geom class="visual" mesh="thigh_mirror" rgba="0.8 0.8 0.8 0.8" />
+                    <geom class="visual" mesh="thigh_mirror" />
                     <geom size="0.125 0.0187 0.0215" pos="0 0 -0.125" quat="0.707107 0 0.707107 0"
                         type="box" rgba="0.2 0.2 0.2 0" />
                     <body name="FR_calf" pos="0 0 -0.25">
@@ -130,7 +127,7 @@
                         <geom name="fr_foot" size="0.0165" pos="0 0 -0.25" contype="0"
                             conaffinity="0" group="1" rgba="0 0 0 1" />
                         <geom size="0.0255" pos="0 0 -0.25" rgba="0 0 0 1" />
-                        <site name="fr_tc" size="0.0265" pos="0 0 -0.25" rgba="0 1 0 0.6" />
+                        <site name="fr_tc" size="0.0265" pos="0 0 -0.25" rgba="0.4 0.4 0.95 0.6" />
 
                     </body>
                 </body>
@@ -142,7 +139,7 @@
                     diaginertia="0.00558695 0.00491009 0.00290132" />
                 <joint name="RL_hip_joint" pos="0 0 0" axis="1 0 0" limited="true"
                     range="-1.22173 1.22173" />
-                <geom quat="0 0 1 0" class="visual" mesh="hip" rgba="0.8 0.8 0.8 0.8" />
+                <geom quat="0 0 1 0" class="visual" mesh="hip" />
                 <geom size="0.046 0.0209" pos="0 0.083 0" quat="0.707107 0.707107 0 0"
                     type="cylinder" rgba="0.2 0.2 0.2 0" />
                 <body name="RL_thigh" pos="0 0.083 0">
@@ -150,7 +147,7 @@
                         quat="0.717987 -0.031246 -0.0335669 0.694544" mass="0.639"
                         diaginertia="0.0058474 0.00571186 0.000324584" />
                     <joint name="RL_thigh_joint" pos="0 0 0" axis="0 1 0" />
-                    <geom class="visual" mesh="thigh" rgba="0.8 0.8 0.8 0.8" />
+                    <geom class="visual" mesh="thigh" />
                     <geom size="0.125 0.0187 0.0215" pos="0 0 -0.125" quat="0.707107 0 0.707107 0"
                         type="box" rgba="0.2 0.2 0.2 0" />
                     <body name="RL_calf" pos="0 0 -0.25">
@@ -166,7 +163,7 @@
                         <geom name="rl_foot" size="0.0165" pos="0 0 -0.25" contype="0"
                             conaffinity="0" group="1" rgba="0 0 0 1" />
                         <geom size="0.0255" pos="0 0 -0.25" rgba="0 0 0 1" />
-                        <site name="rl_tc" size="0.0265" pos="0 0 -0.25" rgba="0 1 0 0.6" />
+                        <site name="rl_tc" size="0.0265" pos="0 0 -0.25" rgba="0.4 0.4 0.95 0.6" />
 
                     </body>
                 </body>
@@ -178,7 +175,7 @@
                     diaginertia="0.00558695 0.00491009 0.00290132" />
                 <joint name="RR_hip_joint" pos="0 0 0" axis="1 0 0" limited="true"
                     range="-1.22173 1.22173" />
-                <geom quat="0 0 0 -1" class="visual" mesh="hip" rgba="0.8 0.8 0.8 0.8" />
+                <geom quat="0 0 0 -1" class="visual" mesh="hip" />
                 <geom size="0.046 0.0209" pos="0 -0.083 0" quat="0.707107 0.707107 0 0"
                     type="cylinder" rgba="0.2 0.2 0.2 0" />
                 <body name="RR_thigh" pos="0 -0.083 0">
@@ -186,7 +183,7 @@
                         quat="0.694544 -0.0335669 -0.031246 0.717987" mass="0.639"
                         diaginertia="0.0058474 0.00571186 0.000324584" />
                     <joint name="RR_thigh_joint" pos="0 0 0" axis="0 1 0" />
-                    <geom class="visual" mesh="thigh_mirror" rgba="0.8 0.8 0.8 0.8" />
+                    <geom class="visual" mesh="thigh_mirror" />
                     <geom size="0.125 0.0187 0.0215" pos="0 0 -0.125" quat="0.707107 0 0.707107 0"
                         type="box" rgba="0.2 0.2 0.2 0" />
                     <body name="RR_calf" pos="0 0 -0.25">
@@ -202,7 +199,7 @@
                         <geom name="rr_foot" size="0.0165" pos="0 0 -0.25" contype="0"
                             conaffinity="0" group="1" rgba="0 0 0 1" />
                         <geom size="0.0255" pos="0 0 -0.25" rgba="0 0 0 1" />
-                        <site name="rr_tc" size="0.0265" pos="0 0 -0.25" rgba="0 1 0 0.6" />
+                        <site name="rr_tc" size="0.0265" pos="0 0 -0.25" rgba="0.4 0.4 0.95 0.6" />
                     </body>
                 </body>
             </body>

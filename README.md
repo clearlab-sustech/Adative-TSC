@@ -52,8 +52,8 @@ xml_file = os.path.join(get_package_share_path("asserts"), xml_file_name)
 
 # package development
 
-Download the package MuJoCo to the folder `src/sim` and then delete the `main.cc` in  the folder `src/sim/mujoco/simulate`. Besides, copy the library file `libmujoco.so.2.3.7` to /usr/lib and use the follolwing commands to make links
-```
+Download the package MuJoCo to the folder `src/third_parties/mujocodl` and then delete the `main.cc` in  the folder `src/third_parties/mujocodl/mujoco/simulate`. Besides, copy the library file `src/third_parties/mujocodl/mujoco/lib/libmujoco.so.2.3.7` to /usr/lib and use the follolwing commands to make links
+``` bash
 sudo ln -s /usr/lib/libmujoco.so.2.3.7 /usr/lib/libmujoco.so
 ```
 
