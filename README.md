@@ -1,4 +1,6 @@
 # Adative-TSC (ROS2)
+![log](https://user-images.githubusercontent.com/38805251/268448999-a8dab68a-11d3-4140-a132-593469565648.png)
+
 This study primarily concentrates on enhancing the feedback gains employed in task-space control of legged robots, specifically for the floating-base task. The selection of optimal feedback gains directly correlates with improved tracking performance in locomotion. This paper presents a novel approach that involves the utilization of a well-suited template model and sensitivity analysis to calculate state-dependent feedback gains for the floating-base task. The effectiveness of the proposed feedback gains is demonstrated through extensive simulations conducted in MuJoCo, as well as real-world experiments conducted on the Aliengo robot, showcasing remarkable enhancements in tracking performance.
 
 
@@ -16,11 +18,11 @@ echo "source ${source folder}/install/setup.bash" >> ~/.bashrc
 # Run Package
 
 ## Simulation
-The simulator is based on a open-source platform [MuJoCo](https://mujoco.org/). Compared to other physics engine, it has great advantages of accurancy and computational efficiency. Start the simulator
+The simulator is based on a open-source platform [MuJoCo](https://mujoco.org/). Compared to other physics engine, it has great advantages of accurancy and computational efficiency. one can start the simulator by
 ```bash
 ros2 launch sim sim_launch.py 
 ```
-And then you can use `ros2 topic list` and `ros2 topic echo ${topic_name}` to check the topics
+And then one can use `ros2 topic list` and `ros2 topic echo ${topic_name}` to check the topics
 ```bash
 /parameter_events
 /rosout
@@ -30,7 +32,7 @@ And then you can use `ros2 topic list` and `ros2 topic echo ${topic_name}` to ch
 /simulation/odom
 /simulation/touch_sensor
 ```
-One can choose own robot to simulate by modifying the following two lines in `src/sim/launch/sim_launch.py`
+One can also choose own robot to simulate by modifying the following two lines in `src/sim/launch/sim_launch.py`
 ```python
 xml_file_name = "aliengo/aliengo.xml"
 xml_file = os.path.join(get_package_share_path("asserts"), xml_file_name)
