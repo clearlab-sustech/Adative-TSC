@@ -7,7 +7,7 @@ SimPublisher::SimPublisher(mj::Simulate *sim)
   model_param_name = name_prefix + "model_file";
   this->declare_parameter(model_param_name, "");
 
-  reset_service_ = this->create_service<core::srv::SimulationReset>(
+  reset_service_ = this->create_service<trans::srv::SimulationReset>(
       name_prefix + "sim_reset",
       std::bind(&SimPublisher::reset_callback, this, std::placeholders::_1,
                 std::placeholders::_2));
@@ -19,7 +19,7 @@ SimPublisher::SimPublisher(mj::Simulate *sim)
       name_prefix + "joint_states", qos);
   odom_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>(
       name_prefix + "odom", qos);
-  touch_publisher_ = this->create_publisher<core::msg::TouchSensor>(
+  touch_publisher_ = this->create_publisher<trans::msg::TouchSensor>(
       name_prefix + "touch_sensor", qos);
 
   timers_.emplace_back(this->create_wall_timer(
@@ -36,7 +36,7 @@ SimPublisher::SimPublisher(mj::Simulate *sim)
       4s, std::bind(&SimPublisher::throw_box, this)));
  */
   actuator_cmd_subscription_ =
-      this->create_subscription<core::msg::ActuatorCmds>(
+      this->create_subscription<trans::msg::ActuatorCmds>(
           name_prefix + "actuators_cmds", qos,
           std::bind(&SimPublisher::actuator_cmd_callback, this,
                     std::placeholders::_1));
@@ -57,8 +57,8 @@ SimPublisher::~SimPublisher() {
 }
 
 void SimPublisher::reset_callback(
-    const std::shared_ptr<core::srv::SimulationReset::Request> request,
-    std::shared_ptr<core::srv::SimulationReset::Response> response) {
+    const std::shared_ptr<trans::srv::SimulationReset::Request> request,
+    std::shared_ptr<trans::srv::SimulationReset::Response> response) {
   while (sim_->d_ == nullptr && rclcpp::ok()) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
@@ -161,7 +161,7 @@ void SimPublisher::imu_callback() {
 
 void SimPublisher::touch_callback() {
   if (sim_->d_ != nullptr) {
-    auto message = core::msg::TouchSensor();
+    auto message = trans::msg::TouchSensor();
     message.header.frame_id = &sim_->m_->names[0];
     message.header.stamp = rclcpp::Clock().now();
     {
@@ -229,7 +229,7 @@ void SimPublisher::joint_callback() {
 }
 
 void SimPublisher::actuator_cmd_callback(
-    const core::msg::ActuatorCmds::SharedPtr msg) const {
+    const trans::msg::ActuatorCmds::SharedPtr msg) const {
   if (sim_->d_ != nullptr) {
     actuator_cmds_buffer_->time = rclcpp::Time(msg->header.stamp).seconds();
     actuator_cmds_buffer_->actuators_name.resize(msg->names.size());

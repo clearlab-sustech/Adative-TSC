@@ -12,7 +12,7 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
-  <depend>core</depend>
+  <depend>trans</depend>
   <depend>mujocodl</depend>
   <depend>asserts</depend>
   <depend>rclcpp</depend>

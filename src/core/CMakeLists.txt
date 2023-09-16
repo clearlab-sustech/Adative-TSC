@@ -17,28 +17,42 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(rcpputils REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  msgs/ActuatorCmds.msg
-  msgs/TouchSensor.msg
-  srv/SimulationReset.srv
-  DEPENDENCIES ament_cmake std_msgs geometry_msgs sensor_msgs
+set(TARGET_DEPENDENCE
+  ament_cmake
+  Eigen3
+  rcpputils
 )
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
+include(cmake/clear_cxx_flags.cmake)
 
-  # the following line skips the linter which checks for copyrights
-  # uncomment the line when a copyright and license is not present in all source files
-  # set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # uncomment the line when this package is not in a git repo
-  # set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
+add_library(${PROJECT_NAME} SHARED ${source})
+
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+  ${EIGEN3_INCLUDE_DIRS}
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
+ament_export_targets(${PROJECT_NAME}_Targets HAS_LIBRARY_TARGET)
+ament_export_dependencies(${TARGET_DEPENDENCE})
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}_Targets
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
 
 ament_package()

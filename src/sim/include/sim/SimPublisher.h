@@ -14,9 +14,9 @@
 #include <simulate/array_safety.h>
 #include <simulate/simulate.h>
 
-#include <core/msg/actuator_cmds.hpp>
-#include <core/msg/touch_sensor.hpp>
-#include <core/srv/simulation_reset.hpp>
+#include <trans/msg/actuator_cmds.hpp>
+#include <trans/msg/touch_sensor.hpp>
+#include <trans/srv/simulation_reset.hpp>
 
 using namespace rclcpp;
 
@@ -46,8 +46,8 @@ public:
 
 private:
   void reset_callback(
-      const std::shared_ptr<core::srv::SimulationReset::Request> request,
-      std::shared_ptr<core::srv::SimulationReset::Response> response);
+      const std::shared_ptr<trans::srv::SimulationReset::Request> request,
+      std::shared_ptr<trans::srv::SimulationReset::Response> response);
 
   void imu_callback();
 
@@ -58,7 +58,7 @@ private:
   void joint_callback();
 
   void
-  actuator_cmd_callback(const core::msg::ActuatorCmds::SharedPtr msg) const;
+  actuator_cmd_callback(const trans::msg::ActuatorCmds::SharedPtr msg) const;
 
   void drop_old_message();
 
@@ -71,11 +71,11 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr
       joint_state_publisher_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
-  rclcpp::Publisher<core::msg::TouchSensor>::SharedPtr touch_publisher_;
+  rclcpp::Publisher<trans::msg::TouchSensor>::SharedPtr touch_publisher_;
 
-  rclcpp::Subscription<core::msg::ActuatorCmds>::SharedPtr
+  rclcpp::Subscription<trans::msg::ActuatorCmds>::SharedPtr
       actuator_cmd_subscription_;
-  rclcpp::Service<core::srv::SimulationReset>::SharedPtr reset_service_;
+  rclcpp::Service<trans::srv::SimulationReset>::SharedPtr reset_service_;
 
   std::shared_ptr<ActuatorCmdsBuffer> actuator_cmds_buffer_;
 

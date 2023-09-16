@@ -17,7 +17,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(core REQUIRED)
+find_package(trans REQUIRED)
 find_package(mujocodl REQUIRED)
 find_package(asserts REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -35,24 +35,12 @@ add_executable(sim src/sim.cc src/sim/SimPublisher.cc)
 target_include_directories(sim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(sim core mujocodl sensor_msgs rclcpp geometry_msgs tf2 tf2_ros nav_msgs cv_bridge)
+ament_target_dependencies(sim trans mujocodl sensor_msgs rclcpp geometry_msgs tf2 tf2_ros nav_msgs cv_bridge)
 
 install(TARGETS sim
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME})
-
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-
-  # the following line skips the linter which checks for copyrights
-  # uncomment the line when a copyright and license is not present in all source files
-  # set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # uncomment the line when this package is not in a git repo
-  # set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
 
 ament_package()
