@@ -41,8 +41,7 @@ xml_file = os.path.join(get_package_share_path("asserts"), xml_file_name)
 
 
 ## Estimator
-Coding Reference [Cheetah-Software](https://github.com/mit-biomimetics/Cheetah-Software). In this package, the estimator is currently suitable for the flat-ground case where assume the foot tourching the ground has zero height.
-The futural work 
+Coding Reference [Cheetah-Software](https://github.com/mit-biomimetics/Cheetah-Software). In this package, the estimator is currently suitable for the flat-ground case where assume the foot tourching the ground has zero height and the contact detection is replaced by predefined gait timing. The futural work can be extended to learning-based contact detection and position-free control framework where only accurate velocity estimation is required in controller level.
 
 
 ## Controller
