@@ -1,7 +1,12 @@
 estimation:
   dt: 0.001
-  use_odom: true
+  use_odom: false
   topic_prefix: "simulation/"
+  model_package: "asserts"
+  urdf: "/aliengo/aliengo.urdf"
+  foot_names: ["fl_foot", "fr_foot", "rl_foot", "rr_foot"]
+
+controller:
   model_package: "asserts"
   urdf: "/aliengo/aliengo.urdf"
   foot_names: ["fl_foot", "fr_foot", "rl_foot", "rr_foot"]
