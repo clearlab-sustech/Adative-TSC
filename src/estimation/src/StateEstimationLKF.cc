@@ -30,29 +30,38 @@ StateEstimationLKF::StateEstimationLKF(std::string config_yaml)
     RCLCPP_INFO(this->get_logger(), "foot name: %s", name.c_str());
   }
 
+  std::string imu_topic = config_["estimation"]["imu_topic"].as<std::string>();
   imu_subscription_ = this->create_subscription<sensor_msgs::msg::Imu>(
-      topic_prefix + "imu_data", qos,
+      topic_prefix + imu_topic, qos,
       std::bind(&StateEstimationLKF::imu_callback, this,
                 std::placeholders::_1));
 
+  std::string touch_sensor_topic =
+      config_["estimation"]["touch_sensor_topic"].as<std::string>();
   touch_subscription_ = this->create_subscription<trans::msg::TouchSensor>(
-      topic_prefix + "touch_sensor", qos,
+      topic_prefix + touch_sensor_topic, qos,
       std::bind(&StateEstimationLKF::touch_callback, this,
                 std::placeholders::_1));
 
+  std::string joints_topic =
+      config_["estimation"]["joints_topic"].as<std::string>();
   joints_state_subscription_ =
       this->create_subscription<sensor_msgs::msg::JointState>(
-          topic_prefix + "joint_states", qos,
+          topic_prefix + joints_topic, qos,
           std::bind(&StateEstimationLKF::joint_callback, this,
                     std::placeholders::_1));
 
+  std::string odom_topic =
+      config_["estimation"]["odom_topic"].as<std::string>();
   odom_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
-      topic_prefix + "odom", qos,
+      topic_prefix + odom_topic, qos,
       std::bind(&StateEstimationLKF::odom_callback, this,
                 std::placeholders::_1));
 
+  std::string estimated_states_topic =
+      config_["estimation"]["estimated_states_topic"].as<std::string>();
   res_publisher_ = this->create_publisher<trans::msg::EstimatedStates>(
-      topic_prefix + "estimated_states", qos);
+      topic_prefix + estimated_states_topic, qos);
 
   inner_loop_thread_ = std::thread(&StateEstimationLKF::inner_loop, this);
   run_.push(true);
@@ -60,7 +69,10 @@ StateEstimationLKF::StateEstimationLKF(std::string config_yaml)
   setup();
 }
 
-StateEstimationLKF::~StateEstimationLKF() {}
+StateEstimationLKF::~StateEstimationLKF() {
+  run_.push(false);
+  inner_loop_thread_.join();
+}
 
 void StateEstimationLKF::setup() {
   x_est.setZero();

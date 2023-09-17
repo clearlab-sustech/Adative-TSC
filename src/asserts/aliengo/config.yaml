@@ -1,12 +1,38 @@
 estimation:
-  dt: 0.001
-  use_odom: false
   topic_prefix: "simulation/"
+  joints_topic: "joint_states"
+  imu_topic: "imu_data"
+  touch_sensor_topic: "touch_sensor"
+  odom_topic: "odom"
+  estimated_states_topic: "estimated_states"
+
+  dt: 0.001
+  use_odom: true
+
   model_package: "asserts"
   urdf: "/aliengo/aliengo.urdf"
   foot_names: ["fl_foot", "fr_foot", "rl_foot", "rr_foot"]
 
 controller:
+  topic_prefix: "simulation/"
+  actuators_cmds_topic: "actuators_cmds"
+
+  dt: 0.001
   model_package: "asserts"
   urdf: "/aliengo/aliengo.urdf"
   foot_names: ["fl_foot", "fr_foot", "rl_foot", "rr_foot"]
+  actuated_joints_name:
+    [
+      "FL_hip_joint",
+      "FL_thigh_joint",
+      "FL_calf_joint",
+      "FR_hip_joint",
+      "FR_thigh_joint",
+      "FR_calf_joint",
+      "RL_hip_joint",
+      "RL_thigh_joint",
+      "RL_calf_joint",
+      "RR_hip_joint",
+      "RR_thigh_joint",
+      "RR_calf_joint",
+    ]

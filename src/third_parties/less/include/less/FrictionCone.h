@@ -17,10 +17,4 @@ private:
   shared_ptr<PinocchioInterface> pinocchioInterface_ptr;
 };
 
-inline FrictionCone::FrictionCone(
-    shared_ptr<PinocchioInterface> pinocchioInterface_ptr)
-    : pinocchioInterface_ptr(pinocchioInterface_ptr) {}
-
-inline FrictionCone::~FrictionCone() {}
-
 } // namespace clear

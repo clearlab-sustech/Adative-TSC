@@ -263,7 +263,8 @@ void apply_ctrl(mjModel *m, mjData *d) {
         m, mjOBJ_ACTUATOR, actuator_cmds_buffer->actuators_name[k].c_str());
     if (actuator_id == -1) {
       RCLCPP_INFO(rclcpp::get_logger("MuJoCo"),
-                  "not found the name from the received message in mujoco");
+                  "not found the name %s from the received message in mujoco",
+                  actuator_cmds_buffer->actuators_name[k].c_str());
       continue;
     }
     int pos_sensor_id =

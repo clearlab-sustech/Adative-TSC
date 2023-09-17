@@ -68,6 +68,16 @@ Download the package MuJoCo to the folder `src/third_parties/mujocodl` and then 
 ``` bash
 sudo ln -s /usr/lib/libmujoco.so.2.3.7 /usr/lib/libmujoco.so
 ```
+When you instance a `shared_ptr` using `make_shared` in `rclcpp::Node` construction function, please note that there is function with the same name called `make_shared` for `rclcpp::Node`. Hence, write as `std::make_shared` for other shared pointers.
+
+Besides, the actuator names in `*.xml` model file should be the same as the joints' names:
+```xml
+<actuator>
+        <motor name="FL_hip_joint" gear="1" joint="FL_hip_joint" />
+        <motor name="FL_thigh_joint" gear="1" joint="FL_thigh_joint" />
+        ......
+    </actuator>
+```
 
 
 # data recording

@@ -15,10 +15,5 @@ private:
   shared_ptr<PinocchioInterface> pinocchioInterface_ptr;
 };
 
-NewtonEulerEquation::NewtonEulerEquation(
-    shared_ptr<PinocchioInterface> pinocchioInterface_ptr)
-    : pinocchioInterface_ptr(pinocchioInterface_ptr) {}
-
-NewtonEulerEquation::~NewtonEulerEquation() {}
 
 } // namespace clear
