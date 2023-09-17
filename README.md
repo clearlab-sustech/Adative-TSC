@@ -1,4 +1,4 @@
-# Adative Task Space Control
+# Adaptive Task Space Control
 <p align="center">
     <img align="center" src="https://user-images.githubusercontent.com/38805251/268449315-614a213d-ad61-4f85-a576-136343012022.png" width="230" height="150">
 </p>
