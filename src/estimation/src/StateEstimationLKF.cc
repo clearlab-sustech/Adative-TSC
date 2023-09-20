@@ -10,17 +10,15 @@ StateEstimationLKF::StateEstimationLKF(std::string config_yaml)
 
   auto config_ = YAML::LoadFile(config_yaml);
   std::string topic_prefix =
-      config_["estimation"]["topic_prefix"].as<std::string>();
-  std::string model_package =
-      config_["estimation"]["model_package"].as<std::string>();
+      config_["global"]["topic_prefix"].as<std::string>();
+  std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
-      config_["estimation"]["urdf"].as<std::string>();
+      config_["model"]["urdf"].as<std::string>();
   RCLCPP_INFO(this->get_logger(), "model file: %s", urdf.c_str());
 
   pinocchioInterface_ptr = std::make_unique<PinocchioInterface>(urdf.c_str());
-  foot_names =
-      config_["estimation"]["foot_names"].as<std::vector<std::string>>();
+  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   dt_ = config_["estimation"]["dt"].as<scalar_t>();
   use_odom_ = config_["estimation"]["use_odom"].as<bool>();
 
@@ -30,21 +28,22 @@ StateEstimationLKF::StateEstimationLKF(std::string config_yaml)
     RCLCPP_INFO(this->get_logger(), "foot name: %s", name.c_str());
   }
 
-  std::string imu_topic = config_["estimation"]["imu_topic"].as<std::string>();
+  std::string imu_topic =
+      config_["global"]["topic_names"]["imu"].as<std::string>();
   imu_subscription_ = this->create_subscription<sensor_msgs::msg::Imu>(
       topic_prefix + imu_topic, qos,
       std::bind(&StateEstimationLKF::imu_callback, this,
                 std::placeholders::_1));
 
   std::string touch_sensor_topic =
-      config_["estimation"]["touch_sensor_topic"].as<std::string>();
+      config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
   touch_subscription_ = this->create_subscription<trans::msg::TouchSensor>(
       topic_prefix + touch_sensor_topic, qos,
       std::bind(&StateEstimationLKF::touch_callback, this,
                 std::placeholders::_1));
 
   std::string joints_topic =
-      config_["estimation"]["joints_topic"].as<std::string>();
+      config_["global"]["topic_names"]["joints_state"].as<std::string>();
   joints_state_subscription_ =
       this->create_subscription<sensor_msgs::msg::JointState>(
           topic_prefix + joints_topic, qos,
@@ -52,14 +51,14 @@ StateEstimationLKF::StateEstimationLKF(std::string config_yaml)
                     std::placeholders::_1));
 
   std::string odom_topic =
-      config_["estimation"]["odom_topic"].as<std::string>();
+      config_["global"]["topic_names"]["odom"].as<std::string>();
   odom_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
       topic_prefix + odom_topic, qos,
       std::bind(&StateEstimationLKF::odom_callback, this,
                 std::placeholders::_1));
 
   std::string estimated_states_topic =
-      config_["estimation"]["estimated_states_topic"].as<std::string>();
+      config_["global"]["topic_names"]["estimated_states"].as<std::string>();
   res_publisher_ = this->create_publisher<trans::msg::EstimatedStates>(
       topic_prefix + estimated_states_topic, qos);
 

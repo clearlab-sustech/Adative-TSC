@@ -7,10 +7,10 @@ AtscQuadruped::AtscQuadruped(const std::string config_yaml,
                              rclcpp::Logger logger) {
   auto config_ = YAML::LoadFile(config_yaml);
   std::string model_package =
-      config_["controller"]["model_package"].as<std::string>();
+      config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
-      config_["controller"]["urdf"].as<std::string>();
+      config_["model"]["urdf"].as<std::string>();
   RCLCPP_INFO(logger, "[AtscQuadruped] model file: %s", urdf.c_str());
 
   pinocchioInterface_ptr = std::make_shared<PinocchioInterface>(urdf.c_str());
@@ -23,13 +23,13 @@ AtscQuadruped::AtscQuadruped(const std::string config_yaml,
   se3_array_ptr.emplace_back(
       std::make_shared<SE3Task>(pinocchioInterface_ptr, "floating_base"));
   auto foot_names =
-      config_["controller"]["foot_names"].as<std::vector<std::string>>();
+      config_["model"]["foot_names"].as<std::vector<std::string>>();
   for (const auto &name : foot_names) {
     RCLCPP_INFO(logger, "[AtscQuadruped] foot name: %s", name.c_str());
     se3_array_ptr.emplace_back(
         std::make_shared<SE3Task>(pinocchioInterface_ptr, name));
   }
-  actuated_joints_name = config_["controller"]["actuated_joints_name"]
+  actuated_joints_name = config_["model"]["actuated_joints_name"]
                              .as<std::vector<std::string>>();
 
   auto model_ = pinocchioInterface_ptr->getModel();

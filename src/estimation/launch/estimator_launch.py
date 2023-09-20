@@ -7,9 +7,9 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    xml_file_name = "aliengo/config.yaml"
-    xml_file = os.path.join(get_package_share_path("asserts"), xml_file_name)
-    # print(xml_file)
+    config_file_name = "aliengo/config.yaml"
+    config_file = os.path.join(get_package_share_path("asserts"), config_file_name)
+    # print(config_file)
     return LaunchDescription(
         [
             Node(
@@ -18,7 +18,7 @@ def generate_launch_description():
                 name="aliengo_estimator",
                 output="screen",
                 emulate_tty=True,
-                arguments=[xml_file, ("__log_level:=debug")],
+                arguments=[config_file, ("__log_level:=debug")],
             ),
         ]
     )

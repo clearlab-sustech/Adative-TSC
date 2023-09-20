@@ -13,9 +13,9 @@ def generate_launch_description():
     return LaunchDescription(
         [
             Node(
-                package="sim",
-                executable="sim",
-                name="simulation_mujoco",
+                package="atsc_quadruped",
+                executable="atsc_quadruped",
+                name="aliengo_atsc",
                 output="screen",
                 emulate_tty=True,
                 arguments=[config_file, ("__log_level:=debug")],

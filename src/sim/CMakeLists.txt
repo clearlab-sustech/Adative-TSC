@@ -17,6 +17,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(trans REQUIRED)
 find_package(mujocodl REQUIRED)
 find_package(asserts REQUIRED)
@@ -27,6 +28,22 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(yaml-cpp REQUIRED)
+
+set(TARGET_DEPENDENCE
+  ament_cmake
+  ament_index_cpp
+  trans
+  mujocodl
+  sensor_msgs
+  rclcpp
+  geometry_msgs
+  tf2
+  tf2_ros
+  nav_msgs
+  cv_bridge
+  yaml-cpp
+)
 
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -35,7 +52,10 @@ add_executable(sim src/sim.cc src/sim/SimPublisher.cc)
 target_include_directories(sim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(sim trans mujocodl sensor_msgs rclcpp geometry_msgs tf2 tf2_ros nav_msgs cv_bridge)
+target_link_libraries(sim
+  ${YAML_CPP_LIBRARIES}
+)
+ament_target_dependencies(sim ${TARGET_DEPENDENCE})
 
 install(TARGETS sim
   DESTINATION lib/${PROJECT_NAME})

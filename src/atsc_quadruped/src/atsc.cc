@@ -8,9 +8,9 @@ int main(int argc, char **argv) {
   if (argc > 1) {
     filename = argv[1];
   } else {
-    RCLCPP_ERROR(rclcpp::get_logger("Estimator"),
-                 "config file for estimator is required.");
-    throw std::runtime_error("no config file for estimator");
+    RCLCPP_ERROR(rclcpp::get_logger("atsc"),
+                 "config file for atsc is required.");
+    throw std::runtime_error("no config file for atsc");
   }
   auto node = std::make_shared<clear::AtscImpl>(filename);
 

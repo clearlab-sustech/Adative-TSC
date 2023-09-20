@@ -1,55 +1,92 @@
 #include "sim/SimPublisher.h"
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <yaml-cpp/yaml.h>
 
 namespace clear {
 
-SimPublisher::SimPublisher(mj::Simulate *sim)
-    : Node("SimPublisher"), sim_(sim), name_prefix("simulation/") {
-  model_param_name = name_prefix + "model_file";
-  this->declare_parameter(model_param_name, "");
+SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
+    : Node("SimPublisher"), sim_(sim) {
 
+  auto config_ = YAML::LoadFile(config_yaml);
+  std::string name_prefix = config_["global"]["topic_prefix"].as<std::string>();
+  std::string model_package = config_["model"]["package"].as<std::string>();
+  std::string model_file =
+      ament_index_cpp::get_package_share_directory(model_package) +
+      config_["model"]["xml"].as<std::string>();
+  mju::strcpy_arr(sim_->filename, model_file.c_str());
+  sim_->uiloadrequest.fetch_add(1);
+  RCLCPP_INFO(this->get_logger(), "model file: %s", model_file.c_str());
+
+  std::string sim_reset_service =
+      config_["global"]["service_names"]["sim_reset"].as<std::string>();
   reset_service_ = this->create_service<trans::srv::SimulationReset>(
-      name_prefix + "sim_reset",
+      name_prefix + sim_reset_service,
       std::bind(&SimPublisher::reset_callback, this, std::placeholders::_1,
                 std::placeholders::_2));
 
   auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
+  std::string imu_topic =
+      config_["global"]["topic_names"]["imu"].as<std::string>();
   imu_publisher_ = this->create_publisher<sensor_msgs::msg::Imu>(
-      name_prefix + "imu_data", qos);
-  joint_state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>(
-      name_prefix + "joint_states", qos);
-  odom_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>(
-      name_prefix + "odom", qos);
-  touch_publisher_ = this->create_publisher<trans::msg::TouchSensor>(
-      name_prefix + "touch_sensor", qos);
+      name_prefix + imu_topic, qos);
 
+  std::string joints_state_topic =
+      config_["global"]["topic_names"]["joints_state"].as<std::string>();
+  joint_state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>(
+      name_prefix + joints_state_topic, qos);
+
+  std::string odom_topic =
+      config_["global"]["topic_names"]["odom"].as<std::string>();
+  odom_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>(
+      name_prefix + odom_topic, qos);
+
+  std::string touch_sensor_topic =
+      config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
+  touch_publisher_ = this->create_publisher<trans::msg::TouchSensor>(
+      name_prefix + touch_sensor_topic, qos);
+
+  mjtNum freq_imu = config_["simulation"]["frequency"]["imu"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
-      2.5ms, std::bind(&SimPublisher::imu_callback, this)));
+      std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_imu},
+      std::bind(&SimPublisher::imu_callback, this)));
+
+  mjtNum freq_joints_state =
+      config_["simulation"]["frequency"]["joints_state"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
-      1ms, std::bind(&SimPublisher::joint_callback, this)));
+      std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_joints_state},
+      std::bind(&SimPublisher::joint_callback, this)));
+
+  mjtNum freq_odom = config_["simulation"]["frequency"]["odom"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
-      20ms, std::bind(&SimPublisher::odom_callback, this)));
+      std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_odom},
+      std::bind(&SimPublisher::odom_callback, this)));
+
+  mjtNum freq_touch_sensor =
+      config_["simulation"]["frequency"]["touch_sensor"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
-      2ms, std::bind(&SimPublisher::touch_callback, this)));
+      std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_touch_sensor},
+      std::bind(&SimPublisher::touch_callback, this)));
+
+  mjtNum freq_drop_old_message =
+      config_["simulation"]["frequency"]["drop_old_message"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
-      100ms, std::bind(&SimPublisher::drop_old_message, this)));
+      std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_drop_old_message},
+      std::bind(&SimPublisher::drop_old_message, this)));
   /* timers_.emplace_back(this->create_wall_timer(
       4s, std::bind(&SimPublisher::throw_box, this)));
  */
+
+  std::string actuators_cmds_topic =
+      config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
   actuator_cmd_subscription_ =
       this->create_subscription<trans::msg::ActuatorCmds>(
-          name_prefix + "actuators_cmds", qos,
+          name_prefix + actuators_cmds_topic, qos,
           std::bind(&SimPublisher::actuator_cmd_callback, this,
                     std::placeholders::_1));
 
   actuator_cmds_buffer_ = std::make_shared<ActuatorCmdsBuffer>();
 
   RCLCPP_INFO(this->get_logger(), "Start SimPublisher ...");
-
-  std::string model_file = this->get_parameter(model_param_name)
-                               .get_parameter_value()
-                               .get<std::string>();
-  mju::strcpy_arr(sim_->filename, model_file.c_str());
-  sim_->uiloadrequest.fetch_add(1);
 }
 
 SimPublisher::~SimPublisher() {
@@ -86,7 +123,8 @@ void SimPublisher::reset_callback(
             sim_->d_->qpos[sim_->m_->jnt_qposadr[joint_id]] =
                 request->joint_state.position[i];
           } else {
-            RCLCPP_WARN(this->get_logger(), "[Reset Request] joint %s does not exist",
+            RCLCPP_WARN(this->get_logger(),
+                        "[Reset Request] joint %s does not exist",
                         request->joint_state.name[i].c_str());
           }
         }

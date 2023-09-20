@@ -6,25 +6,23 @@ namespace clear {
 AtscImpl::AtscImpl(const std::string config_yaml) : Node("AdaptiveCtrl") {
 
   auto config_ = YAML::LoadFile(config_yaml);
-  std::string topic_prefix_estimation =
-      config_["estimation"]["topic_prefix"].as<std::string>();
+  std::string topic_prefix =
+      config_["global"]["topic_prefix"].as<std::string>();
   std::string estimated_state_topic =
-      config_["estimation"]["estimated_states_topic"].as<std::string>();
-  std::string topic_prefix_controller =
-      config_["controller"]["topic_prefix"].as<std::string>();
+      config_["global"]["topic_names"]["estimated_states"].as<std::string>();
   std::string actuators_cmds_topic =
-      config_["controller"]["actuators_cmds_topic"].as<std::string>();
+      config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
 
   dt_ = config_["controller"]["dt"].as<scalar_t>();
 
   auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
   estimated_state_subscription_ =
       this->create_subscription<trans::msg::EstimatedStates>(
-          topic_prefix_estimation + estimated_state_topic, qos,
+          topic_prefix + estimated_state_topic, qos,
           std::bind(&AtscImpl::estimated_state_callback, this,
                     std::placeholders::_1));
   actuators_cmds_pub_ptr_ = this->create_publisher<trans::msg::ActuatorCmds>(
-      topic_prefix_controller + actuators_cmds_topic, qos);
+      topic_prefix + actuators_cmds_topic, qos);
 
   atsc_ptr = std::make_shared<AtscQuadruped>(config_yaml, this->get_logger());
 

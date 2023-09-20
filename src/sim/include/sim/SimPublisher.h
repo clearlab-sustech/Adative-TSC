@@ -38,7 +38,7 @@ struct ActuatorCmdsBuffer {
 
 class SimPublisher : public rclcpp::Node {
 public:
-  SimPublisher(mj::Simulate *sim);
+  SimPublisher(mj::Simulate *sim, const std::string config_yaml);
 
   ~SimPublisher();
 
@@ -65,7 +65,6 @@ private:
   void throw_box();
 
   mj::Simulate *sim_;
-  std::string name_prefix, model_param_name;
   std::vector<rclcpp::TimerBase::SharedPtr> timers_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr

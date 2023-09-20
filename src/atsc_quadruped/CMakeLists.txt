@@ -17,6 +17,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(trans REQUIRED)
 find_package(core REQUIRED)
@@ -33,6 +34,7 @@ link_directories(
 
 set(TARGET_DEPENDENCE
   ament_cmake
+  ament_index_cpp
   rclcpp
   trans
   core
@@ -61,6 +63,9 @@ ament_export_dependencies(${TARGET_DEPENDENCE})
 
 install(TARGETS ${PROJECT_NAME}
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

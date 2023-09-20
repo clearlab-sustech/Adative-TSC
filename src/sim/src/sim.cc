@@ -267,20 +267,18 @@ void apply_ctrl(mjModel *m, mjData *d) {
                   actuator_cmds_buffer->actuators_name[k].c_str());
       continue;
     }
-    int pos_sensor_id =
-        mj_name2id(m, mjOBJ_SENSOR,
-                   (actuator_cmds_buffer->actuators_name[k] + "_pos").c_str());
-    int vel_sensor_id =
-        mj_name2id(m, mjOBJ_SENSOR,
-                   (actuator_cmds_buffer->actuators_name[k] + "_vel").c_str());
 
-    d->ctrl[actuator_id] = actuator_cmds_buffer->kp[k] *
-                               (actuator_cmds_buffer->pos[k] -
-                                d->sensordata[m->sensor_adr[pos_sensor_id]]) +
-                           actuator_cmds_buffer->kd[k] *
-                               (actuator_cmds_buffer->vel[k] -
-                                d->sensordata[m->sensor_adr[vel_sensor_id]]) +
-                           actuator_cmds_buffer->torque[k];
+    int jnt_id = mj_name2id(m, mjOBJ_JOINT,
+                            actuator_cmds_buffer->actuators_name[k].c_str());
+    int qpos_id = m->jnt_qposadr[jnt_id];
+    int qvel_id = m->jnt_dofadr[jnt_id];
+
+    d->ctrl[actuator_id] =
+        actuator_cmds_buffer->kp[k] *
+            (actuator_cmds_buffer->pos[k] - d->qpos[qpos_id]) +
+        actuator_cmds_buffer->kd[k] *
+            (actuator_cmds_buffer->vel[k] - d->qvel[qvel_id]) +
+        actuator_cmds_buffer->torque[k];
     d->ctrl[actuator_id] =
         std::min(std::max(-100.0, d->ctrl[actuator_id]), 100.0);
   }
@@ -450,22 +448,7 @@ void PhysicsLoop(mj::Simulate &sim) {
 //-------------------------------------- physics_thread
 //--------------------------------------------
 
-void PhysicsThread(mj::Simulate *sim, const char *filename) {
-  // request loadmodel if file given (otherwise drag-and-drop)
-  if (filename != nullptr) {
-    m = LoadModel(filename, *sim);
-    if (m)
-      d = mj_makeData(m);
-    if (d) {
-      sim->Load(m, d, filename);
-      mj_forward(m, d);
-
-      // allocate ctrlnoise
-      free(ctrlnoise);
-      ctrlnoise = static_cast<mjtNum *>(malloc(sizeof(mjtNum) * m->nu));
-      mju_zero(ctrlnoise, m->nu);
-    }
-  }
+void PhysicsThread(mj::Simulate *sim) {
 
   PhysicsLoop(*sim);
 
@@ -535,13 +518,17 @@ int main(int argc, const char **argv) {
   const char *filename = nullptr;
   if (argc > 1) {
     filename = argv[1];
+  } else {
+    RCLCPP_ERROR(rclcpp::get_logger("Simulator"),
+                 "config file for simulator is required.");
+    throw std::runtime_error("no config file for simulator");
   }
 
   // start physics thread
-  std::thread physicsthreadhandle(&PhysicsThread, sim.get(), filename);
+  std::thread physicsthreadhandle(&PhysicsThread, sim.get());
 
   // start message publisher
-  auto message_handle = std::make_shared<clear::SimPublisher>(sim.get());
+  auto message_handle = std::make_shared<clear::SimPublisher>(sim.get(), filename);
   actuator_cmds_buffer = message_handle->get_cmds_buffer();
   auto spin_func = [](std::shared_ptr<clear::SimPublisher> node_ptr) {
     rclcpp::spin(node_ptr);
