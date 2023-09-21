@@ -36,6 +36,8 @@ public:
   std::shared_ptr<const ActuatorCmds> getActuatorCmds();
 
 private:
+  void solve();
+
   Task getNewtonEulerEquation();
 
   Task getMaintainContactTask();
@@ -51,6 +53,8 @@ private:
 private:
   shared_ptr<PinocchioInterface> pinocchioInterface_ptr;
   Buffer<std::shared_ptr<ActuatorCmds>> actuator_cmds_buffer_;
+  std::vector<bool> torch_flag_;
   std::vector<std::string> actuated_joints_name, foot_names;
+  std::shared_ptr<ActuatorCmds> cmds;
 };
 } // namespace clear

@@ -70,8 +70,19 @@ void AtscQuadruped::update_state(
   pinocchioInterface_ptr->updateRobotState(qpos, qvel);
 }
 
+void AtscQuadruped::solve() {
+  Task cost = getFloatingBaseTask() + getSwingTask();
+  Task eq_cstr = getNewtonEulerEquation() + getMaintainContactTask();
+  Task ineq_cstr = getFrictionCone() + getTorqueLimits();
+
+  cmds = std::make_shared<ActuatorCmds>();
+}
+
 void AtscQuadruped::eval(std::vector<bool> torch_flag) {
-  auto cmds = std::make_shared<ActuatorCmds>();
+  torch_flag_ = torch_flag;
+
+  solve();
+
   const size_t na = actuated_joints_name.size();
   cmds->names = actuated_joints_name;
   cmds->Kp.setZero(na);
@@ -95,32 +106,32 @@ AtscQuadruped::getActuatorCmds() {
 }
 
 Task AtscQuadruped::getNewtonEulerEquation() {
-  Task t;
+  Task t("NewtonEulerEquation");
   return t;
 }
 
 Task AtscQuadruped::getMaintainContactTask() {
-  Task t;
+  Task t("MaintainContactTask");
   return t;
 }
 
 Task AtscQuadruped::getFrictionCone() {
-  Task t;
+  Task t("FrictionCone");
   return t;
 }
 
 Task AtscQuadruped::getTorqueLimits() {
-  Task t;
+  Task t("TorqueLimits");
   return t;
 }
 
 Task AtscQuadruped::getFloatingBaseTask() {
-  Task t;
+  Task t("FloatingBaseTask");
   return t;
 }
 
 Task AtscQuadruped::getSwingTask() {
-  Task t;
+  Task t("SwingTask");
   return t;
 }
 

@@ -12,7 +12,7 @@ public:
 
   ~Task();
 
-  Task operator+(const &Task task);
+  Task operator+(Task const &task);
 
   matrix_t A;
   vector_t b;

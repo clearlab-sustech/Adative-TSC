@@ -2,12 +2,13 @@
 
 namespace clear {
 
-Task::Task(/* args */) {}
+Task::Task(string name) : name_(name) {}
 
 Task::~Task() {}
 
-Task Task::operator+(const &Task task) {
-  Task res;
+Task Task::operator+(Task const &task) {
+  Task res(this->name_ + task.name_);
+  return res;
 }
 
 } // namespace clear
