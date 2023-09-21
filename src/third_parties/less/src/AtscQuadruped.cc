@@ -6,8 +6,7 @@ namespace clear {
 AtscQuadruped::AtscQuadruped(const std::string config_yaml,
                              rclcpp::Logger logger) {
   auto config_ = YAML::LoadFile(config_yaml);
-  std::string model_package =
-      config_["model"]["package"].as<std::string>();
+  std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
@@ -15,22 +14,13 @@ AtscQuadruped::AtscQuadruped(const std::string config_yaml,
 
   pinocchioInterface_ptr = std::make_shared<PinocchioInterface>(urdf.c_str());
 
-  newton_euler_eq_ptr =
-      make_shared<NewtonEulerEquation>(pinocchioInterface_ptr);
-  contact_ptr = make_shared<MaintainContactTask>(pinocchioInterface_ptr);
-  friction_cone_ptr = make_shared<FrictionCone>(pinocchioInterface_ptr);
-  torque_limits_ptr = make_shared<TorqueLimits>(pinocchioInterface_ptr);
-  se3_array_ptr.emplace_back(
-      std::make_shared<SE3Task>(pinocchioInterface_ptr, "floating_base"));
-  auto foot_names =
-      config_["model"]["foot_names"].as<std::vector<std::string>>();
+  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   for (const auto &name : foot_names) {
     RCLCPP_INFO(logger, "[AtscQuadruped] foot name: %s", name.c_str());
-    se3_array_ptr.emplace_back(
-        std::make_shared<SE3Task>(pinocchioInterface_ptr, name));
   }
-  actuated_joints_name = config_["model"]["actuated_joints_name"]
-                             .as<std::vector<std::string>>();
+
+  actuated_joints_name =
+      config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
 
   auto model_ = pinocchioInterface_ptr->getModel();
   for (const auto &name : actuated_joints_name) {
@@ -80,7 +70,7 @@ void AtscQuadruped::update_state(
   pinocchioInterface_ptr->updateRobotState(qpos, qvel);
 }
 
-void AtscQuadruped::eval() {
+void AtscQuadruped::eval(std::vector<bool> torch_flag) {
   auto cmds = std::make_shared<ActuatorCmds>();
   const size_t na = actuated_joints_name.size();
   cmds->names = actuated_joints_name;
@@ -102,6 +92,36 @@ void AtscQuadruped::eval() {
 std::shared_ptr<const AtscQuadruped::ActuatorCmds>
 AtscQuadruped::getActuatorCmds() {
   return actuator_cmds_buffer_.get();
+}
+
+Task AtscQuadruped::getNewtonEulerEquation() {
+  Task t;
+  return t;
+}
+
+Task AtscQuadruped::getMaintainContactTask() {
+  Task t;
+  return t;
+}
+
+Task AtscQuadruped::getFrictionCone() {
+  Task t;
+  return t;
+}
+
+Task AtscQuadruped::getTorqueLimits() {
+  Task t;
+  return t;
+}
+
+Task AtscQuadruped::getFloatingBaseTask() {
+  Task t;
+  return t;
+}
+
+Task AtscQuadruped::getSwingTask() {
+  Task t;
+  return t;
 }
 
 } // namespace clear
