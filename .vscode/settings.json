@@ -86,7 +86,14 @@
         "semaphore": "cpp",
         "stop_token": "cpp",
         "hash_map": "cpp",
-        "hash_set": "cpp"
+        "hash_set": "cpp",
+        "hpipm_timing.h": "c",
+        "hpipm_d_dense_qp_sol.h": "c",
+        "hpipm_d_dense_qp_utils.h": "c",
+        "hpipm_d_dense_qp_dim.h": "c",
+        "hpipm_d_dense_qp.h": "c",
+        "hpipm_d_dense_qp_ipm.h": "c",
+        "blasfeo_d_aux_ext_dep.h": "c"
     },
     "python.analysis.extraPaths": [
         "/opt/ros/foxy/lib/python3.8/site-packages/"
