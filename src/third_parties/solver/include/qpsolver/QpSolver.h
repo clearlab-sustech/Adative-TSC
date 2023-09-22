@@ -71,6 +71,11 @@ public:
     double reg_prim = 1.0e-12;
 
     ///
+    /// @brief Regularization term. reg of dual hessian
+    ///
+    double reg_dual = 1.0e-8;
+
+    ///
     /// @brief Warm start flag (0: disable, 1: enable). Default is 0.
     ///
     int warm_start = 0;
@@ -91,6 +96,8 @@ public:
     ///
     int split_step = 0;
 
+    bool verbose = false; // print debug info
+
     ///
     /// @brief Check the settings. If something is wrong, throws an exception.
     ///
@@ -98,7 +105,7 @@ public:
   };
 
 public:
-  QpSolver(const DimsSpec &dims);
+  QpSolver(const DimsSpec &dims, QpSolverSettings settings);
 
   ~QpSolver();
 
@@ -125,6 +132,15 @@ private:
 
   hpipm_size_t ipm_arg_size;
   SolverConfig arg;
+  void *ipm_arg_mem;
+
+  hpipm_size_t ipm_size;
+  void *ipm_mem;
+  struct d_dense_qp_ipm_ws workspace;
+
+  bool verbose;
+
+  void print(int hpipm_status);
 };
 
 } // namespace clear

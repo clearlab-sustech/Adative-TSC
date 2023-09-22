@@ -24,6 +24,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(core REQUIRED)
 find_package(pinocchio_interface REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(solver REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(pinocchio REQUIRED pinocchio)
@@ -39,6 +40,7 @@ set(TARGET_DEPENDENCE
   pinocchio
   pinocchio_interface
   yaml-cpp
+  solver
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)

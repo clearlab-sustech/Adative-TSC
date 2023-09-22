@@ -31,6 +31,17 @@ AtscQuadruped::AtscQuadruped(const std::string config_yaml,
                                " dose not exist in URDF");
     }
   }
+
+  DimsSpec dims;
+  dims.nv = 2 * pinocchioInterface_ptr->Nv() - 6 + 3 * foot_names.size();
+  dims.ne = 3 * foot_names.size();
+  dims.nb = 0;
+  dims.ng = pinocchioInterface_ptr->Nv() - 6 + 5 * foot_names.size();
+  dims.nsb = 0;
+  dims.nsg = 0;
+  QpSolverSettings settings;
+  setings.verbose = true;
+  solver_ptr = std::make_shared<QpSolver>(dims, settings);
 }
 
 AtscQuadruped::~AtscQuadruped() {}
@@ -74,6 +85,7 @@ void AtscQuadruped::solve() {
   Task cost = getFloatingBaseTask() + getSwingTask();
   Task eq_cstr = getNewtonEulerEquation() + getMaintainContactTask();
   Task ineq_cstr = getFrictionCone() + getTorqueLimits();
+
 
   cmds = std::make_shared<ActuatorCmds>();
 }

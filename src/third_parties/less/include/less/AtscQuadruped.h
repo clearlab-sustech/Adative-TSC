@@ -8,6 +8,7 @@
 #include <memory>
 #include <nav_msgs/msg/odometry.hpp>
 #include <pinocchio/PinocchioInterface.h>
+#include <qpsolver/QpSolver.h>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <string>
@@ -56,5 +57,7 @@ private:
   std::vector<bool> torch_flag_;
   std::vector<std::string> actuated_joints_name, foot_names;
   std::shared_ptr<ActuatorCmds> cmds;
+
+  std::shared_ptr<QpSolver> solver_ptr;
 };
 } // namespace clear
