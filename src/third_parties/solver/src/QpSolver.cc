@@ -43,15 +43,15 @@ void QpSolver::QpSolverSettings::checkSettings() const {
   }
 }
 
-QpSolver::QpSolver(const DimsSpec &dims, QpSolverSettings settings)
-    : dims_(dims) {
+QpSolver::QpSolver(const DimsSpec &dims, QpSolverSettings settings) {
 
   dim_size = d_dense_qp_dim_memsize();
   dim_mem = malloc(dim_size);
   d_dense_qp_dim_create(&dims_, dim_mem);
+  dims_ = dims;
 
   hpipm_size_t qp_size = d_dense_qp_memsize(&dims_);
-  void *qp_mem = malloc(qp_size);
+  qp_mem = malloc(qp_size);
   d_dense_qp_create(&dims_, &qp, qp_mem);
 
   qp_sol_size = d_dense_qp_sol_memsize(&dims_);
@@ -108,9 +108,13 @@ void QpSolver::update(Eigen::Ref<matrix_t> H, Eigen::Ref<vector_t> g,
 }
 
 vector_t QpSolver::solve() {
-  d_dense_qp_set_all(H.data(), g.data(), A.data(), b.data(), NULL, NULL, NULL,
-                     C.data(), lb.data(), ub.data(), NULL, NULL, NULL, NULL,
-                     NULL, NULL, NULL, &qp);
+  d_dense_qp_set_H(H.data(), &qp);
+  d_dense_qp_set_g(g.data(), &qp);
+  d_dense_qp_set_A(A.data(), &qp);
+  d_dense_qp_set_b(b.data(), &qp);
+  d_dense_qp_set_C(C.data(), &qp);
+  d_dense_qp_set_lg(lb.data(), &qp);
+  d_dense_qp_set_ug(ub.data(), &qp);
 
   // call solver
   int hpipm_status;

@@ -49,6 +49,23 @@ ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
 ament_export_targets(${PROJECT_NAME}_Targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(${TARGET_DEPENDENCE})
 
+add_executable(test_qp test/test.cc)
+target_include_directories(test_qp PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(test_qp
+  ${PROJECT_NAME}
+  ${pinocchio_LIBRARIES}
+  ${YAML_CPP_LIBRARIES}
+)
+
+ament_target_dependencies(test_qp ${TARGET_DEPENDENCE})
+ament_export_dependencies(${TARGET_DEPENDENCE})
+
+install(TARGETS test_qp
+  DESTINATION lib/${PROJECT_NAME})
+
 install(
   DIRECTORY include/
   DESTINATION include
