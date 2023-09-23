@@ -39,8 +39,8 @@ AtscQuadruped::AtscQuadruped(const std::string config_yaml,
   dims.ng = pinocchioInterface_ptr->Nv() - 6 + 5 * foot_names.size();
   dims.nsb = 0;
   dims.nsg = 0;
-  QpSolverSettings settings;
-  setings.verbose = true;
+  QpSolver::QpSolverSettings settings;
+  settings.verbose = true;
   solver_ptr = std::make_shared<QpSolver>(dims, settings);
 }
 

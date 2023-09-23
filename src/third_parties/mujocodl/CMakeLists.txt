@@ -22,6 +22,9 @@ set(TARGET_DEPENDENCE
 # find dependencies
 find_package(ament_cmake REQUIRED)
 
+add_library(mujoco SHARED IMPORTED)
+set_target_properties(mujoco PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/mujoco/lib/libmujoco.so)
+
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/mujoco/simulate/*.cc ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 
 add_library(${PROJECT_NAME} SHARED ${source})
@@ -56,6 +59,11 @@ install(
   FILES ${sim_headers}
   DESTINATION include/simulate
 )
+
+file(GLOB_RECURSE libs ${CMAKE_CURRENT_SOURCE_DIR}/mujoco/lib/*)
+
+install(FILES ${libs}
+  DESTINATION lib)
 
 install(
   TARGETS ${PROJECT_NAME}

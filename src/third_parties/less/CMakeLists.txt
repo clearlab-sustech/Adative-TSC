@@ -24,6 +24,8 @@ find_package(sensor_msgs REQUIRED)
 find_package(core REQUIRED)
 find_package(pinocchio_interface REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(blasfeo_ament REQUIRED)
+find_package(hpipm_ament REQUIRED)
 find_package(solver REQUIRED)
 
 find_package(PkgConfig REQUIRED)
@@ -41,6 +43,8 @@ set(TARGET_DEPENDENCE
   pinocchio_interface
   yaml-cpp
   solver
+  blasfeo_ament
+  hpipm_ament
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
@@ -70,6 +74,7 @@ install(
   EXPORT ${PROJECT_NAME}_Targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
+
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
 )

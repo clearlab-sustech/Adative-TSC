@@ -511,9 +511,6 @@ int main(int argc, const char **argv) {
   auto sim = std::make_unique<mj::Simulate>(std::make_unique<mj::GlfwAdapter>(),
                                             &scn, &cam, &opt, &pert,
                                             /* fully_managed = */ true);
-  sim->color = 1;
-  sim->ui0_enable = 1;
-  sim->ui1_enable = 1;
 
   const char *filename = nullptr;
   if (argc > 1) {

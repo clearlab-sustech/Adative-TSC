@@ -45,15 +45,17 @@ set(TARGET_DEPENDENCE
   yaml-cpp
 )
 
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+add_library(mujoco SHARED IMPORTED)
+set_target_properties(mujoco PROPERTIES IMPORTED_LOCATION ${CMAKE_INSTALL_PREFIX}/lib/libmujoco.so)
+
 add_executable(sim src/sim.cc src/sim/SimPublisher.cc)
 target_include_directories(sim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+
 target_link_libraries(sim
   ${YAML_CPP_LIBRARIES}
+  mujoco
 )
 ament_target_dependencies(sim ${TARGET_DEPENDENCE})
 

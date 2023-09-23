@@ -47,4 +47,5 @@ foreach(HEADER_FILE ${HEADERS})
   file(COPY ${HEADER_FILE} DESTINATION ${HPIPM_INCLUDE_DIR})
 endforeach()
 
+ament_export_libraries(hpipm)
 ament_package()
