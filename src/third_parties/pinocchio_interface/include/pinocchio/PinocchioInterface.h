@@ -23,9 +23,11 @@ private:
   pin::Model model_;
   pin::Data data_;
   vector_t qpos_, qvel_;
+  int nc_;
+  vector<bool> contact_mask_;
 
 public:
-  PinocchioInterface(const char *urdf_name);
+  PinocchioInterface(const char *urdf_name, int nc = 0);
 
   ~PinocchioInterface();
 
@@ -71,14 +73,24 @@ public:
 
   pin::Motion getFrame6dAcc_localWorldAligned(string frame_name);
 
-  int Nq();
+  int nq();
 
-  int Nv();
+  int nv();
+
+  int na();
+
+  int nc();
 
   Eigen::Ref<vector_t> qpos();
 
   Eigen::Ref<vector_t> qvel();
 
-  const matrix6x_t &momentumJacobia();
+  const matrix6x_t &getMomentumJacobia();
+
+  vector6_t getMomentumTimeVariation();
+
+  void set_contact_mask(const vector<bool> &mask);
+
+  const vector<bool> &getContactMask();
 };
 } // namespace clear

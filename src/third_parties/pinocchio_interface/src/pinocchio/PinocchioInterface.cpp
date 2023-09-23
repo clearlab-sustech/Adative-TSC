@@ -2,12 +2,13 @@
 #include <rcpputils/asserts.hpp>
 
 namespace clear {
-PinocchioInterface::PinocchioInterface(const char *urdf_name) {
+PinocchioInterface::PinocchioInterface(const char *urdf_name, int nc) {
   pin::urdf::buildModel(std::string(urdf_name), pin::JointModelFreeFlyer(),
                         this->model_);
   this->data_ = pin::Data(this->model_);
   qpos_.setZero(model_.nq);
   qvel_.setZero(model_.nv);
+  nc_ = nc;
 }
 
 PinocchioInterface::~PinocchioInterface() {}
@@ -23,7 +24,7 @@ void PinocchioInterface::updateRobotState(vector_t qpos, vector_t qvel) {
   pin::normalize(model_, qpos_);
   pin::computeAllTerms(model_, data_, qpos_, qvel_);
   pin::computeCentroidalMomentumTimeVariation(model_, data_, qpos_, qvel_,
-                                              vector_t::Zero(Nv()));
+                                              vector_t::Zero(nv()));
   pinocchio::ccrba(model_, data_, qpos_, qvel_);
   pin::computeMinverse(model_, data_, qpos_);
   pinocchio::updateFramePlacements(model_, data_);
@@ -120,9 +121,13 @@ PinocchioInterface::getFrame6dAcc_localWorldAligned(string frame_name) {
                                    pin::LOCAL_WORLD_ALIGNED);
 }
 
-int PinocchioInterface::Nq() { return model_.nq; }
+int PinocchioInterface::nq() { return model_.nq; }
 
-int PinocchioInterface::Nv() { return model_.nv; }
+int PinocchioInterface::nv() { return model_.nv; }
+
+int PinocchioInterface::na() { return model_.nv - 6; }
+
+int PinocchioInterface::nc() { return nc_; }
 
 Eigen::Ref<vector_t> PinocchioInterface::qpos() {
   return Eigen::Ref<vector_t>(qpos_);
@@ -132,6 +137,19 @@ Eigen::Ref<vector_t> PinocchioInterface::qvel() {
   return Eigen::Ref<vector_t>(qvel_);
 }
 
-const matrix6x_t &PinocchioInterface::momentumJacobia() { return data_.Ag; }
+const matrix6x_t &PinocchioInterface::getMomentumJacobia() { return data_.Ag; }
+
+vector6_t PinocchioInterface::getMomentumTimeVariation() {
+    return pin::computeCentroidalMomentumTimeVariation(model_, data_).toVector();
+}
+
+void PinocchioInterface::set_contact_mask(const vector<bool> &mask) {
+  assert(mask.size() == nc_);
+  contact_mask_ = mask;
+}
+
+const vector<bool> &PinocchioInterface::getContactMask() {
+  return contact_mask_;
+}
 
 } // namespace clear
