@@ -8,9 +8,11 @@ using namespace clear;
 
 ActuatorLimit::ActuatorLimit(PinocchioInterface &robot, string name)
     : LinearConstraints(robot, name, false) {
-  vector_t effort_limit = robot.getModel().effortLimit.tail(robot.nv());
+  vector_t effort_limit = robot.getModel().effortLimit.tail(robot.na());
   _lb = -effort_limit;
   _ub = effort_limit;
+
+  std::cout << "torque limit: " << effort_limit.transpose() << "\n";
 
   _C.setZero(robot.na(), n_var);
   _C.middleCols(robot.nv(), robot.na()).setIdentity();

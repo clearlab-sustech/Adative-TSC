@@ -23,8 +23,14 @@ void SE3MotionTask::update() {
            _Kd * (_spatialVelRef -
                   robot().getFrame6dVel_local(Task::name()).toVector()) +
            _spatialAccRef;
+  if (acc_fb.norm() > 200.0) {
+    acc_fb = 200.0 * acc_fb.normalized();
+  }
+  std::cout << "acc fb: " << acc_fb.transpose() << "\n";
   A = J * S;
   a = acc_fb - robot().getFrame6dAcc_local(Task::name()).toVector();
+  std::cout << "acc fb a: " << a.transpose() << "\n";
+
   _H = A.transpose() * _Q * A;
   _g = -A.transpose() * _Q * a;
 }

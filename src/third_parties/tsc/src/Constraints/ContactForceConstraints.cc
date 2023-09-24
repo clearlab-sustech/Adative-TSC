@@ -19,9 +19,9 @@ void ContactForceConstraints::update() {
 
   size_t nc_enable = std::count(c_mask.begin(), c_mask.end(), true);
 
-  _C.resize(nc_enable * 5, n_var);
-  _c_ub.resize(nc_enable * 5);
-  _c_lb.resize(nc_enable * 5);
+  _C.setZero(nc_enable * 5, n_var);
+  _c_ub.setZero(nc_enable * 5);
+  _c_lb.setZero(nc_enable * 5);
 
   matrix_t frictionPyramic(5, 3); // clang-format off
   frictionPyramic << 0, 0, 1,
@@ -30,14 +30,15 @@ void ContactForceConstraints::update() {
                      0, 1, -_mu,
                      0,-1, -_mu; // clang-format on
   _c_ub = Eigen::VectorXd::Zero(_C.rows());
-  _c_lb = -1e16 * Eigen::VectorXd::Ones(_C.rows());
+  _c_lb = -2.0 * _mu * _max * Eigen::VectorXd::Ones(_C.rows());
 
   int j = 0;
-  for (int i = 0; i < robot().nc(); ++i) {
+  for (size_t i = 0; i < robot().nc(); ++i) {
     if (c_mask[i]) {
-      _C.block<5, 3>(5 * j, robot().nv() + 3 * i) = frictionPyramic;
-      _c_lb(5 * j) = 0.0;
-      _c_ub(5 * j) = 400.0;
+      _C.block<5, 3>(5 * j, robot().nv() + robot().na() + 3 * i) =
+          frictionPyramic;
+      _c_lb(5 * j) = _min;
+      _c_ub(5 * j) = _max;
       j++;
     }
   }

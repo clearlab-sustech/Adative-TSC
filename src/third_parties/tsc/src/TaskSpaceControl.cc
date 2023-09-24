@@ -127,6 +127,7 @@ void TaskSpaceControl::solve() {
   dims.ne = nDims_cstrs_eq;
   dims.ng = nDims_cstrs;
   QpSolver::QpSolverSettings settings;
+  settings.iter_max = 100;
   settings.verbose = false;
 
   auto solver_ptr = std::make_shared<QpSolver>(dims, settings);

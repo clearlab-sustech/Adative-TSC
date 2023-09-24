@@ -3,26 +3,24 @@
 namespace clear {
 
 NewtonEulerEq::NewtonEulerEq(PinocchioInterface &robot, string name)
-    : LinearConstraints(robot, name, true) {
-  _C.setZero(robot.nv(), n_var);
-  _c_lb.setZero(robot.nv());
-  _c_ub.setZero(robot.nv());
-}
+    : LinearConstraints(robot, name, true) {}
 
 void NewtonEulerEq::update() {
+  _C.setZero(robot().nv(), n_var);
   _C.leftCols(robot().nv()) = robot().M();
   _C.middleCols(robot().nv(), robot().na())
       .bottomRows(robot().na())
       .diagonal()
       .fill(-1);
-
+  auto mask = robot().getContactMask();
   for (size_t i = 0; i < robot().nc(); i++) {
-    matrix6x_t Ji;
-    robot().getContactPointJacobia_localWorldAligned(i, Ji);
-    _C.middleCols(robot().nv() + robot().na() + 3 * i, 3) =
-        -Ji.topRows(3).transpose();
+    if (mask[i]) {
+      matrix6x_t Ji;
+      robot().getContactPointJacobia_localWorldAligned(i, Ji);
+      _C.middleCols(robot().nv() + robot().na() + 3 * i, 3) =
+          -Ji.topRows(3).transpose();
+    }
   }
-
   _c_ub = -robot().nle();
   _c_lb = -robot().nle();
 }

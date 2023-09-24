@@ -1,5 +1,4 @@
 #include "pinocchio/PinocchioInterface.h"
-#include <rcpputils/asserts.hpp>
 
 namespace clear {
 PinocchioInterface::PinocchioInterface(const char *urdf_name) {
@@ -70,12 +69,18 @@ void PinocchioInterface::getJacobia_localWorldAligned(string frame_name,
 
 void PinocchioInterface::getContactPointJacobia_localWorldAligned(
     size_t idx, matrix6x_t &J) {
-  assert(idx < nc());
+  if (idx >= nc()) {
+    throw std::runtime_error("[PinocchioInterface::getContactPointJacobia_"
+                             "localWorldAligned]: idx >= nc()");
+  }
   getJacobia_localWorldAligned(contact_points_[idx], J);
 }
 
 pin::FrameIndex PinocchioInterface::getFrameID(string frame_name) {
-  rcpputils::assert_true(model_.existFrame(frame_name));
+  if (!model_.existFrame(frame_name)) {
+    throw std::runtime_error("[PinocchioInterface::getFrameID]: " + frame_name +
+                             " does not exist");
+  }
   return model_.getFrameId(frame_name);
 }
 
@@ -143,12 +148,19 @@ vector6_t PinocchioInterface::getMomentumTimeVariation() {
   return pin::computeCentroidalMomentumTimeVariation(model_, data_).toVector();
 }
 
-void PinocchioInterface::set_contact_mask(const vector<bool> &mask) {
-  assert(mask.size() == nc_);
+void PinocchioInterface::setContactMask(const vector<bool> &mask) {
+  if (mask.size() != nc()) {
+    throw std::runtime_error(
+        "[PinocchioInterface::setContactMask]: mask.size() != nc()");
+  }
   contact_mask_ = mask;
 }
 
 const vector<bool> &PinocchioInterface::getContactMask() {
+  if (contact_mask_.size() != nc()) {
+    throw std::runtime_error(
+        "[PinocchioInterface::getContactMask]: contact_mask_.size() != nc()");
+  }
   return contact_mask_;
 }
 

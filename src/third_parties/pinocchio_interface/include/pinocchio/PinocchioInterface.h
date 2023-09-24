@@ -93,7 +93,7 @@ public:
 
   vector6_t getMomentumTimeVariation();
 
-  void set_contact_mask(const vector<bool> &mask);
+  void setContactMask(const vector<bool> &mask);
 
   const vector<bool> &getContactMask();
 

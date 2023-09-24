@@ -1,4 +1,5 @@
 #include "qpsolver/QpSolver.h"
+#include <iostream>
 
 namespace clear {
 
@@ -123,8 +124,11 @@ vector_t QpSolver::solve() {
   this->print(hpipm_status);
 
   sol.setZero(dims_.nv);
-  d_dense_qp_sol_get_v(&qp_sol, sol.data());
-
+  if (hpipm_status == 0) {
+    d_dense_qp_sol_get_v(&qp_sol, sol.data());
+  } else {
+    std::cerr << "qp failed: hpipm_status = " << hpipm_status << "\n";
+  }
   return sol;
 }
 
