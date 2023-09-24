@@ -23,13 +23,15 @@ private:
   pin::Model model_;
   pin::Data data_;
   vector_t qpos_, qvel_;
-  int nc_;
   vector<bool> contact_mask_;
+  vector<string> contact_points_;
 
 public:
-  PinocchioInterface(const char *urdf_name, int nc = 0);
+  PinocchioInterface(const char *urdf_name);
 
   ~PinocchioInterface();
+
+  void setContactPoints(vector<string> contact_points);
 
   const pin::Model &getModel();
 
@@ -53,6 +55,8 @@ public:
 
   void getJacobia_localWorldAligned(string frame_name, matrix6x_t &J);
 
+  void getContactPointJacobia_localWorldAligned(size_t idx, matrix6x_t &J);
+
   pin::FrameIndex getFrameID(string frame_name);
 
   Eigen::Ref<matrix_t> M();
@@ -73,13 +77,13 @@ public:
 
   pin::Motion getFrame6dAcc_localWorldAligned(string frame_name);
 
-  int nq();
+  size_t nq();
 
-  int nv();
+  size_t nv();
 
-  int na();
+  size_t na();
 
-  int nc();
+  size_t nc();
 
   Eigen::Ref<vector_t> qpos();
 
@@ -92,5 +96,7 @@ public:
   void set_contact_mask(const vector<bool> &mask);
 
   const vector<bool> &getContactMask();
+
+  const vector<string> &getContactPoints();
 };
 } // namespace clear

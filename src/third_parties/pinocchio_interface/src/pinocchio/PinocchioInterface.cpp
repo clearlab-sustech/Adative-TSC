@@ -2,16 +2,19 @@
 #include <rcpputils/asserts.hpp>
 
 namespace clear {
-PinocchioInterface::PinocchioInterface(const char *urdf_name, int nc) {
+PinocchioInterface::PinocchioInterface(const char *urdf_name) {
   pin::urdf::buildModel(std::string(urdf_name), pin::JointModelFreeFlyer(),
                         this->model_);
   this->data_ = pin::Data(this->model_);
   qpos_.setZero(model_.nq);
   qvel_.setZero(model_.nv);
-  nc_ = nc;
 }
 
 PinocchioInterface::~PinocchioInterface() {}
+
+void PinocchioInterface::setContactPoints(vector<string> contact_points) {
+  contact_points_ = contact_points;
+}
 
 const pin::Model &PinocchioInterface::getModel() { return model_; }
 
@@ -49,29 +52,26 @@ vector3_t PinocchioInterface::getCoMAcc() { return data_.acom[0]; }
 const matrix3x_t &PinocchioInterface::getJacobia_CoM() { return data_.Jcom; }
 
 void PinocchioInterface::getJacobia_local(string frame_name, matrix6x_t &J) {
-  if (J.size() != 6 * model_.nv) {
-    J.resize(6, model_.nv);
-  }
-  J.setZero();
+  J.setZero(6, model_.nv);
   pin::getFrameJacobian(model_, data_, getFrameID(frame_name), pin::LOCAL, J);
 }
 
 void PinocchioInterface::getJacobia_world(string frame_name, matrix6x_t &J) {
-  if (J.size() != 6 * model_.nv) {
-    J.resize(6, model_.nv);
-  }
-  J.setZero();
+  J.setZero(6, model_.nv);
   pin::getFrameJacobian(model_, data_, getFrameID(frame_name), pin::WORLD, J);
 }
 
 void PinocchioInterface::getJacobia_localWorldAligned(string frame_name,
                                                       matrix6x_t &J) {
-  if (J.size() != 6 * model_.nv) {
-    J.resize(6, model_.nv);
-  }
-  J.setZero();
+  J.setZero(6, model_.nv);
   pin::getFrameJacobian(model_, data_, getFrameID(frame_name),
                         pin::LOCAL_WORLD_ALIGNED, J);
+}
+
+void PinocchioInterface::getContactPointJacobia_localWorldAligned(
+    size_t idx, matrix6x_t &J) {
+  assert(idx < nc());
+  getJacobia_localWorldAligned(contact_points_[idx], J);
 }
 
 pin::FrameIndex PinocchioInterface::getFrameID(string frame_name) {
@@ -121,13 +121,13 @@ PinocchioInterface::getFrame6dAcc_localWorldAligned(string frame_name) {
                                    pin::LOCAL_WORLD_ALIGNED);
 }
 
-int PinocchioInterface::nq() { return model_.nq; }
+size_t PinocchioInterface::nq() { return model_.nq; }
 
-int PinocchioInterface::nv() { return model_.nv; }
+size_t PinocchioInterface::nv() { return model_.nv; }
 
-int PinocchioInterface::na() { return model_.nv - 6; }
+size_t PinocchioInterface::na() { return model_.nv - 6; }
 
-int PinocchioInterface::nc() { return nc_; }
+size_t PinocchioInterface::nc() { return contact_points_.size(); }
 
 Eigen::Ref<vector_t> PinocchioInterface::qpos() {
   return Eigen::Ref<vector_t>(qpos_);
@@ -140,7 +140,7 @@ Eigen::Ref<vector_t> PinocchioInterface::qvel() {
 const matrix6x_t &PinocchioInterface::getMomentumJacobia() { return data_.Ag; }
 
 vector6_t PinocchioInterface::getMomentumTimeVariation() {
-    return pin::computeCentroidalMomentumTimeVariation(model_, data_).toVector();
+  return pin::computeCentroidalMomentumTimeVariation(model_, data_).toVector();
 }
 
 void PinocchioInterface::set_contact_mask(const vector<bool> &mask) {
@@ -150,6 +150,10 @@ void PinocchioInterface::set_contact_mask(const vector<bool> &mask) {
 
 const vector<bool> &PinocchioInterface::getContactMask() {
   return contact_mask_;
+}
+
+const vector<string> &PinocchioInterface::getContactPoints() {
+  return contact_points_;
 }
 
 } // namespace clear
