@@ -1,3 +1,0 @@
-controller:
-  model_package: "assert"
-  urdf: "a.urdf"
