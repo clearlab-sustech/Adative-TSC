@@ -30,7 +30,7 @@ public:
     /// @brief Maximum number of iterations. Must be nen-negative. Default
     /// is 15.
     ///
-    int iter_max = 15;
+    int iter_max = 30;
 
     ///
     /// @brief Minimum step size. Must be positive and less than 1.0. Default
@@ -46,22 +46,22 @@ public:
     ///
     /// @brief Convergence criteria. Must be positive. Default is 1.0e-08.
     ///
-    double tol_stat = 1.0e-08;
+    double tol_stat = 1.0e-04;
 
     ///
     /// @brief Convergence criteria. Must be positive. Default is 1.0e-08.
     ///
-    double tol_eq = 1.0e-08;
+    double tol_eq = 1.0e-04;
 
     ///
     /// @brief Convergence criteria. Must be positive. Default is 1.0e-08.
     ///
-    double tol_ineq = 1.0e-08;
+    double tol_ineq = 1.0e-04;
 
     ///
     /// @brief Convergence criteria. Must be positive. Default is 1.0e-08.
     ///
-    double tol_comp = 1.0e-08; // convergence criteria
+    double tol_comp = 1.0e-04; // convergence criteria
 
     ///
     /// @brief Regularization term. Must be non-negative. Default is 1.0e-12.
@@ -86,13 +86,13 @@ public:
     ///
     /// @brief Square-root Riccati flag (0: disable, 1: enable). Default is 1.
     ///
-    int ric_alg = 1;
+    int ric_alg = 0;
 
     ///
     /// @brief Use different step for primal and dual variables (0: disable, 1:
     /// enable). Default is 0.
     ///
-    int split_step = 0;
+    int split_step = 1;
 
     bool verbose = false; // print debug info
 

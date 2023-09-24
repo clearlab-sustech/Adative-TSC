@@ -95,7 +95,11 @@
         "hpipm_d_dense_qp_ipm.h": "c",
         "blasfeo_d_aux_ext_dep.h": "c",
         "specialfunctions": "cpp",
-        "*.txx": "cpp"
+        "*.txx": "cpp",
+        "any": "cpp",
+        "regex": "cpp",
+        "valarray": "cpp",
+        "*.ipp": "cpp"
     },
     "python.analysis.extraPaths": [
         "/opt/ros/foxy/lib/python3.8/site-packages/"

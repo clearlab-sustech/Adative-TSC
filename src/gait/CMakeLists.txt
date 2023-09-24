@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(atsc_quadruped)
+project(gait)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -54,7 +54,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:include>)
 
 target_link_libraries(${PROJECT_NAME}
-  ${pinocchio_LIBRARIES}
   ${YAML_CPP_LIBRARIES}
 )
 
@@ -65,7 +64,10 @@ install(TARGETS ${PROJECT_NAME}
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME})
+DESTINATION share/${PROJECT_NAME})
+
+install(DIRECTORY config
+DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>atsc_quadruped</name>
+  <name>gait</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="1358458373@qq.com">otsd</maintainer>
@@ -14,9 +14,6 @@
 
   <depend>trans</depend>
   <depend>core</depend>
-  <depend>nav_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>tsc</depend>
   <depend>yaml-cpp</depend>
   <depend>ament_index_cpp</depend>
 

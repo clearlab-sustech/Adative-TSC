@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(atsc_quadruped)
+project(generation)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -46,27 +46,26 @@ set(TARGET_DEPENDENCE
   yaml-cpp
 )
 
-file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
+# file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 
-add_executable(${PROJECT_NAME} ${source})
-target_include_directories(${PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+# add_executable(${PROJECT_NAME} ${source})
+# target_include_directories(${PROJECT_NAME} PUBLIC
+# $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(${PROJECT_NAME}
-  ${pinocchio_LIBRARIES}
-  ${YAML_CPP_LIBRARIES}
-)
+# target_link_libraries(${PROJECT_NAME}
+# ${pinocchio_LIBRARIES}
+# ${YAML_CPP_LIBRARIES}
+# )
 
-ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
-ament_export_dependencies(${TARGET_DEPENDENCE})
+# ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
+# ament_export_dependencies(${TARGET_DEPENDENCE})
 
-install(TARGETS ${PROJECT_NAME}
-  DESTINATION lib/${PROJECT_NAME})
+# install(TARGETS ${PROJECT_NAME}
+# DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME})
-
+# install(DIRECTORY launch
+# DESTINATION share/${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
 

@@ -9,11 +9,13 @@ global:
     odom: "odom"
     estimated_states: "estimated_states"
     actuators_cmds: "actuators_cmds"
+    torch_mode: "torch_mode"
 
 model:
   package: "asserts"
   urdf: "/aliengo/aliengo.urdf"
   xml: "/aliengo/aliengo.xml"
+  base_name: "trunk"
   foot_names: ["fl_foot", "fr_foot", "rl_foot", "rr_foot"]
   actuated_joints_name:
     [
@@ -33,17 +35,15 @@ model:
 
 simulation:
   frequency: # Hz
-    joints_state: 1000.0 
-    imu: 400.0 
-    touch_sensor:  500.0 
+    joints_state: 1000.0
+    imu: 400.0
+    touch_sensor: 500.0
     odom: 30.0
     drop_old_message: 10.0
-    
 
 estimation:
   dt: 0.002
-  use_odom: false
+  use_odom: true
 
 controller:
   dt: 0.002
-  

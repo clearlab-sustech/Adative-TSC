@@ -1,0 +1,273 @@
+#include "control/ContactForceOptimization.h"
+
+#include <pinocchio/Orientation.h>
+
+#include <rcpputils/asserts.hpp>
+
+#include "common/MotionPhaseDefinition.h"
+
+namespace clear {
+
+ContactForceOptimization::ContactForceOptimization(
+    Node::SharedPtr nodeHandle, std::shared_ptr<ModelInfo> modelInfoPtr,
+    std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr)
+    : nodeHandle_(nodeHandle), modelInfo_(*modelInfoPtr),
+      pinocchioInterface_(*pinocchioInterfacePtr),
+      pinocchioInterface_map_(*pinocchioInterfacePtr) {
+
+  total_mass_ = pinocchioInterface_.total_mass();
+  weight_.setZero(12, 12);
+  weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 40.0,
+      40.0, 40.0;
+
+  solver_settings.mode = hpipm::HpipmMode::Speed;
+  solver_settings.iter_max = 30;
+  solver_settings.alpha_min = 1e-8;
+  solver_settings.mu0 = 1e2;
+  solver_settings.tol_stat = 1e-04;
+  solver_settings.tol_eq = 1e-04;
+  solver_settings.tol_ineq = 1e-04;
+  solver_settings.tol_comp = 1e-04;
+  solver_settings.reg_prim = 1e-12;
+  solver_settings.pred_corr = 1;
+  solver_settings.ric_alg = 0;
+  solver_settings.split_step = 1;
+}
+
+ContactForceOptimization::~ContactForceOptimization() {}
+
+void ContactForceOptimization::update_trajectory_reference(
+    std::shared_ptr<const TrajectoriesBuffer> referenceTrajectoriesPtr) {
+  referenceTrajectoriesPtrBuffer_.push(referenceTrajectoriesPtr);
+}
+
+void ContactForceOptimization::update_mode_schedule(
+    const std::shared_ptr<ModeSchedule> mode_schedule) {
+  mode_schedule_buffer.push(mode_schedule);
+}
+
+void ContactForceOptimization::update_state(
+    const std::shared_ptr<vector_t> qpos_ptr,
+    const std::shared_ptr<vector_t> qvel_ptr) {
+  pinocchioInterface_.updateRobotState(*qpos_ptr, *qvel_ptr);
+}
+
+void ContactForceOptimization::step1(size_t k) {
+  const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
+  auto mode_schedule = mode_schedule_buffer.get();
+  auto pos_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_pos_traj();
+  auto rpy_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_rpy_traj();
+  auto foot_traj = referenceTrajectoriesPtrBuffer_.get()->get_foot_pos_traj();
+
+  scalar_t phase = k * dt_ / mode_schedule->duration();
+  auto contact_flag =
+      quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
+  const size_t nf = modelInfo_.foot_name.size();
+  rcpputils::assert_true(nf == contact_flag.size());
+
+  Ig_ = pinocchioInterface_.getData().Ig.inertia();
+  auto base_pose = pinocchioInterface_.getFramePose(modelInfo_.base_name);
+  vector3_t rpy = toEulerAngles(base_pose.rotation());
+  vector3_t force_ff = vector3_t::Zero();
+  if (has_sol_ &&
+      k < solution_.size() - 1) { // the last one solution has no data of u
+    for (size_t i = 0; i < nf; i++) {
+      force_ff += solution_[k].u.segment(3 * i, 3);
+    }
+  } else {
+    force_ff = total_mass_ *
+               (pos_traj->derivative(time_k, 2) + vector3_t(0, 0, grav_));
+  }
+
+  vector3_t rpy_dot_des = rpy_traj->derivative(time_k, 1);
+  vector3_t rpy_ddot_des = rpy_traj->derivative(time_k, 2);
+
+  ocp_[k].A.setIdentity(12, 12);
+  ocp_[k].A.block<3, 3>(0, 3).diagonal().fill(dt_);
+  ocp_[k].A.block<3, 3>(6, 9) =
+      dt_ * getJacobiFromOmegaToRPY(rpy) * Ig_.inverse();
+  ocp_[k].A.block<3, 3>(9, 0) = skew(dt_ * force_ff);
+  ocp_[k].B.setZero(12, nf * 3);
+  vector3_t xc = pos_traj->evaluate(time_k);
+  // vector3_t xc = pinocchioInterface_.getCoMPos();
+  for (size_t i = 0; i < nf; i++) {
+    const auto &foot_name = modelInfo_.foot_name[i];
+    if (contact_flag[i]) {
+      vector3_t pf_i = foot_traj[foot_name]->evaluate(time_k);
+      ocp_[k].B.middleRows(3, 3).middleCols(3 * i, 3).diagonal().fill(
+          dt_ / total_mass_);
+      ocp_[k].B.bottomRows(3).middleCols(3 * i, 3) = skew(dt_ * (pf_i - xc));
+    }
+  }
+
+  ocp_[k].b.setZero(12);
+  ocp_[k].b.segment(3, 3) = -dt_ * pos_traj->derivative(time_k, 2);
+  ocp_[k].b(5) += -dt_ * grav_;
+  ocp_[k].b.tail(3) =
+      -dt_ *
+      (Ig_ * (getJacobiFromRPYToOmega(rpy) * rpy_ddot_des +
+              getJacobiDotFromRPYToOmega(rpy, rpy_dot_des) * rpy_dot_des) +
+       skew(rpy_dot_des) * Ig_ * rpy_dot_des);
+}
+
+void ContactForceOptimization::step2(size_t k, size_t N) {
+  const size_t nf = modelInfo_.foot_name.size();
+  auto mode_schedule = mode_schedule_buffer.get();
+  scalar_t phase = k * dt_ / mode_schedule->duration();
+  auto contact_flag =
+      quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
+
+  if (k < N) {
+    scalar_t mu = 1 / mu_;
+    matrix_t Ci(5, 3);
+    Ci << mu, 0, 1., -mu, 0, 1., 0, mu, 1., 0, -mu, 1., 0, 0, 1.;
+    ocp_[k].C = matrix_t::Zero(5 * nf, 12);
+    ocp_[k].D.setZero(5 * nf, 3 * nf);
+    ocp_[k].lg.setZero(5 * nf);
+    ocp_[k].ug.setZero(5 * nf);
+    ocp_[k].lg_mask.setOnes(5 * nf);
+    ocp_[k].ug_mask.setOnes(5 * nf);
+
+    for (size_t i = 0; i < nf; i++) {
+      ocp_[k].D.block<5, 3>(i * 5, i * 3) = Ci;
+      ocp_[k].ug(5 * i + 4) = contact_flag[i] ? 400 : 0.0;
+      ocp_[k].ug_mask.segment(5 * i, 4).setZero();
+    }
+  }
+  /* std::cout << "\n############### " << k << " constraints ################\n"
+           << cstr_k; */
+}
+
+void ContactForceOptimization::step3(size_t k, size_t N) {
+  const size_t nf = modelInfo_.foot_name.size();
+  const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
+  auto pos_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_pos_traj();
+
+  ocp_[k].Q = weight_;
+  ocp_[k].S = matrix_t::Zero(3 * nf, 12);
+  ocp_[k].q.setZero(12);
+  ocp_[k].r.setZero(3 * nf);
+  if (k < N) {
+    ocp_[k].R = 1e-4 * matrix_t::Identity(3 * nf, 3 * nf);
+    auto mode_schedule = mode_schedule_buffer.get();
+    scalar_t phase = k * dt_ / mode_schedule->duration();
+    auto contact_flag =
+        quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
+    int nc = 0;
+    for (bool flag : contact_flag) {
+      if (flag) {
+        nc++;
+      }
+    }
+    nc = max(1, nc);
+    vector3_t force_des_i =
+        total_mass_ / nc *
+        (vector3_t(0, 0, grav_) + pos_traj->derivative(time_k, 2));
+    vector_t force_des = vector_t::Zero(3 * nf);
+    for (size_t k = 0; k < nf; k++) {
+      if (contact_flag[k]) {
+        force_des.segment(3 * k, 3) = force_des_i;
+      }
+    }
+    ocp_[k].r = -ocp_[k].R * force_des;
+  } else {
+    ocp_[k].Q = 1e2 * ocp_[k].Q;
+    ocp_[k].q = 1e2 * ocp_[k].q;
+  }
+}
+
+std::shared_ptr<CtrlData> ContactForceOptimization::optimize() {
+  CtrlData_ptr = nullptr;
+
+  auto pos_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_pos_traj();
+  auto rpy_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_rpy_traj();
+  if (pos_traj.get() == nullptr || rpy_traj.get() == nullptr ||
+      referenceTrajectoriesPtrBuffer_.get()->get_foot_pos_traj().empty()) {
+    return CtrlData_ptr;
+  }
+
+  size_t N = pos_traj->duration() / dt_;
+  ocp_.resize(N + 1);
+
+  for (size_t k = 0; k <= N; k++) {
+    if (k < N) {
+      step1(k);
+    }
+    step2(k, N);
+    step3(k, N);
+  }
+  if (solution_.size() == N + 1) {
+    solver_settings.warm_start = 1;
+  } else {
+    solver_settings.warm_start = 0;
+    solution_.resize(N + 1);
+  }
+  hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
+
+  scalar_t time_c = nodeHandle_->now().seconds();
+  vector_t x0(12);
+  auto base_pose = pinocchioInterface_.getFramePose(modelInfo_.base_name);
+  auto base_twist =
+      pinocchioInterface_.getFrame6dVel_localWorldAligned(modelInfo_.base_name);
+  vector3_t rpy = toEulerAngles(base_pose.rotation());
+  vector3_t rpy_des = rpy_traj->evaluate(time_c);
+  vector3_t rpy_dot_des = rpy_traj->derivative(time_c, 1);
+  auto rpy_err = compute_euler_angle_err(rpy, rpy_des);
+
+  x0 << base_pose.translation() - pos_traj->evaluate(time_c),
+      base_twist.linear() - pos_traj->derivative(time_c, 1), rpy_err,
+      Ig_ * base_twist.angular() -
+          Ig_ * getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
+  const auto res = solver.solve(x0, ocp_, solution_);
+  if (res == hpipm::HpipmStatus::Success ||
+      res == hpipm::HpipmStatus::MaxIterReached) {
+    has_sol_ = true;
+    CtrlData_ptr = std::make_shared<CtrlData>();
+    matrix_t P(6, 12);
+    P.setZero();
+    P.topRows(3).middleCols(3, 3).setIdentity();
+    P.bottomRows(3).middleCols(9, 3) = Ig_.inverse();
+
+    matrix_t A = 1.0 / dt_ * (ocp_[0].A - matrix_t::Identity(12, 12));
+    matrix_t B = 1.0 / dt_ * ocp_[0].B;
+    vector_t drift = 1.0 / dt_ * ocp_[0].b;
+    CtrlData_ptr->a = P * (A + B * solution_[0].K);
+    CtrlData_ptr->b = P * (B * solution_[0].k + drift);
+    vector3_t omega_des = getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
+    CtrlData_ptr->b.tail(3) -= Ig_.inverse() *
+                                     skew(base_twist.angular() - omega_des) *
+                                     Ig_ * (base_twist.angular() - omega_des);
+
+    /* std::cout << "#####################acc opt1######################\n"
+              << (A * x0 + B * solution_[0].u).transpose()
+              << "\n"; */
+    /* std::cout << "###########################################"
+              << "\n";
+    for (auto &sol : solution_) {
+      std::cout << "forward: " << sol.x.transpose() << "\n";
+    } */
+  } else {
+    std::cout << "ContactForceOptimization: " << res << "\n";
+  }
+  return CtrlData_ptr;
+}
+
+vector3_t
+ContactForceOptimization::compute_euler_angle_err(const vector3_t &rpy_m,
+                                                  const vector3_t &rpy_d) {
+  vector3_t rpy_err = rpy_m - rpy_d;
+  if (rpy_err.norm() > 1.5 * M_PI) {
+    if (abs(rpy_err(0)) > M_PI) {
+      rpy_err(0) += (rpy_err(0) > 0 ? -2.0 : 2.0) * M_PI;
+    }
+    if (abs(rpy_err(1)) > M_PI) {
+      rpy_err(1) += (rpy_err(1) > 0 ? -2.0 : 2.0) * M_PI;
+    }
+    if (abs(rpy_err(2)) > M_PI) {
+      rpy_err(2) += (rpy_err(2) > 0 ? -2.0 : 2.0) * M_PI;
+    }
+  }
+  return rpy_err;
+}
+
+} // namespace clear

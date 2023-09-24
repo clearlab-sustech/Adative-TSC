@@ -1,0 +1,14 @@
+gait:
+  list: ["stance", "trot"]
+
+  stance:
+    modeSequence: ["STANCE"]
+    switchingTimes: [0.0, 0.5]
+
+  trot:
+    modeSequence: ["LF_RH", "RF_LH"]
+    switchingTimes: [0.0, 0.3, 0.6]
+
+  topic_prefix: "simulation/"
+  topic_names:
+    torch_mode: "torch_mode"
