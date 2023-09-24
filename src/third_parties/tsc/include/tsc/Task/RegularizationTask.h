@@ -1,7 +1,7 @@
 #ifndef TASKSPACECONTROL_REGULARIZATIONTASK_H
 #define TASKSPACECONTROL_REGULARIZATIONTASK_H
 
-#include "Task/Task.h"
+#include "tsc/Task/Task.h"
 
 namespace clear {
 class RegularizationTask : public Task {
@@ -24,7 +24,7 @@ public:
   scalar_t &torqueWeight();
 
 private:
-  matrix_t _H, _Q;
+  matrix_t _H;
   vector_t _g;
   scalar_t w_acc_, w_force_, w_torque_;
 };

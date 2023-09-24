@@ -1,8 +1,4 @@
-//
-// Created by nimapng on 7/1/21.
-//
-
-#include "Task/AngularMomentumTask.h"
+#include "tsc/Task/AngularMomentumTask.h"
 
 using namespace clear;
 

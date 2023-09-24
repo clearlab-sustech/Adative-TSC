@@ -1,7 +1,7 @@
 #ifndef POPLAR_JOINTSNOMINALTASK_H
 #define POPLAR_JOINTSNOMINALTASK_H
 
-#include "Task/Task.h"
+#include "tsc/Task/Task.h"
 
 namespace clear {
 class JointsNominalTask : public Task {

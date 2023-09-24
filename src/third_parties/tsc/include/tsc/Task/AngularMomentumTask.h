@@ -1,7 +1,7 @@
 #ifndef POPLAR_ANGULARMOMENTUMTASK_H
 #define POPLAR_ANGULARMOMENTUMTASK_H
 
-#include "Task/Task.h"
+#include "tsc/Task/Task.h"
 
 namespace clear {
 class AngularMomentumTask : public Task {

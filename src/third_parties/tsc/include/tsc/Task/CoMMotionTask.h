@@ -5,7 +5,7 @@
 #ifndef TASKSPACECONTROL_COMMOTIONTASK_H
 #define TASKSPACECONTROL_COMMOTIONTASK_H
 
-#include "Task/Task.h"
+#include "tsc/Task/Task.h"
 
 namespace clear {
 class CoMMotionTask : public Task {

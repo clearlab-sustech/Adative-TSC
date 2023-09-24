@@ -1,7 +1,7 @@
 #ifndef TASKSPACECONTROL_CONTACTPOINTSCONSTRAINTS_H
 #define TASKSPACECONTROL_CONTACTPOINTSCONSTRAINTS_H
 
-#include "Constraints/LinearConstraints.h"
+#include "tsc/Constraints/LinearConstraints.h"
 
 namespace clear {
 class ContactPointsConstraints : public LinearConstraints {

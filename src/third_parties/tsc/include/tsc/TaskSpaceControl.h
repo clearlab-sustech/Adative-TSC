@@ -1,8 +1,8 @@
 #ifndef TASK_SPACE_CONTROL_TASKSPACECONTROL_H
 #define TASK_SPACE_CONTROL_TASKSPACECONTROL_H
 
-#include "Constraints/LinearConstraints.h"
-#include "Task/Task.h"
+#include "tsc/Constraints/LinearConstraints.h"
+#include "tsc/Task/Task.h"
 #include <core/types.h>
 #include <memory>
 #include <pinocchio/PinocchioInterface.h>

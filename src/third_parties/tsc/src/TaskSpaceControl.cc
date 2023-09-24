@@ -1,6 +1,6 @@
 
 
-#include "TaskSpaceControl.h"
+#include "tsc/TaskSpaceControl.h"
 #include <fstream>
 
 using namespace clear;
@@ -42,6 +42,9 @@ void TaskSpaceControl::solve() {
       task->update();
       if (task->H().rows() != n_var_ || task->H().cols() != n_var_ ||
           task->g().size() != n_var_) {
+        printf("n_var = %ld, H().rows() = %ld, H().cols() = %ld, "
+               "g.size() = %ld\n",
+               n_var_, task->H().rows(), task->H().cols(), task->g().size());
         throw std::runtime_error(task->name() +
                                  " task  matrix (H,g) dimension is wrong");
       }
@@ -99,7 +102,7 @@ void TaskSpaceControl::solve() {
 
   size_t sr = 0;
   size_t sre = 0;
-  for (int i = 0; i < _linearConstraints.size(); i++) {
+  for (size_t i = 0; i < _linearConstraints.size(); i++) {
     if (_linearConstraints[i]->is_enable()) {
       if (_linearConstraints[i]->isEqual()) {
         Ce.middleRows(sre, _linearConstraints[i]->C().rows()) =
@@ -119,20 +122,20 @@ void TaskSpaceControl::solve() {
     }
   }
 
-//   eiquadprog_solver.reset(_u_dims, ce.size(), 2 * c_lb.size());
-//   Mat Cin(C.rows() * 2, _u_dims);
-//   Cin << C, -C;
-//   Vec cin(C.rows() * 2), ce0;
-//   cin << -c_lb, c_ub;
-//   ce0 = -ce;
-//   auto state =
-//       eiquadprog_solver.solve_quadprog(H, g, Ce, ce0, Cin, cin, optimal_u);
-//   printf("solver state: %d\n", state);
-//   if (state != eiquadprog::solvers::EIQUADPROG_FAST_OPTIMAL) {
-//     saveAllData("qp_failed.txt");
-//     throw runtime_error("TaskSpaceControl::solve() qp failed, related data has "
-//                         "been saved in qp_failed.txt");
-//   }
+  QpSolver::DimsSpec dims;
+  dims.nv = n_var_;
+  dims.ne = nDims_cstrs_eq;
+  dims.ng = nDims_cstrs;
+  QpSolver::QpSolverSettings settings;
+  settings.verbose = false;
+
+  auto solver_ptr = std::make_shared<QpSolver>(dims, settings);
+
+  solver_ptr->update(H, g, Ce, ce, C, c_lb, c_ub);
+
+  saveAllData("tsc_debug.txt");
+
+  _sol = solver_ptr->solve();
 
 #ifdef PRINT_ERR
   printCstrsErr();
@@ -195,7 +198,7 @@ void TaskSpaceControl::saveAllData(string file_name) {
   ofstream outfile(file_name);
   if (!outfile.is_open()) {
     throw std::runtime_error(
-        "[LinearMPC::outputAllDataToFile] The file can not be opened");
+        "[TaskSpaceControl::saveAllData] The file can not be opened");
   }
   outfile << "-----------------------H------------------------" << endl
           << H << endl

@@ -1,12 +1,12 @@
 
 
-#include "Constraints/LinearConstraints.h"
+#include "tsc/Constraints/LinearConstraints.h"
 
 using namespace clear;
 
 LinearConstraints::LinearConstraints(PinocchioInterface &robot, string name,
                                      bool isEqual)
-    : _robot(robot), _name(name), _isEqual(isEqual), _enable(true), n_var(0) {
+    : _robot(robot), _isEqual(isEqual), _enable(true), n_var(0), _name(name) {
   n_var = robot.nv() + robot.na() + 3 * robot.nc();
 }
 

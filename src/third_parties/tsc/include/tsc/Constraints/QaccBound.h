@@ -1,7 +1,7 @@
 #ifndef TASKSPACECONTROL_QACCBOUND_H
 #define TASKSPACECONTROL_QACCBOUND_H
 
-#include "Constraints/LinearConstraints.h"
+#include "tsc/Constraints/LinearConstraints.h"
 
 namespace clear {
 class QaccBound : public LinearConstraints {

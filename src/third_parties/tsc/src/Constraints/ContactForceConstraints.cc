@@ -2,7 +2,7 @@
 // Created by nimapng on 6/11/21.
 //
 
-#include "Constraints/ContactForceConstraints.h"
+#include "tsc/Constraints/ContactForceConstraints.h"
 
 using namespace clear;
 

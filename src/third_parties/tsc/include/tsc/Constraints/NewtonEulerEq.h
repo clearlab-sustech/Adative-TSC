@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Constraints/LinearConstraints.h"
+#include "tsc/Constraints/LinearConstraints.h"
 
 namespace clear {
 class NewtonEulerEq : public LinearConstraints {

@@ -1,7 +1,7 @@
 #ifndef TASKSPACECONTROL_ACTUATORLIMIT_H
 #define TASKSPACECONTROL_ACTUATORLIMIT_H
 
-#include "Constraints/LinearConstraints.h"
+#include "tsc/Constraints/LinearConstraints.h"
 
 namespace clear {
 class ActuatorLimit : public LinearConstraints {

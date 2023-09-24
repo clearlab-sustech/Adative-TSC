@@ -1,4 +1,4 @@
-#include "Task/RegularizationTask.h"
+#include "tsc/Task/RegularizationTask.h"
 
 // #define REGULARIZE_TORQUE
 
@@ -8,13 +8,14 @@ RegularizationTask::RegularizationTask(PinocchioInterface &robot, string name)
     : Task(robot, name) {
   w_acc_ = 1e-8;
   w_force_ = 1e-12;
+  w_torque_ = 1e-12;
 }
 
 void RegularizationTask::update() {
-  _Q.setZero(n_var, n_var);
-  _Q.diagonal().head(robot().nv()).fill(w_acc_);
-  _Q.diagonal().segment(robot().nv(), robot().na()).fill(w_torque_);
-  _Q.diagonal().tail(3 * robot().nc()).fill(w_force_);
+  _H.setZero(n_var, n_var);
+  _H.diagonal().head(robot().nv()).fill(w_acc_);
+  _H.diagonal().segment(robot().nv(), robot().na()).fill(w_torque_);
+  _H.diagonal().tail(3 * robot().nc()).fill(w_force_);
   _g = vector_t::Zero(n_var);
 }
 

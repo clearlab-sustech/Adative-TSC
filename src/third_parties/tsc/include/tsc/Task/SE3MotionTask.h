@@ -3,7 +3,7 @@
 #ifndef TASKSPACECONTROL_SE3MOTIONTASK_H
 #define TASKSPACECONTROL_SE3MOTIONTASK_H
 
-#include "Task/Task.h"
+#include "tsc/Task/Task.h"
 
 namespace clear {
 class SE3MotionTask : public Task {
