@@ -4,11 +4,11 @@
 using namespace clear;
 
 int main() {
-  clear::DimsSpec dims;
+  QpSolver::DimsSpec dims;
   dims.nv = 2;
   dims.ne = 1;
-  dims.ng = 1;
-  dims.nb = 1;
+  dims.ng = 0;
+  dims.nb = 0;
   dims.ns = 0;
   dims.nsb = 0;
   dims.nsg = 0;

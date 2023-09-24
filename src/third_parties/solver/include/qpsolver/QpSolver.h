@@ -12,8 +12,6 @@
 
 namespace clear {
 
-typedef d_dense_qp_dim DimsSpec;
-
 typedef d_dense_qp_sol QpSolution;
 
 typedef d_dense_qp_ipm_arg SolverConfig;
@@ -104,7 +102,24 @@ public:
     void checkSettings() const;
   };
 
+  class DimsSpec : public d_dense_qp_dim {
+
+  public:
+    DimsSpec() {
+      nv = 0;  // number of variables
+      ne = 0;  // number of equality constraints
+      nb = 0;  // number of box constraints
+      ng = 0;  // number of general constraints
+      nsb = 0; // number of softened box constraints
+      nsg = 0; // number of softened general constraints
+      ns = 0;  // number of softened constraints (nsb+nsg)
+      memsize = 0;
+    }
+  };
+
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   QpSolver(const DimsSpec &dims, QpSolverSettings settings);
 
   ~QpSolver();
