@@ -88,17 +88,12 @@ void TaskSpaceControl::solve() {
       }
     }
   }
-  C.resize(nDims_cstrs, n_var_);
-  C.setZero();
-  c_lb.resize(nDims_cstrs);
-  c_lb.setZero();
-  c_ub.resize(nDims_cstrs);
-  c_ub.setZero();
+  C.setZero(nDims_cstrs, n_var_);
+  c_lb.setZero(nDims_cstrs);
+  c_ub.setZero(nDims_cstrs);
 
-  Ce.resize(nDims_cstrs_eq, n_var_);
-  Ce.setZero();
-  ce.resize(nDims_cstrs_eq);
-  ce.setZero();
+  Ce.setZero(nDims_cstrs_eq, n_var_);
+  ce.setZero(nDims_cstrs_eq);
 
   size_t sr = 0;
   size_t sre = 0;
@@ -134,7 +129,7 @@ void TaskSpaceControl::solve() {
 
   solver_ptr->update(H, g, Ce, ce, C, c_lb, c_ub);
 
-  saveAllData("tsc_debug.txt");
+  // saveAllData("tsc_debug.txt");
 
   _sol = solver_ptr->solve();
 
