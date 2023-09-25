@@ -23,8 +23,9 @@ find_package(trans REQUIRED)
 find_package(core REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(tsc REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(pinocchio_interface)
+find_package(asserts)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(pinocchio REQUIRED pinocchio)
@@ -42,30 +43,31 @@ set(TARGET_DEPENDENCE
   pinocchio_interface
   nav_msgs
   sensor_msgs
-  tsc
+  asserts
   yaml-cpp
 )
 
-# file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
+file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 
-# add_executable(${PROJECT_NAME} ${source})
-# target_include_directories(${PROJECT_NAME} PUBLIC
-# $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# $<INSTALL_INTERFACE:include>)
+add_executable(${PROJECT_NAME} ${source})
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
 
-# target_link_libraries(${PROJECT_NAME}
-# ${pinocchio_LIBRARIES}
-# ${YAML_CPP_LIBRARIES}
-# )
+target_link_libraries(${PROJECT_NAME}
+  ${pinocchio_LIBRARIES}
+  ${YAML_CPP_LIBRARIES}
+)
 
-# ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
-# ament_export_dependencies(${TARGET_DEPENDENCE})
+ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
+ament_export_dependencies(${TARGET_DEPENDENCE})
 
-# install(TARGETS ${PROJECT_NAME}
-# DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME})
 
-# install(DIRECTORY launch
-# DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
 
