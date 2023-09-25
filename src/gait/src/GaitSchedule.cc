@@ -29,7 +29,11 @@ GaitSchedule::GaitSchedule(std::string config_yaml) : Node("GaitSchedule") {
           topic_prefix + mode_schedule_topic, qos);
 
   publish_freq = config_["gait"]["frequency"].as<scalar_t>();
+}
 
+void GaitSchedule::start() {
+  cycle_timer_ = std::make_shared<CycleTimer>(
+      this->shared_from_this(), gait_map_[current_gait_.get()]->duration());
   inner_loop_thread_ = std::thread(&GaitSchedule::inner_loop, this);
   run_.push(true);
 }
@@ -42,9 +46,6 @@ GaitSchedule::~GaitSchedule() {
 }
 
 void GaitSchedule::inner_loop() {
-  cycle_timer_ = std::make_shared<CycleTimer>(
-      this->shared_from_this(), gait_map_[current_gait_.get()]->duration());
-
   rclcpp::Rate loop_rate(publish_freq);
   while (rclcpp::ok() && run_.get()) {
     auto mode_schedule = this->eval(current_gait_cycle());

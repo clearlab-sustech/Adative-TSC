@@ -13,6 +13,13 @@ int main(int argc, char **argv) {
     throw std::runtime_error("no config file for atsc");
   }
   auto node = std::make_shared<clear::GaitSchedule>(filename);
+  node->start();
+
+  auto ts = node->now().seconds();
+
+  while (10.0 > node->now().seconds() - ts) {
+  }
+  node->switch_gait("trot");
 
   rclcpp::spin(node);
 

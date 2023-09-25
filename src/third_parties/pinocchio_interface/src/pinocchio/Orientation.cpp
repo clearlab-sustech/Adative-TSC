@@ -3,17 +3,19 @@
 
 namespace clear {
 matrix3_t getJacobiFromOmegaToRPY(const vector3_t &rpy) {
-  return pinocchio::rpy::computeRpyJacobianInverse(rpy, pinocchio::LOCAL_WORLD_ALIGNED);
+  return pinocchio::rpy::computeRpyJacobianInverse(
+      rpy, pinocchio::LOCAL_WORLD_ALIGNED);
 }
 
 matrix3_t getJacobiFromRPYToOmega(const vector3_t &rpy) {
-  return pinocchio::rpy::computeRpyJacobian(rpy, pinocchio::LOCAL_WORLD_ALIGNED);
+  return pinocchio::rpy::computeRpyJacobian(rpy,
+                                            pinocchio::LOCAL_WORLD_ALIGNED);
 }
 
 matrix3_t getJacobiDotFromRPYToOmega(const vector3_t &rpy,
                                      const vector3_t &rpy_dot) {
-  return pinocchio::rpy::computeRpyJacobianTimeDerivative(rpy, rpy_dot,
-                                                          pinocchio::LOCAL_WORLD_ALIGNED);
+  return pinocchio::rpy::computeRpyJacobianTimeDerivative(
+      rpy, rpy_dot, pinocchio::LOCAL_WORLD_ALIGNED);
 }
 
 Eigen::Quaternion<scalar_t> toQuaternion(const matrix3_t &R) {
@@ -46,4 +48,22 @@ matrix3_t skew(const vector3_t &vec) {
           vec.x(), 0)
       .finished();
 }
+
+vector3_t compute_euler_angle_err(const vector3_t &rpy_m,
+                                  const vector3_t &rpy_d) {
+  vector3_t rpy_err = rpy_m - rpy_d;
+  if (rpy_err.norm() > 1.5 * M_PI) {
+    if (abs(rpy_err(0)) > M_PI) {
+      rpy_err(0) += (rpy_err(0) > 0 ? -2.0 : 2.0) * M_PI;
+    }
+    if (abs(rpy_err(1)) > M_PI) {
+      rpy_err(1) += (rpy_err(1) > 0 ? -2.0 : 2.0) * M_PI;
+    }
+    if (abs(rpy_err(2)) > M_PI) {
+      rpy_err(2) += (rpy_err(2) > 0 ? -2.0 : 2.0) * M_PI;
+    }
+  }
+  return rpy_err;
+}
+
 } // namespace clear

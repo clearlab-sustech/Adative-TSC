@@ -9,4 +9,6 @@
 #include "tsc/Task/JointsNominalTask.h"
 #include "tsc/Task/RegularizationTask.h"
 #include "tsc/Task/SE3MotionTask.h"
+#include "tsc/Task/FloatingBaseTask.h"
+#include "tsc/Task/TranslationTask.h"
 #include "tsc/TaskSpaceControl.h"

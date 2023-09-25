@@ -36,7 +36,7 @@
             texuniform="true"
             rgba=".7 .7 .7 1" />
     </asset>
-    <option timestep="0.001" />
+    <option timestep="0.0005" />
 
 
     <worldbody>
@@ -53,7 +53,7 @@
             <inertial pos="0.00846406 0.00404455 -0.000762916"
                 quat="-3.12625e-05 0.708321 0.00247254 0.705886" mass="9.042"
                 diaginertia="0.174706 0.161175 0.033357" />
-            <joint type="free" />
+            <joint type="free" damping="0"/>
             <geom class="visual" mesh="trunk" />
             <geom size="0.18 0.075 0.056" type="box" rgba="0.2 0.2 0.2 0" />
             <geom size="0.0005 0.0005 0.0005" type="box" contype="0" conaffinity="0" group="1"

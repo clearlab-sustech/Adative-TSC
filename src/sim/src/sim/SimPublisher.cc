@@ -294,7 +294,7 @@ void SimPublisher::drop_old_message() {
     for (size_t k = 0; k < actuator_cmds_buffer_->actuators_name.size(); k++) {
       actuator_cmds_buffer_->kp[k] = 0.0;
       actuator_cmds_buffer_->pos[k] = 0.0;
-      actuator_cmds_buffer_->kd[k] = 1.0;
+      actuator_cmds_buffer_->kd[k] = 0.0;
       actuator_cmds_buffer_->vel[k] = 0.0;
       actuator_cmds_buffer_->torque[k] = 0.0;
     }

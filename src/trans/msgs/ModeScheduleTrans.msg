@@ -1,4 +1,4 @@
 std_msgs/Header header
-float32 duration
-float32[] event_phases
+float64 duration
+float64[] event_phases
 int32[] mode_sequence

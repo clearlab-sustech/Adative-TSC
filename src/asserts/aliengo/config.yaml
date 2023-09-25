@@ -47,4 +47,7 @@ estimation:
   use_odom: true
 
 controller:
-  dt: 0.002
+  frequency: 500.0
+
+generation:
+  frequency: 100.0

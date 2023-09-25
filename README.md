@@ -111,6 +111,7 @@ If the required name in `*.cpp` is not defined in a config yaml file, the follow
 terminate called after throwing an instance of 'YAML::TypedBadConversion<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >'
 ```
 
+**Note:** Use `float64` when you define your own message.
 
 # data recording
 

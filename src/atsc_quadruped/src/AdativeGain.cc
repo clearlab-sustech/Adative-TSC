@@ -230,11 +230,11 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */
-    /* std::cout << "###########################################"
-              << "\n";
-    for (auto &sol : solution_) {
-      std::cout << "forward: " << sol.x.transpose() << "\n";
-    } */
+    // std::cout << "###########################################"
+    //           << "\n";
+    // for (auto &sol : solution_) {
+    //   std::cout << "forward: " << sol.x.transpose() << "\n";
+    // }
   } else {
     std::cout << "AdaptiveGain: " << res << "\n";
   }

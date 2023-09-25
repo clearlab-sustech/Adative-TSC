@@ -1,6 +1,7 @@
 
 
 #include "tsc/TaskSpaceControl.h"
+#include <core/optimization/MathematicalProgram.h>
 #include <fstream>
 
 using namespace clear;
@@ -117,21 +118,34 @@ void TaskSpaceControl::solve() {
     }
   }
 
-  QpSolver::DimsSpec dims;
-  dims.nv = n_var_;
-  dims.ne = nDims_cstrs_eq;
-  dims.ng = nDims_cstrs;
-  QpSolver::QpSolverSettings settings;
-  settings.iter_max = 100;
-  settings.verbose = false;
+  // QpSolver::DimsSpec dims;
+  // dims.nv = n_var_;
+  // dims.ne = nDims_cstrs_eq;
+  // dims.ng = nDims_cstrs;
+  // QpSolver::QpSolverSettings settings;
+  // settings.iter_max = 100;
+  // settings.verbose = false;
 
-  auto solver_ptr = std::make_shared<QpSolver>(dims, settings);
+  // auto solver_ptr = std::make_shared<QpSolver>(dims, settings);
 
-  solver_ptr->update(H, g, Ce, ce, C, c_lb, c_ub);
+  // solver_ptr->update(H, g, Ce, ce, C, c_lb, c_ub);
 
+  // // // saveAllData("tsc_debug.txt");
+
+  // _sol = solver_ptr->solve();
+
+  MathematicalProgram prog;
+  auto var = prog.newVectorVariables(n_var_);
+  prog.addLinearEqualityConstraints(Ce, ce, var);
+  prog.addLinearInEqualityConstraints(C, c_lb, c_ub, var);
+  prog.addQuadraticCost(H, g, var);
+  if (prog.solve()) {
+    _sol = prog.getSolution();
+  } else {
+    _sol.setZero(n_var_);
+    std::cerr << "tsc qp failed ...\n";
+  }
   // saveAllData("tsc_debug.txt");
-
-  _sol = solver_ptr->solve();
 
 #ifdef PRINT_ERR
   printCstrsErr();

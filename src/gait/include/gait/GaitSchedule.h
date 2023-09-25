@@ -21,10 +21,12 @@ public:
 
   ~GaitSchedule();
 
-private:
-  std::shared_ptr<ModeSchedule> eval(scalar_t time_period);
+  void start();
 
   void switch_gait(std::string gait_name);
+
+private:
+  std::shared_ptr<ModeSchedule> eval(scalar_t time_period);
 
   std::shared_ptr<ModeSchedule> loadGait(const YAML::Node node,
                                          const std::string &gait_name);

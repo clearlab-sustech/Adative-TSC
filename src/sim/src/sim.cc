@@ -69,6 +69,10 @@ std::shared_ptr<clear::ActuatorCmdsBuffer> actuator_cmds_buffer;
 
 using Seconds = std::chrono::duration<double>;
 
+mjtNum q_init[] = {0.0,   0.0,   0.357,  1,      0,    0,     0,
+                   0.577, 1.21,  -2.78,  -0.577, 1.21, -2.78, 0.577,
+                   1.21,  -2.78, -0.577, 1.21,   -2.78};
+
 //---------------------------------------- plugin handling
 //-----------------------------------------
 
@@ -331,6 +335,7 @@ void PhysicsLoop(mj::Simulate &sim) {
         m = mnew;
         d = dnew;
         mj_forward(m, d);
+        mju_copy(d->qpos, q_init, m->nq);
 
         // allocate ctrlnoise
         free(ctrlnoise);
@@ -525,7 +530,8 @@ int main(int argc, const char **argv) {
   std::thread physicsthreadhandle(&PhysicsThread, sim.get());
 
   // start message publisher
-  auto message_handle = std::make_shared<clear::SimPublisher>(sim.get(), filename);
+  auto message_handle =
+      std::make_shared<clear::SimPublisher>(sim.get(), filename);
   actuator_cmds_buffer = message_handle->get_cmds_buffer();
   auto spin_func = [](std::shared_ptr<clear::SimPublisher> node_ptr) {
     rclcpp::spin(node_ptr);

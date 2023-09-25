@@ -29,11 +29,11 @@ namespace mju = ::mujoco::sample_util;
 struct ActuatorCmdsBuffer {
   double time = 0.0;
   std::vector<std::string> actuators_name;
-  std::vector<float> kp;
-  std::vector<float> pos;
-  std::vector<float> kd;
-  std::vector<float> vel;
-  std::vector<float> torque;
+  std::vector<mjtNum> kp;
+  std::vector<mjtNum> pos;
+  std::vector<mjtNum> kd;
+  std::vector<mjtNum> vel;
+  std::vector<mjtNum> torque;
 };
 
 class SimPublisher : public rclcpp::Node {

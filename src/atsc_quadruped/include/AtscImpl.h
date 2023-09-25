@@ -36,7 +36,9 @@ private:
   void
   trajectories_callback(const trans::msg::TrajectoryArray::SharedPtr msg) const;
 
-  void updateTask();
+  void updateFloatingBaseTask();
+
+  void updateFootSwingBaseTask();
 
   void trajectoriesPreprocessing();
 
@@ -47,6 +49,10 @@ private:
   void inner_loop();
 
   void adapative_gain_loop();
+
+  void inverse_kinematics();
+
+  void prepare_cmds();
 
 private:
   rclcpp::Subscription<trans::msg::EstimatedStates>::SharedPtr
@@ -72,15 +78,17 @@ private:
 
   std::thread inner_loop_thread_, adapative_gain_thread_;
   Buffer<bool> run_;
-  scalar_t dt_;
+  scalar_t freq_;
 
-  std::shared_ptr<SE3MotionTask> floatingBaseTask;
+  std::shared_ptr<FloatingBaseTask> floatingBaseTask;
   std::shared_ptr<RegularizationTask> regularizationTask;
+  std::vector<std::shared_ptr<TranslationTask>> foot_task_array;
   std::shared_ptr<NewtonEulerEq> ne_eq;
   std::shared_ptr<ContactPointsConstraints> maintainContact;
   std::shared_ptr<ContactForceConstraints> frictionCone;
   std::shared_ptr<ActuatorLimit> torqueLimit;
   std::string base_name;
+  std::shared_ptr<trans::msg::ActuatorCmds> actuator_commands_;
 };
 
 } // namespace clear
