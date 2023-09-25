@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace mindspace {
+namespace clear {
 MathematicalProgram::MathematicalProgram() {}
 
 MathematicalProgram::~MathematicalProgram() {}
@@ -271,4 +271,4 @@ MathematicalProgram::concatenateVariableRefList(const VariableRefList &vars) {
   return stacked_var;
 }
 
-} // namespace mindspace
+} // namespace clear

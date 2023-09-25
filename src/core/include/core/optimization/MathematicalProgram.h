@@ -10,7 +10,7 @@ using proxsuite::nullopt;
 using namespace Eigen;
 using namespace std;
 
-namespace mindspace {
+namespace clear {
 using VectorVariables = Eigen::VectorXi;
 using VariableRefList = std::list<Eigen::Ref<const VectorVariables>>;
 using Triplet = Eigen::Triplet<scalar_t>;
@@ -138,4 +138,4 @@ public:
   vector_t getSolution(const VariableRefList &vars);
 };
 
-} // namespace mindspace
+} // namespace clear
