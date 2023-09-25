@@ -10,6 +10,15 @@ This study primarily concentrates on enhancing the feedback gains employed in ta
 
 
 # Build Package
+Download QP solve from [proxsuite](https://github.com/Simple-Robotics/proxsuite) to `src/third_parties`
+```bash
+git clone --recursive https://github.com/Simple-Robotics/proxsuite
+```
+Install dependence 
+```bash
+sudo apt-get install libmatio-dev libsimde-dev
+```
+
 create `build` folder and then use CMake Tools to build this package
 
 ```bash
@@ -101,8 +110,6 @@ If the required name in `*.cpp` is not defined in a config yaml file, the follow
 ```
 terminate called after throwing an instance of 'YAML::TypedBadConversion<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >'
 ```
-
-
 
 
 # data recording
