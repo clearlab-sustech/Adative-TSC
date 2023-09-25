@@ -9,7 +9,8 @@ global:
     odom: "odom"
     estimated_states: "estimated_states"
     actuators_cmds: "actuators_cmds"
-    torch_mode: "torch_mode"
+    mode_schedule: "mode_schedule"
+    trajectories: "trajectories"
 
 model:
   package: "asserts"
