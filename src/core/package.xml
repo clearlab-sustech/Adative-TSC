@@ -20,6 +20,7 @@
 
   <depend>Eigen3</depend>
   <depend>rcpputils</depend>
+  <depend>proxsuite</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

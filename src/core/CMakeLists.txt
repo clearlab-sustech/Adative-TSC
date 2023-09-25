@@ -19,17 +19,22 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(rcpputils REQUIRED)
+find_package(proxsuite REQUIRED)
 
 set(TARGET_DEPENDENCE
   ament_cmake
   Eigen3
   rcpputils
+  proxsuite
 )
 
 include(cmake/clear_cxx_flags.cmake)
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 add_library(${PROJECT_NAME} SHARED ${source})
+target_link_libraries(${PROJECT_NAME}
+  proxsuite::proxsuite-vectorized
+)
 
 target_include_directories(${PROJECT_NAME}
   PUBLIC
