@@ -11,4 +11,5 @@ gait:
 
   topic_prefix: "simulation/"
   topic_names:
-    torch_mode: "torch_mode"
+    mode_schedule: "mode_schedule"
+  frequency: 500.0

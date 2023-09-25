@@ -21,17 +21,8 @@ find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(trans REQUIRED)
 find_package(core REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(tsc REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(asserts REQUIRED)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -39,11 +30,6 @@ set(TARGET_DEPENDENCE
   rclcpp
   trans
   core
-  pinocchio
-  pinocchio_interface
-  nav_msgs
-  sensor_msgs
-  tsc
   yaml-cpp
   asserts
 )

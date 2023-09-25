@@ -21,11 +21,14 @@ GaitSchedule::GaitSchedule(std::string config_yaml) : Node("GaitSchedule") {
   in_transition_.push(false);
 
   std::string topic_prefix = config_["gait"]["topic_prefix"].as<std::string>();
-  std::string torch_mode_topic =
-      config_["gait"]["topic_names"]["torch_mode"].as<std::string>();
+  std::string mode_schedule_topic =
+      config_["gait"]["topic_names"]["mode_schedule"].as<std::string>();
   auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
-  torch_mode_publisher_ = this->create_publisher<trans::msg::TorchMode>(
-      topic_prefix + torch_mode_topic, qos);
+  mode_schedule_publisher_ =
+      this->create_publisher<trans::msg::ModeScheduleTrans>(
+          topic_prefix + mode_schedule_topic, qos);
+
+  publish_freq = config_["gait"]["frequency"].as<scalar_t>();
 
   inner_loop_thread_ = std::thread(&GaitSchedule::inner_loop, this);
   run_.push(true);
@@ -42,15 +45,19 @@ void GaitSchedule::inner_loop() {
   cycle_timer_ = std::make_shared<CycleTimer>(
       this->shared_from_this(), gait_map_[current_gait_.get()]->duration());
 
-  rclcpp::Rate loop_rate(1000.0);
+  rclcpp::Rate loop_rate(publish_freq);
   while (rclcpp::ok() && run_.get()) {
-    auto stance_leg = quadruped::modeNumber2StanceLeg(current_mode());
-    trans::msg::TorchMode msg;
+    auto mode_schedule = this->eval(current_gait_cycle());
+    trans::msg::ModeScheduleTrans msg;
     msg.header.stamp = this->now();
-    for (auto flag : stance_leg) {
-      msg.torch_flag.push_back(flag);
+    msg.duration = mode_schedule->duration();
+    for (auto &phase : mode_schedule->eventPhases()) {
+      msg.event_phases.push_back(phase);
     }
-    torch_mode_publisher_->publish(msg);
+    for (auto &mode : mode_schedule->modeSequence()) {
+      msg.mode_sequence.push_back(mode);
+    }
+    mode_schedule_publisher_->publish(msg);
     loop_rate.sleep();
   }
 }

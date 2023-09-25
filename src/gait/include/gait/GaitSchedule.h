@@ -1,16 +1,14 @@
 #pragma once
 
-#include "asserts/gait/ModeSchedule.h"
-#include "asserts/gait/MotionPhaseDefinition.h"
 #include "gait/CycleTimer.h"
-#include "trans/msg/torch_mode.hpp"
-
+#include <asserts/gait/ModeSchedule.h>
+#include <asserts/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
 #include <core/misc/Lookup.h>
 #include <map>
 #include <mutex>
-#include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
+#include <trans/msg/mode_schedule_trans.hpp>
 #include <yaml-cpp/yaml.h>
 
 using namespace rclcpp;
@@ -57,7 +55,9 @@ private:
   std::thread inner_loop_thread_;
   Buffer<bool> run_;
 
-  rclcpp::Publisher<trans::msg::TorchMode>::SharedPtr torch_mode_publisher_;
+  rclcpp::Publisher<trans::msg::ModeScheduleTrans>::SharedPtr
+      mode_schedule_publisher_;
+  scalar_t publish_freq;
 };
 
 } // namespace clear
