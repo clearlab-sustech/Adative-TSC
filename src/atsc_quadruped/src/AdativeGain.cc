@@ -1,72 +1,61 @@
-#include "control/ContactForceOptimization.h"
-
+#include "AdativeGain.h"
 #include <pinocchio/Orientation.h>
-
 #include <rcpputils/asserts.hpp>
-
-#include "common/MotionPhaseDefinition.h"
 
 namespace clear {
 
-ContactForceOptimization::ContactForceOptimization(
-    Node::SharedPtr nodeHandle, std::shared_ptr<ModelInfo> modelInfoPtr,
-    std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr)
-    : nodeHandle_(nodeHandle), modelInfo_(*modelInfoPtr),
-      pinocchioInterface_(*pinocchioInterfacePtr),
-      pinocchioInterface_map_(*pinocchioInterfacePtr) {
-
-  total_mass_ = pinocchioInterface_.total_mass();
+AdaptiveGain::AdaptiveGain(
+    Node::SharedPtr nodeHandle,
+    std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr,
+    std::string base_name)
+    : nodeHandle_(nodeHandle), pinocchioInterfacePtr_(pinocchioInterfacePtr),
+      base_name_(base_name) {
+  total_mass_ = pinocchioInterfacePtr_->total_mass();
   weight_.setZero(12, 12);
   weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 40.0,
       40.0, 40.0;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
-  solver_settings.iter_max = 30;
+  solver_settings.iter_max = 50;
   solver_settings.alpha_min = 1e-8;
   solver_settings.mu0 = 1e2;
-  solver_settings.tol_stat = 1e-04;
-  solver_settings.tol_eq = 1e-04;
-  solver_settings.tol_ineq = 1e-04;
-  solver_settings.tol_comp = 1e-04;
+  solver_settings.tol_stat = 1e-06;
+  solver_settings.tol_eq = 1e-06;
+  solver_settings.tol_ineq = 1e-06;
+  solver_settings.tol_comp = 1e-06;
   solver_settings.reg_prim = 1e-12;
   solver_settings.pred_corr = 1;
   solver_settings.ric_alg = 0;
   solver_settings.split_step = 1;
 }
 
-ContactForceOptimization::~ContactForceOptimization() {}
+AdaptiveGain::~AdaptiveGain() {}
 
-void ContactForceOptimization::update_trajectory_reference(
-    std::shared_ptr<const TrajectoriesBuffer> referenceTrajectoriesPtr) {
-  referenceTrajectoriesPtrBuffer_.push(referenceTrajectoriesPtr);
+void AdaptiveGain::update_trajectory_reference(
+    std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr) {
+  refTrajBuffer_.push(referenceTrajectoriesPtr);
 }
 
-void ContactForceOptimization::update_mode_schedule(
+void AdaptiveGain::update_mode_schedule(
     const std::shared_ptr<ModeSchedule> mode_schedule) {
   mode_schedule_buffer.push(mode_schedule);
 }
 
-void ContactForceOptimization::update_state(
-    const std::shared_ptr<vector_t> qpos_ptr,
-    const std::shared_ptr<vector_t> qvel_ptr) {
-  pinocchioInterface_.updateRobotState(*qpos_ptr, *qvel_ptr);
-}
-
-void ContactForceOptimization::step1(size_t k) {
+void AdaptiveGain::add_linear_system(size_t k) {
   const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
   auto mode_schedule = mode_schedule_buffer.get();
-  auto pos_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_pos_traj();
-  auto rpy_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_rpy_traj();
-  auto foot_traj = referenceTrajectoriesPtrBuffer_.get()->get_foot_pos_traj();
+  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
+  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
+  auto foot_traj = refTrajBuffer_.get()->get_foot_pos_traj();
 
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
       quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
-  const size_t nf = modelInfo_.foot_name.size();
+  const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
   rcpputils::assert_true(nf == contact_flag.size());
 
-  Ig_ = pinocchioInterface_.getData().Ig.inertia();
-  auto base_pose = pinocchioInterface_.getFramePose(modelInfo_.base_name);
+  Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
+  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
   vector3_t force_ff = vector3_t::Zero();
   if (has_sol_ &&
@@ -89,11 +78,11 @@ void ContactForceOptimization::step1(size_t k) {
   ocp_[k].A.block<3, 3>(9, 0) = skew(dt_ * force_ff);
   ocp_[k].B.setZero(12, nf * 3);
   vector3_t xc = pos_traj->evaluate(time_k);
-  // vector3_t xc = pinocchioInterface_.getCoMPos();
+  // vector3_t xc = pinocchioInterfacePtr_->getCoMPos();
+  const auto &foot_names = pinocchioInterfacePtr_->getContactPoints();
   for (size_t i = 0; i < nf; i++) {
-    const auto &foot_name = modelInfo_.foot_name[i];
     if (contact_flag[i]) {
-      vector3_t pf_i = foot_traj[foot_name]->evaluate(time_k);
+      vector3_t pf_i = foot_traj[foot_names[i]]->evaluate(time_k);
       ocp_[k].B.middleRows(3, 3).middleCols(3 * i, 3).diagonal().fill(
           dt_ / total_mass_);
       ocp_[k].B.bottomRows(3).middleCols(3 * i, 3) = skew(dt_ * (pf_i - xc));
@@ -110,8 +99,8 @@ void ContactForceOptimization::step1(size_t k) {
        skew(rpy_dot_des) * Ig_ * rpy_dot_des);
 }
 
-void ContactForceOptimization::step2(size_t k, size_t N) {
-  const size_t nf = modelInfo_.foot_name.size();
+void AdaptiveGain::add_state_input_constraints(size_t k, size_t N) {
+  const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
   auto mode_schedule = mode_schedule_buffer.get();
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
@@ -138,10 +127,10 @@ void ContactForceOptimization::step2(size_t k, size_t N) {
            << cstr_k; */
 }
 
-void ContactForceOptimization::step3(size_t k, size_t N) {
-  const size_t nf = modelInfo_.foot_name.size();
+void AdaptiveGain::add_cost(size_t k, size_t N) {
+  const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
   const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
-  auto pos_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_pos_traj();
+  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
 
   ocp_[k].Q = weight_;
   ocp_[k].S = matrix_t::Zero(3 * nf, 12);
@@ -176,14 +165,14 @@ void ContactForceOptimization::step3(size_t k, size_t N) {
   }
 }
 
-std::shared_ptr<CtrlData> ContactForceOptimization::optimize() {
-  CtrlData_ptr = nullptr;
+std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
+  feedback_law_ptr = nullptr;
 
-  auto pos_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_pos_traj();
-  auto rpy_traj = referenceTrajectoriesPtrBuffer_.get()->get_base_rpy_traj();
+  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
+  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
   if (pos_traj.get() == nullptr || rpy_traj.get() == nullptr ||
-      referenceTrajectoriesPtrBuffer_.get()->get_foot_pos_traj().empty()) {
-    return CtrlData_ptr;
+      refTrajBuffer_.get()->get_foot_pos_traj().empty()) {
+    return feedback_law_ptr;
   }
 
   size_t N = pos_traj->duration() / dt_;
@@ -191,10 +180,10 @@ std::shared_ptr<CtrlData> ContactForceOptimization::optimize() {
 
   for (size_t k = 0; k <= N; k++) {
     if (k < N) {
-      step1(k);
+      add_linear_system(k);
     }
-    step2(k, N);
-    step3(k, N);
+    add_state_input_constraints(k, N);
+    add_cost(k, N);
   }
   if (solution_.size() == N + 1) {
     solver_settings.warm_start = 1;
@@ -206,9 +195,9 @@ std::shared_ptr<CtrlData> ContactForceOptimization::optimize() {
 
   scalar_t time_c = nodeHandle_->now().seconds();
   vector_t x0(12);
-  auto base_pose = pinocchioInterface_.getFramePose(modelInfo_.base_name);
+  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
   auto base_twist =
-      pinocchioInterface_.getFrame6dVel_localWorldAligned(modelInfo_.base_name);
+      pinocchioInterfacePtr_->getFrame6dVel_localWorldAligned(base_name_);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
   vector3_t rpy_des = rpy_traj->evaluate(time_c);
   vector3_t rpy_dot_des = rpy_traj->derivative(time_c, 1);
@@ -222,7 +211,7 @@ std::shared_ptr<CtrlData> ContactForceOptimization::optimize() {
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
     has_sol_ = true;
-    CtrlData_ptr = std::make_shared<CtrlData>();
+    feedback_law_ptr = std::make_shared<FeedbackGain>();
     matrix_t P(6, 12);
     P.setZero();
     P.topRows(3).middleCols(3, 3).setIdentity();
@@ -231,12 +220,12 @@ std::shared_ptr<CtrlData> ContactForceOptimization::optimize() {
     matrix_t A = 1.0 / dt_ * (ocp_[0].A - matrix_t::Identity(12, 12));
     matrix_t B = 1.0 / dt_ * ocp_[0].B;
     vector_t drift = 1.0 / dt_ * ocp_[0].b;
-    CtrlData_ptr->a = P * (A + B * solution_[0].K);
-    CtrlData_ptr->b = P * (B * solution_[0].k + drift);
+    feedback_law_ptr->K = P * (A + B * solution_[0].K);
+    feedback_law_ptr->b = P * (B * solution_[0].k + drift);
     vector3_t omega_des = getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
-    CtrlData_ptr->b.tail(3) -= Ig_.inverse() *
-                                     skew(base_twist.angular() - omega_des) *
-                                     Ig_ * (base_twist.angular() - omega_des);
+    feedback_law_ptr->b.tail(3) -= Ig_.inverse() *
+                                   skew(base_twist.angular() - omega_des) *
+                                   Ig_ * (base_twist.angular() - omega_des);
 
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
@@ -247,14 +236,13 @@ std::shared_ptr<CtrlData> ContactForceOptimization::optimize() {
       std::cout << "forward: " << sol.x.transpose() << "\n";
     } */
   } else {
-    std::cout << "ContactForceOptimization: " << res << "\n";
+    std::cout << "AdaptiveGain: " << res << "\n";
   }
-  return CtrlData_ptr;
+  return feedback_law_ptr;
 }
 
-vector3_t
-ContactForceOptimization::compute_euler_angle_err(const vector3_t &rpy_m,
-                                                  const vector3_t &rpy_d) {
+vector3_t AdaptiveGain::compute_euler_angle_err(const vector3_t &rpy_m,
+                                                const vector3_t &rpy_d) {
   vector3_t rpy_err = rpy_m - rpy_d;
   if (rpy_err.norm() > 1.5 * M_PI) {
     if (abs(rpy_err(0)) > M_PI) {
