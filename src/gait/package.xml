@@ -16,6 +16,7 @@
   <depend>core</depend>
   <depend>yaml-cpp</depend>
   <depend>ament_index_cpp</depend>
+  <depend>asserts</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

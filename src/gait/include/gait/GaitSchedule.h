@@ -1,8 +1,8 @@
 #pragma once
 
+#include "asserts/gait/ModeSchedule.h"
+#include "asserts/gait/MotionPhaseDefinition.h"
 #include "gait/CycleTimer.h"
-#include "gait/ModeSchedule.h"
-#include "gait/MotionPhaseDefinition.h"
 #include "trans/msg/torch_mode.hpp"
 
 #include <core/misc/Buffer.h>
