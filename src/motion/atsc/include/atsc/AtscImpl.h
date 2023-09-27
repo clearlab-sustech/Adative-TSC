@@ -7,7 +7,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <trans/msg/actuator_cmds.hpp>
-#include <tsc/tsc.h>
 
 #include "asserts/trajectory/TrajectoriesArray.h"
 #include "atsc/AdativeGain.h"
@@ -32,19 +31,11 @@ public:
   void update_mode_schedule(const std::shared_ptr<ModeSchedule> mode_schedule);
 
 private:
-  void updateFloatingBaseTask();
-
-  void updateFootSwingBaseTask();
-
   void publishCmds();
 
   void inner_loop();
 
   void adapative_gain_loop();
-
-  void inverse_kinematics();
-
-  void prepare_cmds();
 
 private:
   Node::SharedPtr nodeHandle_;
@@ -52,7 +43,6 @@ private:
       actuators_cmds_pub_ptr_;
 
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
-  std::shared_ptr<TaskSpaceControl> tsc_ptr_;
   std::shared_ptr<AdaptiveGain> adaptiveGain_ptr_;
   std::shared_ptr<WholeBodyController> wbcPtr_;
 
@@ -66,16 +56,10 @@ private:
   Buffer<bool> run_;
   scalar_t freq_;
 
-  std::shared_ptr<FloatingBaseTask> floatingBaseTask;
-  std::shared_ptr<RegularizationTask> regularizationTask;
-  std::vector<std::shared_ptr<TranslationTask>> foot_task_array;
-  std::shared_ptr<NewtonEulerEq> ne_eq;
-  std::shared_ptr<ContactPointsConstraints> maintainContact;
-  std::shared_ptr<ContactForceConstraints> frictionCone;
-  std::shared_ptr<ActuatorLimit> torqueLimit;
   std::string base_name, robot_name;
   std::vector<std::string> actuated_joints_name;
-  std::shared_ptr<trans::msg::ActuatorCmds> actuator_commands_;
+  std::shared_ptr<ActuatorCommands> actuator_commands_;
+  
 };
 
 } // namespace clear

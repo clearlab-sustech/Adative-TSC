@@ -1,18 +1,19 @@
 #pragma once
 
+#include "atsc/AdativeGain.h"
+#include "atsc/MatrixDB.h"
+#include <asserts/gait/ModeSchedule.h>
+#include <asserts/gait/MotionPhaseDefinition.h>
+#include <asserts/trajectory/TrajectoriesArray.h>
 #include <core/misc/Buffer.h>
 #include <pinocchio/PinocchioInterface.h>
-
 #include <rclcpp/rclcpp.hpp>
-
-#include "AdativeGain.h"
-#include "MatrixDB.h"
-#include "asserts/gait/MotionPhaseDefinition.h"
-#include "asserts/trajectory/TrajectoriesArray.h"
 
 using namespace rclcpp;
 
 namespace clear {
+
+using namespace quadruped;
 
 struct ActuatorCommands {
   vector_t Kp;
@@ -30,14 +31,11 @@ struct ActuatorCommands {
   }
 };
 
-using namespace quadruped;
-
 // Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
 class WholeBodyController {
 public:
-  WholeBodyController(
-      Node::SharedPtr nodeHandle,
-      std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr);
+  WholeBodyController(Node::SharedPtr nodeHandle,
+                      const std::string config_yaml);
 
   void loadTasksSetting(bool verbose = true);
 
@@ -46,8 +44,14 @@ public:
 
   void update_mode(size_t mode);
 
+  void update_state(const std::shared_ptr<vector_t> qpos_ptr,
+                    const std::shared_ptr<vector_t> qvel_ptr);
+
   void
   update_base_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
+
+  void
+  update_swing_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
 
   std::shared_ptr<ActuatorCommands> optimize();
 
@@ -73,12 +77,16 @@ private:
 
 private:
   Node::SharedPtr nodeHandle_;
-  Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajPtrBuffer_;
+  Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajBuffer_;
   Buffer<size_t> mode_;
   Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> base_policy_;
+  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> swing_policy_;
 
   size_t numDecisionVars_;
-  PinocchioInterface &pinocchioInterface_;
+  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
+
+  std::string base_name, robot_name;
+  std::vector<std::string> foot_names, actuated_joints_name;
 
   matrix_t Jc;
   contact_flag_t contactFlag_{};

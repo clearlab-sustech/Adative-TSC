@@ -65,7 +65,7 @@ simulation:
 
 estimation:
   dt: 0.002
-  use_odom: true
+  use_odom: false
 
 controller:
   frequency: 500.0

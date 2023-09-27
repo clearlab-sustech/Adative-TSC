@@ -1,32 +1,64 @@
 #include "atsc/WholeBodyController.h"
 
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <core/optimization/MathematicalProgram.h>
 #include <pinocchio/Orientation.h>
-
 #include <rcpputils/asserts.hpp>
 #include <utility>
+#include <yaml-cpp/yaml.h>
 
 namespace clear {
 
-WholeBodyController::WholeBodyController(
-    Node::SharedPtr nodeHandle,
-    std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr)
-    : nodeHandle_(nodeHandle), pinocchioInterface_(*pinocchioInterfacePtr) {
-  numDecisionVars_ = pinocchioInterface_.nv() +
-                     3 * pinocchioInterface_.getContactPoints().size() +
-                     pinocchioInterface_.na();
+WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
+                                         const std::string config_yaml)
+    : nodeHandle_(nodeHandle) {
+  auto config_ = YAML::LoadFile(config_yaml);
+
+  std::string model_package = config_["model"]["package"].as<std::string>();
+  std::string urdf =
+      ament_index_cpp::get_package_share_directory(model_package) +
+      config_["model"]["urdf"].as<std::string>();
+  RCLCPP_INFO(nodeHandle_->get_logger(), "[WholeBodyController] model file: %s",
+              urdf.c_str());
+  pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
+
+  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
+  for (const auto &name : foot_names) {
+    RCLCPP_INFO(nodeHandle_->get_logger(),
+                "[WholeBodyController] foot name: %s", name.c_str());
+  }
+  pinocchioInterface_ptr_->setContactPoints(foot_names);
+
+  base_name = config_["model"]["base_name"].as<std::string>();
+
+  actuated_joints_name =
+      config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
+
+  numDecisionVars_ = pinocchioInterface_ptr_->nv() + 3 * foot_names.size() +
+                     actuated_joints_name.size();
 }
 
 void WholeBodyController::update_trajectory_reference(
     std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr) {
-  refTrajPtrBuffer_.push(referenceTrajectoriesPtr);
+  refTrajBuffer_.push(referenceTrajectoriesPtr);
 }
 
 void WholeBodyController::update_mode(size_t mode) { mode_.push(mode); }
 
+void WholeBodyController::update_state(
+    const std::shared_ptr<vector_t> qpos_ptr,
+    const std::shared_ptr<vector_t> qvel_ptr) {
+  pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
+}
+
 void WholeBodyController::update_base_policy(
     const std::shared_ptr<AdaptiveGain::FeedbackGain> policy) {
   base_policy_.push(policy);
+}
+
+void WholeBodyController::update_swing_policy(
+    const std::shared_ptr<AdaptiveGain::FeedbackGain> policy) {
+  swing_policy_.push(policy);
 }
 
 void WholeBodyController::formulate() {
@@ -44,7 +76,7 @@ void WholeBodyController::formulate() {
 
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
-  actuator_commands_->setZero(pinocchioInterface_.na());
+  actuator_commands_->setZero(actuated_joints_name.size());
   if (base_policy_.get().get() == nullptr) {
     return actuator_commands_;
   }
@@ -65,15 +97,15 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   vector_t tau;
   if (prog.solve()) {
     actuator_commands_->torque =
-        prog.getSolution(var).tail(pinocchioInterface_.na());
+        prog.getSolution(var).tail(actuated_joints_name.size());
     joint_acc_ = prog.getSolution()
-                     .head(pinocchioInterface_.nv())
-                     .tail(pinocchioInterface_.na());
+                     .head(pinocchioInterface_ptr_->nv())
+                     .tail(actuated_joints_name.size());
   } else {
-    joint_acc_.setZero(pinocchioInterface_.na());
+    joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
     actuator_commands_->torque =
-        pinocchioInterface_.nle().tail(pinocchioInterface_.na());
+        pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
   }
   differential_inv_kin();
 
@@ -81,21 +113,19 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
 }
 
 void WholeBodyController::updateContactJacobi() {
-  Jc = matrix_t(3 * pinocchioInterface_.getContactPoints().size(),
-                pinocchioInterface_.nv());
-  for (size_t i = 0; i < pinocchioInterface_.getContactPoints().size(); ++i) {
+  Jc = matrix_t(3 * foot_names.size(), pinocchioInterface_ptr_->nv());
+  for (size_t i = 0; i < foot_names.size(); ++i) {
     matrix6x_t jac;
-    pinocchioInterface_.getJacobia_localWorldAligned(
-        pinocchioInterface_.getContactPoints()[i], jac);
+    pinocchioInterface_ptr_->getJacobia_localWorldAligned(foot_names[i], jac);
     Jc.middleRows(3 * i, 3) = jac.topRows(3);
   }
 }
 
 MatrixDB WholeBodyController::formulateFloatingBaseEulerNewtonEqu() {
   MatrixDB eulerNewtonEqu("eulerNewtonEqu");
-  auto &data = pinocchioInterface_.getData();
-  size_t nv = pinocchioInterface_.nv();
-  size_t na = pinocchioInterface_.na();
+  auto &data = pinocchioInterface_ptr_->getData();
+  size_t nv = pinocchioInterface_ptr_->nv();
+  size_t na = actuated_joints_name.size();
 
   if (nv != na + 6) {
     throw std::runtime_error("nv != info_.actuatedDofNum + 6");
@@ -112,18 +142,18 @@ MatrixDB WholeBodyController::formulateFloatingBaseEulerNewtonEqu() {
 
 MatrixDB WholeBodyController::formulateTorqueLimitsTask() {
   MatrixDB limit_tau("limit_tau");
-  size_t na = pinocchioInterface_.na();
+  size_t na = actuated_joints_name.size();
   limit_tau.C.setZero(na, numDecisionVars_);
   limit_tau.C.bottomRightCorner(na, na).setIdentity();
-  limit_tau.lb = -pinocchioInterface_.getModel().effortLimit.tail(na);
-  limit_tau.ub = pinocchioInterface_.getModel().effortLimit.tail(na);
+  limit_tau.lb = -pinocchioInterface_ptr_->getModel().effortLimit.tail(na);
+  limit_tau.ub = pinocchioInterface_ptr_->getModel().effortLimit.tail(na);
   return limit_tau;
 }
 
 MatrixDB WholeBodyController::formulateMaintainContactTask() {
   MatrixDB contact_task("contact_task");
-  size_t nc = pinocchioInterface_.getContactPoints().size();
-  size_t nv = pinocchioInterface_.nv();
+  size_t nc = foot_names.size();
+  size_t nv = pinocchioInterface_ptr_->nv();
   contact_task.A.setZero(3 * numContacts_, numDecisionVars_);
   contact_task.b.setZero(3 * numContacts_);
   size_t j = 0;
@@ -131,9 +161,8 @@ MatrixDB WholeBodyController::formulateMaintainContactTask() {
     if (contactFlag_[i]) {
       contact_task.A.block(3 * j, 0, 3, nv) = Jc.middleRows(3 * i, 3);
       contact_task.b.segment(3 * j, 3) =
-          -pinocchioInterface_
-               .getFrame6dAcc_localWorldAligned(
-                   pinocchioInterface_.getContactPoints()[i])
+          -pinocchioInterface_ptr_
+               ->getFrame6dAcc_localWorldAligned(foot_names[i])
                .linear();
       j++;
     }
@@ -143,8 +172,8 @@ MatrixDB WholeBodyController::formulateMaintainContactTask() {
 
 MatrixDB WholeBodyController::formulateFrictionConeTask() {
   MatrixDB friction_cone("friction_cone");
-  size_t nc = pinocchioInterface_.getContactPoints().size();
-  size_t nv = pinocchioInterface_.nv();
+  size_t nc = foot_names.size();
+  size_t nv = pinocchioInterface_ptr_->nv();
   size_t j = 0;
 
   friction_cone.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
@@ -180,25 +209,25 @@ MatrixDB WholeBodyController::formulateFrictionConeTask() {
 
 MatrixDB WholeBodyController::formulateBaseTask() {
   MatrixDB base_task("base_task");
-  size_t nv = pinocchioInterface_.nv();
+  size_t nv = pinocchioInterface_ptr_->nv();
   const auto policy = base_policy_.get();
 
   base_task.A.setZero(6, numDecisionVars_);
   matrix6x_t J = matrix6x_t::Zero(6, nv);
-  pinocchioInterface_.getJacobia_local("trunk", J);
+  pinocchioInterface_ptr_->getJacobia_local(base_name, J);
   base_task.A.leftCols(nv) = J;
 
   vector6_t acc_fb;
-  auto pos_traj = refTrajPtrBuffer_.get()->get_base_pos_traj();
-  auto rpy_traj = refTrajPtrBuffer_.get()->get_base_rpy_traj();
+  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
+  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
 
   if (policy.get() != nullptr && pos_traj.get() != nullptr &&
       rpy_traj.get() != nullptr) {
     scalar_t t = nodeHandle_->now().seconds() + dt_;
     vector_t x0(12);
-    auto base_pose = pinocchioInterface_.getFramePose("trunk");
+    auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
     auto base_twist =
-        pinocchioInterface_.getFrame6dVel_localWorldAligned("trunk");
+        pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
     vector_t rpy = toEulerAngles(base_pose.rotation());
     vector3_t rpy_err = compute_euler_angle_err(rpy, rpy_traj->evaluate(t));
     vector3_t omega_des =
@@ -206,7 +235,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 
     x0 << base_pose.translation() - pos_traj->evaluate(t),
         base_twist.linear() - pos_traj->derivative(t, 1), rpy_err,
-        pinocchioInterface_.getData().Ig.inertia() *
+        pinocchioInterface_ptr_->getData().Ig.inertia() *
             (base_twist.angular() - omega_des);
     acc_fb = policy->K * x0 + policy->b;
     if (acc_fb.norm() > 20) {
@@ -218,10 +247,11 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   } else {
     acc_fb.setZero();
   }
-  std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
-  acc_fb.setZero();
+
   base_task.b =
-      acc_fb - pinocchioInterface_.getFrame6dAcc_local("trunk").toVector();
+      acc_fb -
+      pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
+  // std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
 
   base_task.A = weightBase_ * base_task.A;
   base_task.b = weightBase_ * base_task.b;
@@ -230,11 +260,12 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 }
 
 MatrixDB WholeBodyController::formulateSwingLegTask() {
-  const size_t nc = pinocchioInterface_.getContactPoints().size();
-  const size_t nv = pinocchioInterface_.nv();
+  const size_t nc = foot_names.size();
+  const size_t nv = pinocchioInterface_ptr_->nv();
+  const size_t nj = actuated_joints_name.size();
 
-  auto foot_traj = refTrajPtrBuffer_.get()->get_foot_pos_traj();
-  auto jnt_pos_traj = refTrajPtrBuffer_.get()->get_joint_pos_traj();
+  auto foot_traj = refTrajBuffer_.get()->get_foot_pos_traj();
+  auto jnt_pos_traj = refTrajBuffer_.get()->get_joint_pos_traj();
 
   if (nc - numContacts_ <= 0 || foot_traj.size() != nc) {
     return MatrixDB("swing_task");
@@ -242,42 +273,64 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   MatrixDB swing_task("swing_task");
   scalar_t t = nodeHandle_->now().seconds() + dt_;
 
-  matrix_t Qw =
-      matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
-  swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
-  swing_task.b.setZero(swing_task.A.rows());
-  auto base_pos_traj = refTrajPtrBuffer_.get()->get_base_pos_ref_traj();
+  if (false) {
+    auto policy = swing_policy_.get();
+    vector_t err_jnt(2 * nj);
+    err_jnt << pinocchioInterface_ptr_->qpos().tail(nj) -
+                   jnt_pos_traj->evaluate(t),
+        pinocchioInterface_ptr_->qvel().tail(nj) -
+            jnt_pos_traj->derivative(t, 1);
+    vector_t tau_des = policy->K * err_jnt + policy->b;
+    swing_task.A.setZero(nj, numDecisionVars_);
+    swing_task.A.rightCols(nj).setIdentity();
+    swing_task.b = tau_des;
 
-  size_t j = 0;
-  for (size_t i = 0; i < nc; ++i) {
-    const auto &foot_name = pinocchioInterface_.getContactPoints()[i];
-    if (!contactFlag_[i]) {
-      Qw.block<3, 3>(3 * j, 3 * j) = weightSwingLeg_;
-      const auto traj = foot_traj[foot_name];
-      vector3_t pos_des =
-          traj->evaluate(t) - base_pos_traj->evaluate(t) +
-          pinocchioInterface_.getFramePose("trunk").translation();
-      vector3_t vel_des =
-          traj->derivative(t, 1) - base_pos_traj->derivative(t, 1) +
-          pinocchioInterface_.getFrame6dVel_localWorldAligned("trunk").linear();
-      vector3_t acc_des = traj->derivative(t, 2);
-      vector3_t pos_m =
-          pinocchioInterface_.getFramePose(foot_name).translation();
-      vector3_t vel_m =
-          pinocchioInterface_.getFrame6dVel_localWorldAligned(foot_name)
-              .linear();
-      vector3_t pos_err = pos_des - pos_m;
-      vector3_t vel_err = vel_des - vel_m;
-      vector3_t accel_fb = swingKp_ * pos_err + swingKd_ * vel_err;
-      /* if (accel_fb.norm() > 10.0) {
-        accel_fb = 10.0 * accel_fb.normalized();
-      } */
-      swing_task.A.block(3 * j, 0, 3, nv) = Jc.block(3 * i, 0, 3, nv);
-      swing_task.b.segment(3 * j, 3) =
-          -pinocchioInterface_.getFrame6dAcc_localWorldAligned(foot_name)
-               .linear() +
-          accel_fb + acc_des;
-      j++;
+    /* swing_task.A = 1e2 * swing_task.A;
+    swing_task.b = 1e2 * swing_task.b; */
+
+    /* std::cout << "des jnt_acc: " << jnt_pos_traj->derivative(t,
+    2).transpose()
+              << "\n";
+    std::cout << "fb jnt_acc: " << jnt_acc_des.transpose() << "\n"; */
+  } else {
+    matrix_t Qw =
+        matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
+    swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
+    swing_task.b.setZero(swing_task.A.rows());
+    auto base_pos_traj = refTrajBuffer_.get()->get_base_pos_ref_traj();
+
+    size_t j = 0;
+    for (size_t i = 0; i < nc; ++i) {
+      const auto &foot_name = foot_names[i];
+      if (!contactFlag_[i]) {
+        Qw.block<3, 3>(3 * j, 3 * j) = weightSwingLeg_;
+        const auto traj = foot_traj[foot_name];
+        vector3_t pos_des =
+            traj->evaluate(t) - base_pos_traj->evaluate(t) +
+            pinocchioInterface_ptr_->getFramePose(base_name).translation();
+        vector3_t vel_des =
+            traj->derivative(t, 1) - base_pos_traj->derivative(t, 1) +
+            pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name)
+                .linear();
+        vector3_t acc_des = traj->derivative(t, 2);
+        vector3_t pos_m =
+            pinocchioInterface_ptr_->getFramePose(foot_name).translation();
+        vector3_t vel_m =
+            pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(foot_name)
+                .linear();
+        vector3_t pos_err = pos_des - pos_m;
+        vector3_t vel_err = vel_des - vel_m;
+        vector3_t accel_fb = swingKp_ * pos_err + swingKd_ * vel_err;
+        /* if (accel_fb.norm() > 10.0) {
+          accel_fb = 10.0 * accel_fb.normalized();
+        } */
+        swing_task.A.block(3 * j, 0, 3, nv) = Jc.block(3 * i, 0, 3, nv);
+        swing_task.b.segment(3 * j, 3) =
+            -pinocchioInterface_ptr_->getFrame6dAcc_localWorldAligned(foot_name)
+                 .linear() +
+            accel_fb + acc_des;
+        j++;
+      }
     }
     swing_task.A = Qw * swing_task.A;
     swing_task.b = Qw * swing_task.b;
@@ -286,25 +339,25 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
 }
 
 void WholeBodyController::differential_inv_kin() {
-  auto foot_traj_array = refTrajPtrBuffer_.get()->get_foot_pos_traj();
-  auto pos_traj = refTrajPtrBuffer_.get()->get_base_pos_traj();
+  auto foot_traj_array = refTrajBuffer_.get()->get_foot_pos_traj();
+  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
 
   if (foot_traj_array.empty()) {
     return;
   }
 
-  int nj = static_cast<int>(pinocchioInterface_.na());
-  size_t nf = pinocchioInterface_.getContactPoints().size();
+  int nj = static_cast<int>(actuated_joints_name.size());
+  size_t nf = foot_names.size();
   auto contact_flag = quadruped::modeNumber2StanceLeg(mode_.get());
   scalar_t time_c = nodeHandle_->now().seconds() + 0.002;
-  auto base_pose = pinocchioInterface_.getFramePose("trunk");
+  auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
   auto base_twist =
-      pinocchioInterface_.getFrame6dVel_localWorldAligned("trunk");
+      pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
 
   for (size_t k = 0; k < nf; k++) {
-    const auto &foot_name = pinocchioInterface_.getContactPoints()[k];
+    const auto &foot_name = foot_names[k];
     matrix6x_t Jac_k;
-    pinocchioInterface_.getJacobia_localWorldAligned(foot_name, Jac_k);
+    pinocchioInterface_ptr_->getJacobia_localWorldAligned(foot_name, Jac_k);
     vector<int> idx;
     for (int i = 0; i < nj; i++) {
       if (Jac_k.col(i + 6).head(3).norm() > 0.01) {
@@ -320,17 +373,18 @@ void WholeBodyController::differential_inv_kin() {
 
       for (size_t i = 0; i < 3; i++) {
         Js_.col(i) = Jac_k.col(idx[i] + 6).head(3);
-        qpos_s(i) = pinocchioInterface_.qpos()(7 + idx[i]);
+        qpos_s(i) = pinocchioInterface_ptr_->qpos()(7 + idx[i]);
       }
       matrix3_t J_inv = Js_.inverse();
 
       vector3_t pos_des, vel_des;
       vector3_t pos_m, vel_m;
-      pos_m = (pinocchioInterface_.getFramePose(foot_name).translation() -
+      pos_m = (pinocchioInterface_ptr_->getFramePose(foot_name).translation() -
                base_pose.translation());
-      vel_m = (pinocchioInterface_.getFrame6dVel_localWorldAligned(foot_name)
-                   .linear() -
-               base_twist.linear());
+      vel_m =
+          (pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(foot_name)
+               .linear() -
+           base_twist.linear());
 
       if (pos_traj.get() == nullptr) {
         pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
@@ -371,8 +425,8 @@ void WholeBodyController::differential_inv_kin() {
       }
     } else {
       if (joint_acc_.size() == nj) {
-        vector_t jnt_pos = pinocchioInterface_.qpos().tail(nj);
-        vector_t jnt_vel = pinocchioInterface_.qvel().tail(nj);
+        vector_t jnt_pos = pinocchioInterface_ptr_->qpos().tail(nj);
+        vector_t jnt_vel = pinocchioInterface_ptr_->qvel().tail(nj);
         for (size_t i = 0; i < 3; i++) {
           actuator_commands_->Kp(idx[i]) = 10.0;
           actuator_commands_->Kd(idx[i]) = 0.1;
@@ -391,8 +445,8 @@ void WholeBodyController::differential_inv_kin() {
 }
 
 MatrixDB WholeBodyController::formulateContactForceTask() {
-  size_t nc = pinocchioInterface_.getContactPoints().size();
-  size_t nv = pinocchioInterface_.nv();
+  size_t nc = foot_names.size();
+  size_t nv = pinocchioInterface_ptr_->nv();
 
   MatrixDB contact_force("contact_force");
   contact_force.A.setZero(3 * nc, numDecisionVars_);

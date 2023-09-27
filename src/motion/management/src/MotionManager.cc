@@ -36,6 +36,11 @@ void MotionManager::inner_loop() {
 
   rclcpp::Rate loop_rate(2000.0);
   while (rclcpp::ok() && run_.get()) {
+
+    if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
+      trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
+    }
+
     scalar_t horizon_time_ =
         min(2.0, max(0.5, gaitSchedulePtr_->current_gait_cycle()));
 

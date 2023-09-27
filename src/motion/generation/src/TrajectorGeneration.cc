@@ -31,18 +31,15 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
   RCLCPP_INFO(nodeHandle_->get_logger(), "[TrajectorGeneration] frequency: %f",
               freq_);
 
-  vector_t qpos, qvel;
-  qpos.setZero(pinocchioInterface_ptr_->nq());
-  qvel.setZero(pinocchioInterface_ptr_->nv());
-  pinocchioInterface_ptr_->updateRobotState(qpos, qvel);
-  for (const auto &foot : foot_names) {
-    footholds_nominal_pos[foot] =
-        pinocchioInterface_ptr_->getFramePose(foot).translation();
-    footholds_nominal_pos[foot].z() = 0.0;
-  }
   contact_flag_ = {true, true, true, true};
 
   refTrajBuffer_ = std::make_shared<TrajectoriesArray>();
+
+  footholdOpt_ptr = std::make_shared<FootholdOptimization>(
+      config_yaml, pinocchioInterface_ptr_, refTrajBuffer_);
+
+  vel_cmd.setZero();
+  yawd_ = 0.0;
 
   run_.push(true);
   inner_loop_thread_ = std::thread(&TrajectorGeneration::inner_loop, this);
@@ -139,7 +136,7 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
   std::vector<scalar_t> time;
   std::vector<vector_t> rpy_t, pos_t;
   scalar_t horizon_time = mode_schedule_buffer.get()->duration();
-  if (true) {
+  if (vel_cmd.norm() < 0.05) {
     scalar_t zd = 0.38;
     scalar_t mod_z = 0.0;
     time.emplace_back(t_now);
@@ -154,24 +151,24 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
     pos_t.emplace_back(
         vector3_t(0, 0, zd - mod_z * (0.05 * sin(6 * (t_now + horizon_time)))));
   } else {
-    // size_t N = horizon_time / 0.05;
-    // vector3_t vel_des;
-    // vel_des << commands->vel_des.x, commands->vel_des.y, commands->vel_des.z;
-    // vel_des = base_pose_m.rotation() * vel_des;
+    size_t N = horizon_time / 0.05;
+    vector3_t vel_des;
+    vel_des << vel_cmd.x(), vel_cmd.y(), vel_cmd.z();
+    vel_des = base_pose_m.rotation() * vel_des;
 
-    // scalar_t h_des = commands->height_des;
-    // if (0.35 > h_des || h_des > 0.6) {
-    //   h_des = 0.48;
-    // }
-    // rpy_m.head(2).setZero();
-    // for (size_t k = 0; k < N; k++) {
-    //   time.push_back(t_now + 0.05 * k);
-    //   rpy_m.z() += 0.05 * commands->yawdot_des;
-    //   rpy_t.emplace_back(rpy_m);
-    //   pos_m += 0.05 * vel_des;
-    //   pos_m.z() = h_des;
-    //   pos_t.emplace_back(pos_m);
-    // }
+    scalar_t h_des = 0.38;
+    if (0.35 > h_des || h_des > 0.6) {
+      h_des = 0.48;
+    }
+    rpy_m.head(2).setZero();
+    for (size_t k = 0; k < N; k++) {
+      time.push_back(t_now + 0.05 * k);
+      rpy_m.z() += 0.05 * yawd_;
+      rpy_t.emplace_back(rpy_m);
+      pos_m += 0.05 * vel_des;
+      pos_m.z() = h_des;
+      pos_t.emplace_back(pos_m);
+    }
   }
 
   /* std::cout << "############# "
@@ -203,61 +200,7 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
 }
 
 void TrajectorGeneration::generate_footholds(scalar_t t_now) {
-
-  auto mode_schedule = mode_schedule_buffer.get();
-  const auto &foot_names = pinocchioInterface_ptr_->getContactPoints();
-  extract_foot_switch_info();
-
-  const auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
-  const auto base_twist =
-      pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
-
-  const scalar_t p_rel_x_max = 0.35f;
-  const scalar_t p_rel_y_max = 0.3f;
-
-  vector3_t rpy_dot =
-      getJacobiFromOmegaToRPY(toEulerAngles(base_pose.rotation())) *
-      base_twist.angular();
-
-  vector3_t v_des = vector3_t::Zero();
-
-  for (size_t i = 0; i < foot_names.size(); i++) {
-    const auto &foot_name = foot_names[i];
-    const scalar_t nextStanceTime =
-        foot_switch_phase_[foot_name].front() * mode_schedule->duration();
-
-    vector3_t pYawCorrected = footholds_nominal_pos[foot_name];
-
-    scalar_t pfx_rel, pfy_rel;
-    std::pair<scalar_t, vector3_t> foothold;
-    foothold.first = nextStanceTime + t_now;
-    foothold.second = base_pose.translation() +
-                      (pYawCorrected + std::max(0.0, nextStanceTime) * base_twist.linear());
-    pfx_rel = 0.5 * nextStanceTime * v_des.x() +
-              0.3 * (base_twist.linear().x() - v_des.x()) +
-              (0.5 * base_pose.translation().z() / 9.81) *
-                  (base_twist.linear().y() * rpy_dot.z());
-    pfy_rel = 0.5 * nextStanceTime * v_des.y() +
-              0.3 * (base_twist.linear().y() - v_des.y()) +
-              (0.5 * base_pose.translation().z() / 9.81) *
-                  (-base_twist.linear().x() * rpy_dot.z());
-    pfx_rel = std::min(std::max(pfx_rel, -p_rel_x_max), p_rel_x_max);
-    pfy_rel = std::min(std::max(pfy_rel, -p_rel_y_max), p_rel_y_max);
-    foothold.second.x() += pfx_rel;
-    foothold.second.y() += pfy_rel;
-    foothold.second.z() = 0.023;
-    footholds[foot_name] = foothold;
-  }
-
-  // for (const auto &foothold : footholds) {
-  //   RCLCPP_INFO_STREAM(nodeHandle_->get_logger(),
-  //                      foothold.first
-  //                          << " ts="
-  //                          << nodeHandle_->now().seconds() -
-  //                          foothold.second.first
-  //                          << " pos=" << foothold.second.second.transpose()
-  //                          << "\n");
-  // }
+  footholds = footholdOpt_ptr->optimize(t_now, mode_schedule_buffer.get());
 }
 
 void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
@@ -358,34 +301,9 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
   refTrajBuffer_->set_foot_pos_traj(foot_pos_traj);
 }
 
-void TrajectorGeneration::extract_foot_switch_info() {
-  auto mode_schedule = mode_schedule_buffer.get();
-  foot_switch_phase_.clear();
-
-  auto contact_flag_last =
-      quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(0.0));
-  const auto foot_names = pinocchioInterface_ptr_->getContactPoints();
-  for (const auto &phase : mode_schedule->eventPhases()) {
-    auto contact_flag =
-        quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
-    for (size_t k = 0; k < foot_names.size(); k++) {
-      if (contact_flag[k] && contact_flag[k] != contact_flag_last[k]) {
-        foot_switch_phase_[foot_names[k]].emplace_back(phase);
-      }
-    }
-    contact_flag_last = contact_flag;
-  }
-  if (foot_switch_phase_.size() == 0) {
-    for (size_t k = 0; k < foot_names.size(); k++) {
-      foot_switch_phase_[foot_names[k]].emplace_back(1.0);
-    }
-  } else {
-    for (size_t k = 0; k < foot_names.size(); k++) {
-      if (foot_switch_phase_[foot_names[k]].empty()) {
-        foot_switch_phase_[foot_names[k]].emplace_back(1.0);
-      }
-    }
-  }
+void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
+  vel_cmd = vd;
+  yawd_ = yawd;
 }
 
 } // namespace clear

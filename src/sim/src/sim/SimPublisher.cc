@@ -270,6 +270,8 @@ void SimPublisher::joint_callback() {
 void SimPublisher::actuator_cmd_callback(
     const trans::msg::ActuatorCmds::SharedPtr msg) const {
   if (sim_->d_ != nullptr) {
+    const std::lock_guard<std::mutex> lock(actuator_cmds_buffer_->mtx);
+
     actuator_cmds_buffer_->time = rclcpp::Time(msg->header.stamp).seconds();
     actuator_cmds_buffer_->actuators_name.resize(msg->names.size());
     actuator_cmds_buffer_->kp.resize(msg->gain_p.size());
@@ -291,6 +293,7 @@ void SimPublisher::actuator_cmd_callback(
 }
 
 void SimPublisher::drop_old_message() {
+  const std::lock_guard<std::mutex> lock(actuator_cmds_buffer_->mtx);
   if (abs(actuator_cmds_buffer_->time - this->now().seconds()) > 0.2) {
     for (size_t k = 0; k < actuator_cmds_buffer_->actuators_name.size(); k++) {
       actuator_cmds_buffer_->kp[k] = 0.0;

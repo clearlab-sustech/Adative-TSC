@@ -34,6 +34,7 @@ struct ActuatorCmdsBuffer {
   std::vector<mjtNum> kd;
   std::vector<mjtNum> vel;
   std::vector<mjtNum> torque;
+  std::mutex mtx;
 };
 
 class SimPublisher : public rclcpp::Node {

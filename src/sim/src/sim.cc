@@ -263,6 +263,7 @@ mjModel *LoadModel(const char *file, mj::Simulate &sim) {
 }
 
 void apply_ctrl(mjModel *m, mjData *d) {
+  const std::lock_guard<std::mutex> lock(actuator_cmds_buffer->mtx);
   for (size_t k = 0; k < actuator_cmds_buffer->actuators_name.size(); k++) {
     int actuator_id = mj_name2id(
         m, mjOBJ_ACTUATOR, actuator_cmds_buffer->actuators_name[k].c_str());

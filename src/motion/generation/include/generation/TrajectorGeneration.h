@@ -1,5 +1,6 @@
 #pragma once
 
+#include "generation/FootholdOptimization.h"
 #include <asserts/gait/ModeSchedule.h>
 #include <asserts/gait/MotionPhaseDefinition.h>
 #include <asserts/trajectory/TrajectoriesArray.h>
@@ -29,6 +30,8 @@ public:
 
   std::map<std::string, std::pair<scalar_t, vector3_t>> get_footholds();
 
+  void setVelCmd(vector3_t vd, scalar_t yawd);
+
 private:
   void inner_loop();
 
@@ -38,12 +41,12 @@ private:
 
   void generate_foot_traj(scalar_t t_now);
 
-  void extract_foot_switch_info();
-
 private:
   Node::SharedPtr nodeHandle_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
   std::shared_ptr<TrajectoriesArray> refTrajBuffer_;
+
+  std::shared_ptr<FootholdOptimization> footholdOpt_ptr;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
   Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;
@@ -55,12 +58,12 @@ private:
   std::string base_name;
 
   std::map<std::string, std::pair<scalar_t, vector3_t>> footholds;
-  std::map<std::string, vector3_t> footholds_nominal_pos;
-  std::map<std::string, std::vector<scalar_t>> foot_switch_phase_;
-
   std::map<std::string, std::pair<scalar_t, vector3_t>> xf_start_;
   std::map<std::string, std::pair<scalar_t, vector3_t>> xf_end_;
   quadruped::contact_flag_t contact_flag_;
+
+  vector3_t vel_cmd;
+  scalar_t yawd_;
 };
 
 } // namespace clear
