@@ -28,97 +28,14 @@ FootholdOptimization::FootholdOptimization(
   }
 
   nf = foot_names.size();
-  dt = 0.05;
-
-  solver_settings.mode = hpipm::HpipmMode::Speed;
-  solver_settings.iter_max = 30;
-  solver_settings.alpha_min = 1e-8;
-  solver_settings.mu0 = 1e2;
-  solver_settings.tol_stat = 1e-04;
-  solver_settings.tol_eq = 1e-04;
-  solver_settings.tol_ineq = 1e-04;
-  solver_settings.tol_comp = 1e-04;
-  solver_settings.reg_prim = 1e-12;
-  solver_settings.pred_corr = 1;
-  solver_settings.ric_alg = 0;
-  solver_settings.split_step = 1;
-  solver_settings.warm_start = 0;
-
-  amazeModel_ptr_ = std::make_shared<AmazeModel>(*pinocchioInterface_ptr_,
-                                                 referenceTrajectoriesBuffer_);
 }
 
 FootholdOptimization::~FootholdOptimization() {}
 
-void FootholdOptimization::add_dynamics(
-    size_t k, const std::shared_ptr<ModeSchedule> mode_schedule) {
-  ocp_[k].A.setIdentity(3 * nf, 3 * nf);
-  ocp_[k].B.setZero(3 * nf, 3 * nf);
-  ocp_[k].b.setZero(3 * nf);
-
-  scalar_t phase = k * dt / mode_schedule->duration();
-  auto contact_flag =
-      quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
-  for (size_t i = 0; i < nf; i++) {
-    if (!contact_flag[i]) {
-      ocp_[k].B.block<3, 3>(3 * i, 3 * i).setIdentity();
-    }
-  }
-}
-
-void FootholdOptimization::add_constraints(size_t k) {
-  ocp_[k].idxbu.clear();
-  for (size_t i = 0; i < 3 * nf; i++) {
-    ocp_[k].idxbu.emplace_back(i);
-  }
-  ocp_[k].lbu_mask.setOnes(3 * nf);
-  ocp_[k].ubu_mask.setOnes(3 * nf);
-  ocp_[k].lbu = -2.0 * dt * vector_t::Ones(3 * nf);
-  ocp_[k].ubu = 2.0 * dt * vector_t::Ones(3 * nf);
-}
-
-void FootholdOptimization::add_costs(scalar_t t, size_t k) {
-  const scalar_t tk = t + k * dt;
-  auto base_pos_ref_traj = amazeModel_ptr_->get_base_pos_trajectory();
-  auto base_rpy_traj = amazeModel_ptr_->get_base_rpy_trajectory();
-
-  if (base_pos_ref_traj.get() == nullptr) {
-    base_pos_ref_traj =
-        referenceTrajectoriesBuffer_.get()->get_base_pos_ref_traj();
-  }
-  if (base_rpy_traj.get() == nullptr) {
-    base_rpy_traj = referenceTrajectoriesBuffer_.get()->get_base_rpy_traj();
-  }
-
-  vector3_t pos_des = base_pos_ref_traj->evaluate(tk);
-  vector3_t rpy_des = base_rpy_traj->evaluate(tk);
-  vector3_t vel_des = toRotationMatrix(rpy_des).transpose() *
-                      base_pos_ref_traj->derivative(tk, 1);
-
-  vector_t x_des(3 * nf);
-  for (size_t i = 0; i < nf; i++) {
-    vector3_t expansion_y =
-        (i % 2 == 0 ? 1.0 : -1.0) *
-        (std::min(0.2, 0.2 * (1.0 - exp(-abs(vel_des.y())))) +
-         0.05 * (abs(vel_des.x()) > 0.2 ? -0.4 : 0.0)) *
-        vector3_t::UnitY();
-    x_des.segment(3 * i, 3) =
-        pos_des + toRotationMatrix(rpy_des) *
-                      (footholds_nominal_pos[foot_names[i]] + expansion_y);
-    x_des(3 * i + 2) = 0.02;
-  }
-
-  matrix_t Q = 1e2 * matrix_t::Identity(3 * nf, 3 * nf);
-  ocp_[k].Q = Q;
-  ocp_[k].q = -Q * x_des;
-  ocp_[k].S.setZero(3 * nf, 3 * nf);
-  ocp_[k].R = 1e-2 * matrix_t::Identity(3 * nf, 3 * nf);
-  ocp_[k].r.setZero(3 * nf);
-}
-
 std::map<std::string, std::pair<scalar_t, vector3_t>>
 FootholdOptimization::optimize(
     scalar_t t, const std::shared_ptr<ModeSchedule> mode_schedule) {
+  footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();
   auto base_pos_ref_traj =
       referenceTrajectoriesBuffer_.get()->get_base_pos_ref_traj();
   auto base_rpy_traj = referenceTrajectoriesBuffer_.get()->get_base_rpy_traj();
@@ -126,54 +43,61 @@ FootholdOptimization::optimize(
       base_rpy_traj.get() == nullptr) {
     return footholds_;
   }
-  amazeModel_ptr_->optimize(t, mode_schedule);
-
-  size_t N = static_cast<size_t>(mode_schedule->duration() / dt);
-  ocp_.clear();
-  ocp_.resize(N + 1);
-
-  if (solution_.size() == N + 1) {
-    solver_settings.warm_start = 1;
-  } else {
-    solver_settings.warm_start = 0;
-    solution_.resize(N + 1);
-  }
-
-  for (size_t k = 0; k <= N; k++) {
-    add_dynamics(k, mode_schedule);
-    add_constraints(k);
-    add_costs(t, k);
-  }
-
-  vector_t x0(3 * nf);
-  for (size_t k = 0; k < nf; k++) {
-    x0.segment(3 * k, 3) =
-        pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
-  }
-
-  footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();
-  hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
-  const auto res = solver.solve(x0, ocp_, solution_);
-  auto swtr = quadruped::getTimeOfNextTouchDown(0, mode_schedule);
-  if (res == hpipm::HpipmStatus::Success ||
-      res == hpipm::HpipmStatus::MaxIterReached) {
-    /* std::cout << "###########################################"
-              << "\n";
-    for (auto &sol : solution_) {
-      std::cout << "forward: " << sol.x.transpose() << "\n";
-    } */
-    for (size_t k = 0; k < nf; k++) {
-      std::pair<scalar_t, vector3_t> foothold;
-      size_t idx =
-          std::min(static_cast<size_t>(swtr[k] / dt) + 1, solution_.size() - 1);
-      foothold.first = swtr[k] + t;
-      foothold.second = solution_[idx].x.segment(3 * k, 3);
-      footholds_[foot_names[k]] = std::move(foothold);
-    }
-  } else {
-    std::cout << "FootholdOptimization: " << res << "\n";
-  }
+  heuristic(t, mode_schedule);
   return footholds_;
+}
+
+void FootholdOptimization::heuristic(
+    scalar_t t, const std::shared_ptr<ModeSchedule> mode_schedule) {
+
+  auto base_pos_ref_traj =
+      referenceTrajectoriesBuffer_.get()->get_base_pos_ref_traj();
+  auto base_rpy_traj = referenceTrajectoriesBuffer_.get()->get_base_rpy_traj();
+
+  vector3_t v_des = base_pos_ref_traj->derivative(t, 1);
+
+  const auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
+  const auto base_twist =
+      pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+
+  vector3_t rpy_dot =
+      getJacobiFromOmegaToRPY(toEulerAngles(base_pose.rotation())) *
+      base_twist.angular();
+
+  auto swtr = quadruped::getTimeOfNextTouchDown(0, mode_schedule);
+
+  const scalar_t p_rel_x_max = 0.5f;
+  const scalar_t p_rel_y_max = 0.4f;
+
+  for (size_t i = 0; i < nf; i++) {
+    const auto &foot_name = foot_names[i];
+    const scalar_t nextStanceTime = swtr[i];
+
+    vector3_t pYawCorrected =
+        toRotationMatrix(base_rpy_traj->evaluate(t + nextStanceTime)) *
+        footholds_nominal_pos[foot_name];
+
+    scalar_t pfx_rel, pfy_rel;
+    std::pair<scalar_t, vector3_t> foothold;
+    foothold.first = nextStanceTime + t;
+    foothold.second =
+        base_pose.translation() +
+        (pYawCorrected + std::max(0.0, nextStanceTime) * base_twist.linear());
+    pfx_rel = 0.5 * mode_schedule->duration() * v_des.x() +
+              0.1 * (base_twist.linear().x() - v_des.x()) +
+              (0.5 * base_pose.translation().z() / 9.81) *
+                  (base_twist.linear().y() * rpy_dot.z());
+    pfy_rel = 0.5 * mode_schedule->duration() * v_des.y() +
+              0.1 * (base_twist.linear().y() - v_des.y()) +
+              (0.5 * base_pose.translation().z() / 9.81) *
+                  (-base_twist.linear().x() * rpy_dot.z());
+    pfx_rel = std::min(std::max(pfx_rel, -p_rel_x_max), p_rel_x_max);
+    pfy_rel = std::min(std::max(pfy_rel, -p_rel_y_max), p_rel_y_max);
+    foothold.second.x() += pfx_rel;
+    foothold.second.y() += pfy_rel;
+    foothold.second.z() = 0.023;
+    footholds_[foot_name] = foothold;
+  }
 }
 
 } // namespace clear

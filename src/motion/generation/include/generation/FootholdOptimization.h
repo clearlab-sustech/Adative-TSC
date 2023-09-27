@@ -12,7 +12,6 @@
 #include <memory>
 #include <rcpputils/asserts.hpp>
 
-#include "generation/AmazeModel.h"
 #include "generation/LegLogic.h"
 
 namespace clear {
@@ -29,12 +28,7 @@ public:
   optimize(scalar_t t, const std::shared_ptr<ModeSchedule> mode_schedule);
 
 private:
-  void add_dynamics(size_t k,
-                    const std::shared_ptr<ModeSchedule> mode_schedule);
-
-  void add_constraints(size_t k);
-
-  void add_costs(scalar_t t, size_t k);
+  void heuristic(scalar_t t, const std::shared_ptr<ModeSchedule> mode_schedule);
 
 private:
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
@@ -47,12 +41,6 @@ private:
       footholds_nominal_pos; // nominal footholds relative to nominal com pos
   scalar_t nominal_dz_;
   size_t nf;
-  scalar_t dt = 0.05;
-
-  std::vector<hpipm::OcpQp> ocp_;
-  std::vector<hpipm::OcpQpSolution> solution_;
-  hpipm::OcpQpIpmSolverSettings solver_settings;
-  std::shared_ptr<AmazeModel> amazeModel_ptr_;
 };
 
 } // namespace clear
