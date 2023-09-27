@@ -122,7 +122,7 @@ bool MathematicalProgram::solve() {
 
   qpsolver_ptr = std::make_shared<sparse::QP<scalar_t, long long>>(
       vars_.size(), A_.rows(), C_.rows());
-  // qpsolver_ptr->settings.max_iter = 1000;
+  qpsolver_ptr->settings.max_iter = 1000;
   qpsolver_ptr->settings.eps_abs = 1e-3;
   qpsolver_ptr->settings.initial_guess = InitialGuessStatus::NO_INITIAL_GUESS;
 

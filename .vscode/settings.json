@@ -99,7 +99,8 @@
         "any": "cpp",
         "regex": "cpp",
         "valarray": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "span": "cpp"
     },
     "python.analysis.extraPaths": [
         "/opt/ros/foxy/lib/python3.8/site-packages/"

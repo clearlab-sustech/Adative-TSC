@@ -13,6 +13,7 @@ global:
     trajectories: "trajectories"
 
 model:
+  name: "aliengo"
   package: "asserts"
   urdf: "/aliengo/aliengo.urdf"
   xml: "/aliengo/aliengo.xml"
@@ -33,6 +34,26 @@ model:
       "RR_thigh_joint",
       "RR_calf_joint",
     ]
+
+gait:
+  list: ["stance", "trot", "static_walk"]
+
+  stance:
+    modeSequence: ["STANCE"]
+    switchingTimes: [0.0, 0.5]
+
+  trot:
+    modeSequence: ["LF_RH", "RF_LH"]
+    switchingTimes: [0.0, 0.3, 0.6]
+  
+  static_walk:
+    modeSequence: ["LF_RF_RH", "RF_LH_RH", "LF_RF_LH", "LF_LH_RH"]
+    switchingTimes: [0.0, 0.4, 0.8, 1.2, 1.6]
+
+  topic_prefix: "simulation/"
+  topic_names:
+    mode_schedule: "mode_schedule"
+  frequency: 500.0
 
 simulation:
   frequency: # Hz

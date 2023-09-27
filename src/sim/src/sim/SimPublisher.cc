@@ -24,7 +24,7 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
       std::bind(&SimPublisher::reset_callback, this, std::placeholders::_1,
                 std::placeholders::_2));
 
-  auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
+  auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_default);
   std::string imu_topic =
       config_["global"]["topic_names"]["imu"].as<std::string>();
   imu_publisher_ = this->create_publisher<sensor_msgs::msg::Imu>(
@@ -262,6 +262,7 @@ void SimPublisher::joint_callback() {
         }
       }
     }
+    // mju_printMat(sim_->d_->qvel, 1, sim_->m_->nv);
     joint_state_publisher_->publish(jointState);
   }
 }
