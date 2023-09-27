@@ -45,7 +45,6 @@ AtscImpl::AtscImpl(Node::SharedPtr nodeHandle, const std::string config_yaml)
       nodeHandle_, pinocchioInterface_ptr_, base_name);
   adapative_gain_thread_ = std::thread(&AtscImpl::adapative_gain_loop, this);
   wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_, config_yaml);
-  wbcPtr_->loadTasksSetting();
   inner_loop_thread_ = std::thread(&AtscImpl::inner_loop, this);
 }
 

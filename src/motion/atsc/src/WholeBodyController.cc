@@ -36,6 +36,7 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
 
   numDecisionVars_ = pinocchioInterface_ptr_->nv() + 3 * foot_names.size() +
                      actuated_joints_name.size();
+  this->loadTasksSetting();
 }
 
 void WholeBodyController::update_trajectory_reference(
@@ -244,6 +245,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
+
   } else {
     acc_fb.setZero();
   }

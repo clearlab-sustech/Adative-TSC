@@ -226,7 +226,6 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
     feedback_law_ptr->b.tail(3) -= Ig_.inverse() *
                                    skew(base_twist.angular() - omega_des) *
                                    Ig_ * (base_twist.angular() - omega_des);
-
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */
