@@ -224,7 +224,6 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 
   if (policy.get() != nullptr && pos_traj.get() != nullptr &&
       rpy_traj.get() != nullptr) {
-    scalar_t t = nodeHandle_->now().seconds() + dt_;
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
     auto base_twist = pinocchioInterface_ptr_->getFrame6dVel_local(base_name);
@@ -239,9 +238,10 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     _spatialVelRef << base_pose.rotation().transpose() *
                           policy->state_des.segment(3, 3),
         base_pose.rotation().transpose() * omega_des;
-    _spatialAccRef << base_pose.rotation().transpose() *
-                          policy->state_dot_des.segment(3, 3),
-        base_pose.rotation().transpose() * omega_dot_des;
+    // _spatialAccRef << base_pose.rotation().transpose() *
+    //                       policy->state_dot_des.segment(3, 3),
+    //     base_pose.rotation().transpose() * omega_dot_des;
+    _spatialAccRef.setZero();
 
     acc_fb = baseKp_ * log6(base_pose.actInv(pose_ref)).toVector() +
              baseKd_ * (_spatialVelRef - base_twist.toVector()) +

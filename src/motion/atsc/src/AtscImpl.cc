@@ -145,6 +145,8 @@ void AtscImpl::inner_loop() {
 void AtscImpl::adapative_gain_loop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(50.0);
+  std::fstream save_state("data_log.txt", std::ios::ate | std::ios::out);
+
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
     if (qpos_ptr_buffer.get().get() == nullptr ||
@@ -158,6 +160,24 @@ void AtscImpl::adapative_gain_loop() {
       adaptiveGain_ptr_->update_mode_schedule(mode_schedule_buffer.get());
       adaptiveGain_ptr_->update_trajectory_reference(refTrajPtrBuffer_.get());
       feedback_gain_buffer_.push(adaptiveGain_ptr_->compute());
+
+      auto base_pos = refTrajPtrBuffer_.get()->get_base_pos_ref_traj();
+      auto base_rpy = refTrajPtrBuffer_.get()->get_base_rpy_traj();
+      if (base_pos.get() != nullptr && base_rpy.get() != nullptr) {
+        const scalar_t t = nodeHandle_->now().seconds();
+        auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
+        auto base_twist =
+            pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+        save_state << base_pose.translation().transpose() << " "
+                   << base_twist.linear().transpose() << " "
+                   << base_twist.angular().transpose() << " "
+                   << base_pos->evaluate(t).transpose() << " "
+                   << base_pos->derivative(t, 1).transpose() << " "
+                   << (getJacobiFromRPYToOmega(base_rpy->evaluate(t)) *
+                       base_rpy->derivative(t, 1))
+                          .transpose()
+                   << "\n";
+      }
     }
     timer_.endTimer();
     loop_rate.sleep();
@@ -166,6 +186,7 @@ void AtscImpl::adapative_gain_loop() {
               "Adaptive Gain Computaion: max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
+  save_state.close();
 }
 
 } // namespace clear
