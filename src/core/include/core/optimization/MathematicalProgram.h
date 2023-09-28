@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <Eigen/Sparse>
 #include <core/types.h>
 #include <memory>

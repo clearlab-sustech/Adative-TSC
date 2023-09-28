@@ -23,7 +23,6 @@ find_package(trans REQUIRED)
 find_package(core REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(tsc REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(asserts REQUIRED)
 find_package(hpipm-cpp REQUIRED)
@@ -34,20 +33,23 @@ link_directories(
   ${pinocchio_LIBRARY_DIRS}
 )
 
+find_package(pinocchio_interface REQUIRED)
+find_package(tsc REQUIRED)
+
 set(TARGET_DEPENDENCE
   ament_cmake
   ament_index_cpp
   rclcpp
   trans
   core
-  pinocchio
-  pinocchio_interface
+  asserts
   nav_msgs
   sensor_msgs
-  tsc
   yaml-cpp
-  asserts
+  pinocchio
   hpipm-cpp
+  pinocchio_interface
+  tsc
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
