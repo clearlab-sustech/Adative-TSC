@@ -78,36 +78,36 @@ void WholeBodyController::formulate() {
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
-  if (base_policy_.get().get() == nullptr) {
-    return actuator_commands_;
-  }
+  // if (base_policy_.get().get() == nullptr) {
+  //   return actuator_commands_;
+  // }
 
-  formulate();
+  // formulate();
 
-  matrix_t H = weighedTask.A.transpose() * weighedTask.A;
-  // H.diagonal() += 1e-8 * vector_t::Ones(numDecisionVars_);
-  vector_t g = -weighedTask.A.transpose() * weighedTask.b;
+  // matrix_t H = weighedTask.A.transpose() * weighedTask.A;
+  // // H.diagonal() += 1e-8 * vector_t::Ones(numDecisionVars_);
+  // vector_t g = -weighedTask.A.transpose() * weighedTask.b;
 
-  // Solve
-  MathematicalProgram prog;
-  auto var = prog.newVectorVariables(numDecisionVars_);
-  prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
-  prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
-                                      constraints.ub, var);
-  prog.addQuadraticCost(H, g, var);
-  vector_t tau;
-  if (prog.solve()) {
-    actuator_commands_->torque =
-        prog.getSolution(var).tail(actuated_joints_name.size());
-    joint_acc_ = prog.getSolution()
-                     .head(pinocchioInterface_ptr_->nv())
-                     .tail(actuated_joints_name.size());
-  } else {
-    joint_acc_.setZero(actuated_joints_name.size());
-    std::cerr << "wbc failed ...\n";
-    actuator_commands_->torque =
-        pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
-  }
+  // // Solve
+  // MathematicalProgram prog;
+  // auto var = prog.newVectorVariables(numDecisionVars_);
+  // prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
+  // prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
+  //                                     constraints.ub, var);
+  // prog.addQuadraticCost(H, g, var);
+  // vector_t tau;
+  // if (prog.solve()) {
+  //   actuator_commands_->torque =
+  //       prog.getSolution(var).tail(actuated_joints_name.size());
+  //   joint_acc_ = prog.getSolution()
+  //                    .head(pinocchioInterface_ptr_->nv())
+  //                    .tail(actuated_joints_name.size());
+  // } else {
+  //   joint_acc_.setZero(actuated_joints_name.size());
+  //   std::cerr << "wbc failed ...\n";
+  //   actuator_commands_->torque =
+  //       pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+  // }
   differential_inv_kin();
 
   return actuator_commands_;

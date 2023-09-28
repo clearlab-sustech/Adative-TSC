@@ -12,12 +12,8 @@ AdaptiveGain::AdaptiveGain(
       base_name_(base_name) {
   total_mass_ = pinocchioInterfacePtr_->total_mass();
   weight_.setZero(12, 12);
-  // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 40.0,
-  //     40.0, 40.0;
-
   weight_.diagonal() << 40, 40, 50, 3.0, 3.0, 3.0, 30, 30, 50, 4.0, 4.0, 4.0;
-  weight_ = 20.0 * weight_;
-  
+
   solver_settings.mode = hpipm::HpipmMode::Speed;
   solver_settings.iter_max = 50;
   solver_settings.alpha_min = 1e-8;
@@ -57,28 +53,21 @@ void AdaptiveGain::add_linear_system(size_t k) {
   const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
   rcpputils::assert_true(nf == contact_flag.size());
 
-  Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
   auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
-  vector3_t force_ff = vector3_t::Zero();
-  if (has_sol_ &&
-      k < solution_.size() - 1) { // the last one solution has no data of u
-    for (size_t i = 0; i < nf; i++) {
-      force_ff += solution_[k].u.segment(3 * i, 3);
-    }
-  } else {
-    force_ff = total_mass_ *
-               (pos_traj->derivative(time_k, 2) + vector3_t(0, 0, grav_));
-  }
 
   vector3_t rpy_dot_des = rpy_traj->derivative(time_k, 1);
-  vector3_t rpy_ddot_des = rpy_traj->derivative(time_k, 2);
+  vector3_t omega_des = getJacobiFromOmegaToRPY(rpy) * rpy_dot_des;
+
+  Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
+  auto Iworld = base_pose.rotation() * Ig_ * base_pose.rotation().transpose();
+  Ig_inv = Iworld.inverse();
 
   ocp_[k].A.setIdentity(12, 12);
   ocp_[k].A.block<3, 3>(0, 3).diagonal().fill(dt_);
-  ocp_[k].A.block<3, 3>(6, 9) =
-      dt_ * getJacobiFromOmegaToRPY(rpy) * Ig_.inverse();
-  ocp_[k].A.block<3, 3>(9, 0) = skew(dt_ * force_ff);
+  ocp_[k].A.block<3, 3>(6, 9) = dt_ * getJacobiFromOmegaToRPY(rpy);
+  ocp_[k].A.block<3, 3>(9, 9) += dt_ * skew(Ig_ * omega_des);
+
   ocp_[k].B.setZero(12, nf * 3);
   vector3_t xc = pos_traj->evaluate(time_k);
   // vector3_t xc = pinocchioInterfacePtr_->getCoMPos();
@@ -88,18 +77,12 @@ void AdaptiveGain::add_linear_system(size_t k) {
       vector3_t pf_i = foot_traj[foot_names[i]]->evaluate(time_k);
       ocp_[k].B.middleRows(3, 3).middleCols(3 * i, 3).diagonal().fill(
           dt_ / total_mass_);
-      ocp_[k].B.bottomRows(3).middleCols(3 * i, 3) = skew(dt_ * (pf_i - xc));
+      ocp_[k].B.bottomRows(3).middleCols(3 * i, 3) =
+          Ig_inv * skew(dt_ * (pf_i - xc));
     }
   }
-
   ocp_[k].b.setZero(12);
-  ocp_[k].b.segment(3, 3) = -dt_ * pos_traj->derivative(time_k, 2);
-  ocp_[k].b(5) += -dt_ * grav_;
-  ocp_[k].b.tail(3) =
-      -dt_ *
-      (Ig_ * (getJacobiFromRPYToOmega(rpy) * rpy_ddot_des +
-              getJacobiDotFromRPYToOmega(rpy, rpy_dot_des) * rpy_dot_des) +
-       skew(rpy_dot_des) * Ig_ * rpy_dot_des);
+  ocp_[k].b(5) -= dt_ * grav_;
 }
 
 void AdaptiveGain::add_state_input_constraints(size_t k, size_t N) {
@@ -134,13 +117,21 @@ void AdaptiveGain::add_cost(size_t k, size_t N) {
   const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
   const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
   auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
+  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
 
   ocp_[k].Q = weight_;
   ocp_[k].S = matrix_t::Zero(3 * nf, 12);
-  ocp_[k].q.setZero(12);
+
+  vector_t x_des(12);
+  x_des << pos_traj->evaluate(time_k), pos_traj->derivative(time_k, 1),
+      rpy_traj->evaluate(time_k),
+      getJacobiFromOmegaToRPY(rpy_traj->evaluate(time_k)) *
+          rpy_traj->derivative(time_k, 1);
+  ocp_[k].q = -weight_ * x_des;
+
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 1e-4 * matrix_t::Identity(3 * nf, 3 * nf);
+    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
     auto mode_schedule = mode_schedule_buffer.get();
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
@@ -196,47 +187,30 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
   }
   hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
 
-  scalar_t time_c = nodeHandle_->now().seconds();
   vector_t x0(12);
   auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
   auto base_twist =
       pinocchioInterfacePtr_->getFrame6dVel_localWorldAligned(base_name_);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
-  vector3_t rpy_des = rpy_traj->evaluate(time_c);
-  vector3_t rpy_dot_des = rpy_traj->derivative(time_c, 1);
-  auto rpy_err = compute_euler_angle_err(rpy, rpy_des);
 
-  x0 << base_pose.translation() - pos_traj->evaluate(time_c),
-      base_twist.linear() - pos_traj->derivative(time_c, 1), rpy_err,
-      Ig_ * base_twist.angular() -
-          Ig_ * getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
+  x0 << base_pose.translation(), base_twist.linear(), rpy, base_twist.angular();
   const auto res = solver.solve(x0, ocp_, solution_);
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
     has_sol_ = true;
     feedback_law_ptr = std::make_shared<FeedbackGain>();
-    matrix_t P(6, 12);
-    P.setZero();
-    P.topRows(3).middleCols(3, 3).setIdentity();
-    P.bottomRows(3).middleCols(9, 3) = Ig_.inverse();
+    feedback_law_ptr->K = solution_[0].K;
+    feedback_law_ptr->b = solution_[0].k;
+    feedback_law_ptr->force_des = solution_[0].u;
 
-    matrix_t A = 1.0 / dt_ * (ocp_[0].A - matrix_t::Identity(12, 12));
-    matrix_t B = 1.0 / dt_ * ocp_[0].B;
-    vector_t drift = 1.0 / dt_ * ocp_[0].b;
-    feedback_law_ptr->K = P * (A + B * solution_[0].K);
-    feedback_law_ptr->b = P * (B * solution_[0].k + drift);
-    vector3_t omega_des = getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
-    feedback_law_ptr->b.tail(3) -= Ig_.inverse() *
-                                   skew(base_twist.angular() - omega_des) *
-                                   Ig_ * (base_twist.angular() - omega_des);
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */
-    // std::cout << "###########################################"
-    //           << "\n";
-    // for (auto &sol : solution_) {
-    //   std::cout << "forward: " << sol.x.transpose() << "\n";
-    // }
+    /* std::cout << "###########################################"
+              << "\n";
+    for (auto &sol : solution_) {
+      std::cout << "forward: " << sol.x.transpose() << "\n";
+    } */
   } else {
     std::cout << "AdaptiveGain: " << res << "\n";
   }

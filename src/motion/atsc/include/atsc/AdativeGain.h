@@ -16,6 +16,8 @@ public:
   struct FeedbackGain {
     matrix_t K;
     vector_t b;
+    vector_t force_des;
+    vector_t state_des;
   };
 
 public:
@@ -53,7 +55,7 @@ private:
   const scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;
   scalar_t total_mass_;
-  matrix3_t Ig_;
+  matrix3_t Ig_, Ig_inv;
   const scalar_t mu_ = 0.5;
   matrix_t weight_;
 

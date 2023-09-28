@@ -83,6 +83,31 @@ void AtscImpl::publishCmds() {
     return;
   }
 
+  vector_t torque_mpc = vector_t::Zero(pinocchioInterface_ptr_->na());
+  if (feedback_gain_buffer_.get().get() != nullptr) {
+    const auto foot_names = pinocchioInterface_ptr_->getContactPoints();
+    size_t nf = foot_names.size();
+    matrix_t J = matrix_t::Zero(3 * nf, pinocchioInterface_ptr_->nv());
+
+    for (size_t i = 0; i < nf; i++) {
+      matrix6x_t Ji;
+      pinocchioInterface_ptr_->getJacobia_localWorldAligned(foot_names[i], Ji);
+      J.middleRows(3 * i, 3) = Ji.topRows(3);
+    }
+
+    vector_t x0(12);
+    auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
+    auto base_twist =
+        pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+    vector3_t rpy = toEulerAngles(base_pose.rotation());
+    x0 << base_pose.translation(), base_twist.linear(), rpy,
+        base_twist.angular();
+    auto feedback_law = feedback_gain_buffer_.get();
+    vector_t par = -J.transpose() * (feedback_law->K * x0 + feedback_law->b) +
+                   pinocchioInterface_ptr_->nle();
+    torque_mpc = par.tail(pinocchioInterface_ptr_->na());
+  }
+
   for (const auto &joint_name : actuated_joints_name) {
     if (model.existJointName(joint_name)) {
       msg.names.emplace_back(joint_name);
@@ -91,7 +116,7 @@ void AtscImpl::publishCmds() {
       msg.pos_des.emplace_back(actuator_commands_->pos(id));
       msg.gaid_d.emplace_back(actuator_commands_->Kd(id));
       msg.vel_des.emplace_back(actuator_commands_->vel(id));
-      msg.feedforward_torque.emplace_back(actuator_commands_->torque(id));
+      msg.feedforward_torque.emplace_back(torque_mpc(id));
     }
   }
   actuators_cmds_pub_ptr_->publish(msg);
