@@ -202,6 +202,12 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
     feedback_law_ptr->K = solution_[0].K;
     feedback_law_ptr->b = solution_[0].k;
     feedback_law_ptr->force_des = solution_[0].u;
+    feedback_law_ptr->state_des = solution_[1].x;
+
+    matrix_t A = 1.0 / dt_ * (ocp_[0].A - matrix_t::Identity(12, 12));
+    matrix_t B = 1.0 / dt_ * ocp_[0].B;
+    vector_t drift = 1.0 / dt_ * ocp_[0].b;
+    feedback_law_ptr->state_dot_des = A * x0 + B * solution_[0].u + drift;
 
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()

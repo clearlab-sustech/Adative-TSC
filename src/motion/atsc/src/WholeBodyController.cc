@@ -78,36 +78,36 @@ void WholeBodyController::formulate() {
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
-  // if (base_policy_.get().get() == nullptr) {
-  //   return actuator_commands_;
-  // }
+  if (base_policy_.get().get() == nullptr) {
+    return actuator_commands_;
+  }
 
-  // formulate();
+  formulate();
 
-  // matrix_t H = weighedTask.A.transpose() * weighedTask.A;
-  // // H.diagonal() += 1e-8 * vector_t::Ones(numDecisionVars_);
-  // vector_t g = -weighedTask.A.transpose() * weighedTask.b;
+  matrix_t H = weighedTask.A.transpose() * weighedTask.A;
+  // H.diagonal() += 1e-8 * vector_t::Ones(numDecisionVars_);
+  vector_t g = -weighedTask.A.transpose() * weighedTask.b;
 
-  // // Solve
-  // MathematicalProgram prog;
-  // auto var = prog.newVectorVariables(numDecisionVars_);
-  // prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
-  // prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
-  //                                     constraints.ub, var);
-  // prog.addQuadraticCost(H, g, var);
-  // vector_t tau;
-  // if (prog.solve()) {
-  //   actuator_commands_->torque =
-  //       prog.getSolution(var).tail(actuated_joints_name.size());
-  //   joint_acc_ = prog.getSolution()
-  //                    .head(pinocchioInterface_ptr_->nv())
-  //                    .tail(actuated_joints_name.size());
-  // } else {
-  //   joint_acc_.setZero(actuated_joints_name.size());
-  //   std::cerr << "wbc failed ...\n";
-  //   actuator_commands_->torque =
-  //       pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
-  // }
+  // Solve
+  MathematicalProgram prog;
+  auto var = prog.newVectorVariables(numDecisionVars_);
+  prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
+  prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
+                                      constraints.ub, var);
+  prog.addQuadraticCost(H, g, var);
+  vector_t tau;
+  if (prog.solve()) {
+    actuator_commands_->torque =
+        prog.getSolution(var).tail(actuated_joints_name.size());
+    joint_acc_ = prog.getSolution()
+                     .head(pinocchioInterface_ptr_->nv())
+                     .tail(actuated_joints_name.size());
+  } else {
+    joint_acc_.setZero(actuated_joints_name.size());
+    std::cerr << "wbc failed ...\n";
+    actuator_commands_->torque =
+        pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+  }
   differential_inv_kin();
 
   return actuator_commands_;
@@ -227,24 +227,26 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     scalar_t t = nodeHandle_->now().seconds() + dt_;
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
-    auto base_twist =
-        pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+    auto base_twist = pinocchioInterface_ptr_->getFrame6dVel_local(base_name);
     vector_t rpy = toEulerAngles(base_pose.rotation());
-    vector3_t rpy_err = compute_euler_angle_err(rpy, rpy_traj->evaluate(t));
-    vector3_t omega_des =
-        getJacobiFromRPYToOmega(rpy) * rpy_traj->derivative(t, 1);
+    vector3_t omega_des = policy->state_des.tail(3);
+    vector3_t omega_dot_des = policy->state_dot_des.tail(3);
 
-    x0 << base_pose.translation() - pos_traj->evaluate(t),
-        base_twist.linear() - pos_traj->derivative(t, 1), rpy_err,
-        pinocchioInterface_ptr_->getData().Ig.inertia() *
-            (base_twist.angular() - omega_des);
-    acc_fb = policy->K * x0 + policy->b;
-    if (acc_fb.norm() > 20) {
-      acc_fb = 20.0 * acc_fb.normalized();
-    }
-    // to local coordinate
-    acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
-    acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
+    pin::SE3 pose_ref;
+    pose_ref.rotation() = toRotationMatrix(policy->state_des.segment(6, 3));
+    pose_ref.translation() = policy->state_des.head(3);
+    vector6_t _spatialVelRef, _spatialAccRef;
+    _spatialVelRef << base_pose.rotation().transpose() *
+                          policy->state_des.segment(3, 3),
+        base_pose.rotation().transpose() * omega_des;
+    _spatialAccRef << base_pose.rotation().transpose() *
+                          policy->state_dot_des.segment(3, 3),
+        base_pose.rotation().transpose() * omega_dot_des;
+
+    acc_fb = baseKp_ * log6(base_pose.actInv(pose_ref)).toVector() +
+             baseKd_ * (_spatialVelRef - base_twist.toVector()) +
+             _spatialAccRef;
+    // std::cout << "pose_ref: " << pose_ref << "\n";
 
   } else {
     acc_fb.setZero();
@@ -253,7 +255,6 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   base_task.b =
       acc_fb -
       pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
-  // std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
 
   base_task.A = weightBase_ * base_task.A;
   base_task.b = weightBase_ * base_task.b;
@@ -456,6 +457,19 @@ MatrixDB WholeBodyController::formulateContactForceTask() {
   for (size_t i = 0; i < nc; ++i) {
     contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);
   }
+
+  if (base_policy_.get().get() != nullptr) {
+    vector_t x0(12);
+    auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
+    auto base_twist =
+        pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+    vector3_t rpy = toEulerAngles(base_pose.rotation());
+    x0 << base_pose.translation(), base_twist.linear(), rpy,
+        base_twist.angular();
+    auto base_policy = base_policy_.get();
+    contact_force.b = base_policy->K * x0 + base_policy->b;
+  }
+
   contact_force.A = weightContactForce_ * contact_force.A;
   contact_force.b = weightContactForce_ * contact_force.b;
   return contact_force;
@@ -465,10 +479,10 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   // Load task file
   weightMomentum_.setZero(6, 6);
   weightBase_.setZero(6, 6);
-  weightBase_.diagonal().fill(1000);
+  weightBase_.diagonal().fill(100);
 
   weightSwingLeg_.setZero(3, 3);
-  weightSwingLeg_.diagonal().fill(100);
+  weightSwingLeg_.diagonal().fill(200);
 
   weightContactForce_ = 1e-9;
 
@@ -481,10 +495,10 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(60);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(200);
+  baseKp_.diagonal().fill(0);
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(30);
+  baseKd_.diagonal().fill(0);
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);

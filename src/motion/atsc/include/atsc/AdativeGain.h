@@ -18,6 +18,7 @@ public:
     vector_t b;
     vector_t force_des;
     vector_t state_des;
+    vector_t state_dot_des;
   };
 
 public:
