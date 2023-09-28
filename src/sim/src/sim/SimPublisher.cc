@@ -178,13 +178,13 @@ void SimPublisher::imu_callback() {
         } else if (sim_->m_->sensor_type[i] == mjtSensor::mjSENS_GYRO) {
           message.angular_velocity.x =
               sim_->d_->sensordata[sim_->m_->sensor_adr[i]] +
-              0.1 * mju_standardNormal(nullptr);
+              0.05 * mju_standardNormal(nullptr);
           message.angular_velocity.y =
               sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 1] +
-              0.1 * mju_standardNormal(nullptr);
+              0.05 * mju_standardNormal(nullptr);
           message.angular_velocity.z =
               sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 2] +
-              0.1 * mju_standardNormal(nullptr);
+              0.05 * mju_standardNormal(nullptr);
           gyro_flag = false;
         }
       }
@@ -262,7 +262,7 @@ void SimPublisher::joint_callback() {
               sim_->d_->qpos[sim_->m_->jnt_qposadr[i]]);
           jointState.velocity.push_back(
               sim_->d_->qvel[sim_->m_->jnt_dofadr[i]] +
-              0.3 * mju_standardNormal(nullptr));
+              0.1 * mju_standardNormal(nullptr));
           jointState.effort.push_back(
               sim_->d_->qfrc_actuator[sim_->m_->jnt_dofadr[i]]);
         }
