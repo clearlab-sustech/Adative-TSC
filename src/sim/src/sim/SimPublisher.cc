@@ -72,8 +72,8 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_drop_old_message},
       std::bind(&SimPublisher::drop_old_message, this)));
-  timers_.emplace_back(this->create_wall_timer(
-      4s, std::bind(&SimPublisher::add_external_disturbance, this)));
+  // timers_.emplace_back(this->create_wall_timer(
+  //     4s, std::bind(&SimPublisher::add_external_disturbance, this)));
 
   std::string actuators_cmds_topic =
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
@@ -178,13 +178,13 @@ void SimPublisher::imu_callback() {
         } else if (sim_->m_->sensor_type[i] == mjtSensor::mjSENS_GYRO) {
           message.angular_velocity.x =
               sim_->d_->sensordata[sim_->m_->sensor_adr[i]] +
-              0.1 * mju_standardNormal(nullptr);
+              0.05 * mju_standardNormal(nullptr);
           message.angular_velocity.y =
               sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 1] +
-              0.1 * mju_standardNormal(nullptr);
+              0.05 * mju_standardNormal(nullptr);
           message.angular_velocity.z =
               sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 2] +
-              0.1 * mju_standardNormal(nullptr);
+              0.05 * mju_standardNormal(nullptr);
           gyro_flag = false;
         }
       }
@@ -262,7 +262,7 @@ void SimPublisher::joint_callback() {
               sim_->d_->qpos[sim_->m_->jnt_qposadr[i]]);
           jointState.velocity.push_back(
               sim_->d_->qvel[sim_->m_->jnt_dofadr[i]] +
-              0.3 * mju_standardNormal(nullptr));
+              0.2 * mju_standardNormal(nullptr));
           jointState.effort.push_back(
               sim_->d_->qfrc_actuator[sim_->m_->jnt_dofadr[i]]);
         }
