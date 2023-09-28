@@ -72,9 +72,8 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_drop_old_message},
       std::bind(&SimPublisher::drop_old_message, this)));
-  /* timers_.emplace_back(this->create_wall_timer(
-      4s, std::bind(&SimPublisher::throw_box, this)));
- */
+  timers_.emplace_back(this->create_wall_timer(
+      4s, std::bind(&SimPublisher::add_external_disturbance, this)));
 
   std::string actuators_cmds_topic =
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
@@ -158,11 +157,14 @@ void SimPublisher::imu_callback() {
       for (int i = 0; i < sim_->m_->nsensor; i++) {
         if (sim_->m_->sensor_type[i] == mjtSensor::mjSENS_ACCELEROMETER) {
           message.linear_acceleration.x =
-              sim_->d_->sensordata[sim_->m_->sensor_adr[i]];
+              sim_->d_->sensordata[sim_->m_->sensor_adr[i]] +
+              0.3 * mju_standardNormal(nullptr);
           message.linear_acceleration.y =
-              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 1];
+              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 1] +
+              0.3 * mju_standardNormal(nullptr);
           message.linear_acceleration.z =
-              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 2];
+              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 2] +
+              0.3 * mju_standardNormal(nullptr);
           acc_flag = false;
         } else if (sim_->m_->sensor_type[i] == mjtSensor::mjSENS_FRAMEQUAT) {
           message.orientation.w = sim_->d_->sensordata[sim_->m_->sensor_adr[i]];
@@ -175,11 +177,14 @@ void SimPublisher::imu_callback() {
           quat_flag = false;
         } else if (sim_->m_->sensor_type[i] == mjtSensor::mjSENS_GYRO) {
           message.angular_velocity.x =
-              sim_->d_->sensordata[sim_->m_->sensor_adr[i]];
+              sim_->d_->sensordata[sim_->m_->sensor_adr[i]] +
+              0.1 * mju_standardNormal(nullptr);
           message.angular_velocity.y =
-              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 1];
+              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 1] +
+              0.1 * mju_standardNormal(nullptr);
           message.angular_velocity.z =
-              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 2];
+              sim_->d_->sensordata[sim_->m_->sensor_adr[i] + 2] +
+              0.1 * mju_standardNormal(nullptr);
           gyro_flag = false;
         }
       }
@@ -256,7 +261,8 @@ void SimPublisher::joint_callback() {
           jointState.position.push_back(
               sim_->d_->qpos[sim_->m_->jnt_qposadr[i]]);
           jointState.velocity.push_back(
-              sim_->d_->qvel[sim_->m_->jnt_dofadr[i]]);
+              sim_->d_->qvel[sim_->m_->jnt_dofadr[i]] +
+              0.3 * mju_standardNormal(nullptr));
           jointState.effort.push_back(
               sim_->d_->qfrc_actuator[sim_->m_->jnt_dofadr[i]]);
         }
@@ -305,63 +311,74 @@ void SimPublisher::drop_old_message() {
   }
 }
 
-void SimPublisher::throw_box() {
+bool added = false;
+void SimPublisher::add_external_disturbance() {
   const std::unique_lock<std::recursive_mutex> lock(sim_->mtx);
 
-  int nq = sim_->m_->nq - 1;
-  int nv = sim_->m_->nv - 1;
-  int nq_shift = 0;
-  int nv_shift = 0;
-
-  if (sim_->d_->time < 5.0) {
+  if (sim_->d_->time < 15.0) {
+    added = false;
     return;
+  } else if (added) {
+    return;
+  } else {
+    added = true;
+    sim_->d_->qvel[1] += 0.7;
   }
-  for (int i = 0; i < 4; i++) {
-    std::vector<mjtNum> pos;
-    std::vector<mjtNum> vel;
 
-    switch (i) {
-    case 0:
-      pos = {0.45, 0, 0.5};
-      vel = {0, 0, -1.5};
-      break;
+  // int nq = sim_->m_->nq - 1;
+  // int nv = sim_->m_->nv - 1;
+  // int nq_shift = 0;
+  // int nv_shift = 0;
 
-    case 1:
-      pos = {0.15, -0.5, 0.2};
-      vel = {0, 2.5, 0};
-      break;
+  // if (sim_->d_->time < 5.0) {
+  //   return;
+  // }
+  // for (int i = 0; i < 4; i++) {
+  //   std::vector<mjtNum> pos;
+  //   std::vector<mjtNum> vel;
 
-    case 2:
-      pos = {-0.15, 0.5, 0.2};
-      vel = {0, -2.5, 0};
-      break;
+  //   switch (i) {
+  //   case 0:
+  //     pos = {0.45, 0, 0.5};
+  //     vel = {0, 0, -1.5};
+  //     break;
 
-    case 3:
-      pos = {0.5, 0.5, 0.5};
-      vel = {-2.0, -2.0, -2.0};
-      break;
+  //   case 1:
+  //     pos = {0.15, -0.5, 0.2};
+  //     vel = {0, 2.5, 0};
+  //     break;
 
-    default:
-      break;
-    }
-    sim_->d_->qpos[nq - nq_shift] = 0;
-    sim_->d_->qpos[nq - 1 - nq_shift] = 0;
-    sim_->d_->qpos[nq - 2 - nq_shift] = 0;
-    sim_->d_->qpos[nq - 3 - nq_shift] = 1;
-    sim_->d_->qpos[nq - 4 - nq_shift] = sim_->d_->qpos[2] + pos[2];
-    sim_->d_->qpos[nq - 5 - nq_shift] = sim_->d_->qpos[1] + pos[1];
-    sim_->d_->qpos[nq - 6 - nq_shift] = sim_->d_->qpos[0] + pos[0];
+  //   case 2:
+  //     pos = {-0.15, 0.5, 0.2};
+  //     vel = {0, -2.5, 0};
+  //     break;
 
-    sim_->d_->qvel[nv - nv_shift] = 0;
-    sim_->d_->qvel[nv - 1 - nv_shift] = 0;
-    sim_->d_->qvel[nv - 2 - nv_shift] = 0;
-    sim_->d_->qvel[nv - 3 - nv_shift] = sim_->d_->qvel[2] + vel[2];
-    sim_->d_->qvel[nv - 4 - nv_shift] = sim_->d_->qvel[1] + vel[1];
-    sim_->d_->qvel[nv - 5 - nv_shift] = sim_->d_->qvel[0] + vel[0];
+  //   case 3:
+  //     pos = {0.5, 0.5, 0.5};
+  //     vel = {-2.0, -2.0, -2.0};
+  //     break;
 
-    nq_shift += 7;
-    nv_shift += 6;
-  }
+  //   default:
+  //     break;
+  //   }
+  //   sim_->d_->qpos[nq - nq_shift] = 0;
+  //   sim_->d_->qpos[nq - 1 - nq_shift] = 0;
+  //   sim_->d_->qpos[nq - 2 - nq_shift] = 0;
+  //   sim_->d_->qpos[nq - 3 - nq_shift] = 1;
+  //   sim_->d_->qpos[nq - 4 - nq_shift] = sim_->d_->qpos[2] + pos[2];
+  //   sim_->d_->qpos[nq - 5 - nq_shift] = sim_->d_->qpos[1] + pos[1];
+  //   sim_->d_->qpos[nq - 6 - nq_shift] = sim_->d_->qpos[0] + pos[0];
+
+  //   sim_->d_->qvel[nv - nv_shift] = 0;
+  //   sim_->d_->qvel[nv - 1 - nv_shift] = 0;
+  //   sim_->d_->qvel[nv - 2 - nv_shift] = 0;
+  //   sim_->d_->qvel[nv - 3 - nv_shift] = sim_->d_->qvel[2] + vel[2];
+  //   sim_->d_->qvel[nv - 4 - nv_shift] = sim_->d_->qvel[1] + vel[1];
+  //   sim_->d_->qvel[nv - 5 - nv_shift] = sim_->d_->qvel[0] + vel[0];
+
+  //   nq_shift += 7;
+  //   nv_shift += 6;
+  // }
 }
 
 std::shared_ptr<ActuatorCmdsBuffer> SimPublisher::get_cmds_buffer() {

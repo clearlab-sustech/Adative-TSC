@@ -63,7 +63,7 @@ private:
 
   void drop_old_message();
 
-  void throw_box();
+  void add_external_disturbance();
 
   mj::Simulate *sim_;
   std::vector<rclcpp::TimerBase::SharedPtr> timers_;
