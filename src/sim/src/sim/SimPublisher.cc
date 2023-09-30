@@ -73,7 +73,7 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_drop_old_message},
       std::bind(&SimPublisher::drop_old_message, this)));
   timers_.emplace_back(this->create_wall_timer(
-      4s, std::bind(&SimPublisher::add_external_disturbance, this)));
+      1ms, std::bind(&SimPublisher::add_external_disturbance, this)));
 
   std::string actuators_cmds_topic =
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
@@ -314,7 +314,8 @@ void SimPublisher::drop_old_message() {
 bool added = false;
 void SimPublisher::add_external_disturbance() {
   const std::unique_lock<std::recursive_mutex> lock(sim_->mtx);
-
+  if (sim_->d_ == nullptr)
+    return;
   if (sim_->d_->time < 15.0) {
     added = false;
     return;
