@@ -8,6 +8,7 @@
 #include <core/misc/Buffer.h>
 #include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
+#include <fstream>
 
 using namespace rclcpp;
 
@@ -36,6 +37,8 @@ class WholeBodyController {
 public:
   WholeBodyController(Node::SharedPtr nodeHandle,
                       const std::string config_yaml);
+
+  ~WholeBodyController();
 
   void loadTasksSetting(bool verbose = true);
 
@@ -102,5 +105,7 @@ private:
   scalar_t dt_ = 0.002;
   vector_t joint_acc_;
   std::shared_ptr<ActuatorCommands> actuator_commands_;
+
+  std::fstream save_acc;
 };
 } // namespace clear

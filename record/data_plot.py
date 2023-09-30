@@ -64,30 +64,30 @@ class DataPlot:
         self.data1 = np.loadtxt(self.file1)
         self.data2 = np.loadtxt(self.file2)
         
-        time = self.data1[:,0] - self.data1[0,0]
+        time = np.linspace(0, (len(self.data1) - 1) * 0.001, len(self.data1))
         data1 = self.data1[:,1::]
         data2 = self.data2[:,1::]
 
         ax1_1 = plt.subplot(3, 1, 1)
         ax1_1.set_title('abad')
-        ax1_1.plot(time, data1[:, 1], lw='1', label="abad_wbc")
-        ax1_1.plot(time, data2[:, 1], lw='1', label="abad_atsc")
+        ax1_1.plot(time, data1[:, 0], lw='1', label="abad_wbc")
+        ax1_1.plot(time + 0.035, data2[:, 0], lw='1', label="abad_atsc")
         plt.autoscale(enable='true', axis='y')
         plt.legend()
         plt.grid()
 
         ax1_1 = plt.subplot(3, 1, 2)
         ax1_1.set_title('hip')
-        ax1_1.plot(time, data1[:, 2], lw='1', label="hip_wbc")
-        ax1_1.plot(time, data2[:, 2], lw='1', label="hip_atsc")
+        ax1_1.plot(time, data1[:, 1], lw='1', label="hip_wbc")
+        ax1_1.plot(time + 0.035, data2[:, 1], lw='1', label="hip_atsc")
         plt.autoscale(enable='true', axis='y')
         plt.legend()
         plt.grid()
 
         ax1_1 = plt.subplot(3, 1, 3)
         ax1_1.set_title('knee')
-        ax1_1.plot(time, data1[:, 3], lw='1', label="knee_wbc")
-        ax1_1.plot(time, data2[:, 3], lw='1', label="knee_atsc")
+        ax1_1.plot(time, data1[:, 2], lw='1', label="knee_wbc")
+        ax1_1.plot(time  + 0.035, data2[:, 2], lw='1', label="knee_atsc")
         plt.autoscale(enable='true', axis='y')
         plt.legend()
         plt.grid()
