@@ -34,6 +34,24 @@ model:
       "RR_thigh_joint",
       "RR_calf_joint",
     ]
+  default:
+    joint_pos:
+      [
+        0.190553,
+        0.688524,
+        -1.42573,
+        -0.190553,
+        0.688524,
+        -1.42573,
+        0.190553,
+        0.688524,
+        -1.42573,
+        -0.190553,
+        0.688524,
+        -1.42573,
+      ]
+    base_pos: [0, 0, 0.38]
+    base_quat: [1, 0, 0, 0]
 
 gait:
   list: ["stance", "trot", "static_walk"]
@@ -45,7 +63,7 @@ gait:
   trot:
     modeSequence: ["LF_RH", "RF_LH"]
     switchingTimes: [0.0, 0.3, 0.6]
-  
+
   static_walk:
     modeSequence: ["LF_RF_RH", "RF_LH_RH", "LF_RF_LH", "LF_LH_RH"]
     switchingTimes: [0.0, 0.4, 0.8, 1.2, 1.6]
