@@ -92,9 +92,64 @@ class DataPlot:
         plt.legend()
         plt.grid()
 
+    def base_acc(self):
+        data1 = np.loadtxt(self.file1)
+        data2 = np.loadtxt(self.file2)
+        
+        n = min(len(data1), len(data2))
+        time = np.linspace(0, (n - 1) * 0.001, n)
+
+        ax1_1 = plt.subplot(3, 2, 1)
+        ax1_1.set_title('acc x')
+        ax1_1.plot(time, data1[:n, 0], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 0], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 2, 3)
+        ax1_1.set_title('acc y')
+        ax1_1.plot(time, data1[:n, 1], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 1], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 2, 5)
+        ax1_1.set_title('acc z')
+        ax1_1.plot(time, data1[:n, 2], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 2], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 2, 2)
+        ax1_1.set_title('ang acc x')
+        ax1_1.plot(time, data1[:n, 3], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 3], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 2, 4)
+        ax1_1.set_title('ang acc y')
+        ax1_1.plot(time, data1[:n, 4], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 4], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 2, 6)
+        ax1_1.set_title('ang acc z')
+        ax1_1.plot(time, data1[:n, 5], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 5], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
 
 if __name__ == "__main__":
-    d = DataPlot('./actuator_cmds_log_wbc.txt', './actuator_cmds_log_atsc.txt')
-    d.actuators_cmds()
+    # d = DataPlot('./actuator_cmds_log_wbc.txt', './actuator_cmds_log_atsc.txt')
+    d = DataPlot('./acc_log_wbc.txt', './acc_log_atsc.txt')
+    d.base_acc()
     plt.show()
 
