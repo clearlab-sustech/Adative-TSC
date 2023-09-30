@@ -8,99 +8,108 @@
 #include <core/misc/Buffer.h>
 #include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
+#include <fstream>
 
 using namespace rclcpp;
 
-namespace clear {
+namespace clear
+{
 
-using namespace quadruped;
+  using namespace quadruped;
 
-struct ActuatorCommands {
-  vector_t Kp;
-  vector_t Kd;
-  vector_t pos;
-  vector_t vel;
-  vector_t torque;
+  struct ActuatorCommands
+  {
+    vector_t Kp;
+    vector_t Kd;
+    vector_t pos;
+    vector_t vel;
+    vector_t torque;
 
-  void setZero(size_t n) {
-    Kp.setZero(n);
-    Kd.setZero(n);
-    pos.setZero(n);
-    vel.setZero(n);
-    torque.setZero(n);
-  }
-};
+    void setZero(size_t n)
+    {
+      Kp.setZero(n);
+      Kd.setZero(n);
+      pos.setZero(n);
+      vel.setZero(n);
+      torque.setZero(n);
+    }
+  };
 
-// Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
-class WholeBodyController {
-public:
-  WholeBodyController(Node::SharedPtr nodeHandle,
-                      const std::string config_yaml);
+  // Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
+  class WholeBodyController
+  {
+  public:
+    WholeBodyController(Node::SharedPtr nodeHandle,
+                        const std::string config_yaml);
 
-  void loadTasksSetting(bool verbose = true);
+    ~WholeBodyController();
 
-  void update_trajectory_reference(
-      std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr);
+    void loadTasksSetting(bool verbose = true);
 
-  void update_mode(size_t mode);
+    void update_trajectory_reference(
+        std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr);
 
-  void update_state(const std::shared_ptr<vector_t> qpos_ptr,
-                    const std::shared_ptr<vector_t> qvel_ptr);
+    void update_mode(size_t mode);
 
-  void
-  update_base_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
+    void update_state(const std::shared_ptr<vector_t> qpos_ptr,
+                      const std::shared_ptr<vector_t> qvel_ptr);
 
-  void
-  update_swing_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
+    void
+    update_base_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
 
-  std::shared_ptr<ActuatorCommands> optimize();
+    void
+    update_swing_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
 
-private:
-  void formulate();
+    std::shared_ptr<ActuatorCommands> optimize();
 
-  void updateContactJacobi();
+  private:
+    void formulate();
 
-  size_t getNumDecisionVars() const { return numDecisionVars_; }
+    void updateContactJacobi();
 
-  MatrixDB formulateFloatingBaseEulerNewtonEqu();
-  MatrixDB formulateTorqueLimitsTask();
-  MatrixDB formulateMaintainContactTask();
-  MatrixDB formulateFrictionConeTask();
-  MatrixDB formulateBaseTask();
-  MatrixDB formulateSwingLegTask();
-  MatrixDB formulateContactForceTask();
+    size_t getNumDecisionVars() const { return numDecisionVars_; }
 
-  vector3_t compute_euler_angle_err(const vector3_t &rpy_m,
-                                    const vector3_t &rpy_d);
+    MatrixDB formulateFloatingBaseEulerNewtonEqu();
+    MatrixDB formulateTorqueLimitsTask();
+    MatrixDB formulateMaintainContactTask();
+    MatrixDB formulateFrictionConeTask();
+    MatrixDB formulateBaseTask();
+    MatrixDB formulateSwingLegTask();
+    MatrixDB formulateContactForceTask();
 
-  void differential_inv_kin();
+    vector3_t compute_euler_angle_err(const vector3_t &rpy_m,
+                                      const vector3_t &rpy_d);
 
-private:
-  Node::SharedPtr nodeHandle_;
-  Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajBuffer_;
-  Buffer<size_t> mode_;
-  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> base_policy_;
-  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> swing_policy_;
+    void differential_inv_kin();
 
-  size_t numDecisionVars_;
-  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
+  private:
+    Node::SharedPtr nodeHandle_;
+    Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajBuffer_;
+    Buffer<size_t> mode_;
+    Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> base_policy_;
+    Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> swing_policy_;
 
-  std::string base_name, robot_name;
-  std::vector<std::string> foot_names, actuated_joints_name;
+    size_t numDecisionVars_;
+    std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
 
-  matrix_t Jc;
-  contact_flag_t contactFlag_{};
-  size_t numContacts_{};
+    std::string base_name, robot_name;
+    std::vector<std::string> foot_names, actuated_joints_name;
 
-  // Task Parameters:
-  matrix_t weightSwingLeg_, weightBase_, weightMomentum_;
-  scalar_t weightContactForce_;
-  matrix_t swingKp_, swingKd_, baseKp_, baseKd_, momentumKp_, momentumKd_;
-  scalar_t frictionCoeff_{};
+    matrix_t Jc;
+    contact_flag_t contactFlag_{};
+    size_t numContacts_{};
 
-  MatrixDB weighedTask, constraints;
-  scalar_t dt_ = 0.002;
-  vector_t joint_acc_;
-  std::shared_ptr<ActuatorCommands> actuator_commands_;
-};
+    // Task Parameters:
+    matrix_t weightSwingLeg_, weightBase_, weightMomentum_;
+    scalar_t weightContactForce_;
+    matrix_t swingKp_, swingKd_, baseKp_, baseKd_, momentumKp_, momentumKd_;
+    scalar_t frictionCoeff_{};
+
+    MatrixDB weighedTask, constraints;
+    scalar_t dt_ = 0.002;
+    vector_t joint_acc_;
+    std::shared_ptr<ActuatorCommands> actuator_commands_;
+
+    std::fstream save_acc;
+  };
 } // namespace clear
