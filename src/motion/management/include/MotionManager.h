@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DataVisualization.h"
+#include "Initialization.h"
 #include <atsc/AtscImpl.h>
 #include <estimation/StateEstimationLKF.h>
 #include <gait/GaitSchedule.h>
@@ -30,6 +31,7 @@ private:
   std::shared_ptr<TrajectorGeneration> trajGenPtr_;
   std::shared_ptr<AtscImpl> atscImplPtr_;
   std::shared_ptr<DataVisualization> visPtr_;
+  std::shared_ptr<Initialization> intializationPtr_;
 
   std::thread inner_loop_thread_;
   Buffer<bool> run_;
