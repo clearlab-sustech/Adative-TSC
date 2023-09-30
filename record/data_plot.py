@@ -12,16 +12,15 @@ import numpy as np
 #  15-17 : angular_des
 
 class DataPlot:
-    def __init__(self, file):
-        self.file = file
-        self.data = np.loadtxt(self.file)
+    def __init__(self, file1, file2):
+        self.file1 = file1
+        self.file2 = file2
+        self.fig = plt.figure()
+
+    def base_pose(self):
+        self.data = np.loadtxt(self.file1)
         self.time = np.linspace(0, (len(self.data) - 1) * 0.02, len(self.data))
-        self.fig = plt.figure(file)
-
-    def main(self):
-        self.data_plot()
-
-    def data_plot(self):
+    
         time = self.time
         data = self.data
 
@@ -60,10 +59,42 @@ class DataPlot:
         plt.autoscale(enable='true', axis='y')
         plt.legend()
         plt.grid()
+    
+    def actuators_cmds(self):
+        self.data1 = np.loadtxt(self.file1)
+        self.data2 = np.loadtxt(self.file2)
+        
+        time = self.data1[:,0] - self.data1[0,0]
+        data1 = self.data1[:,1::]
+        data2 = self.data2[:,1::]
+
+        ax1_1 = plt.subplot(3, 1, 1)
+        ax1_1.set_title('abad')
+        ax1_1.plot(time, data1[:, 1], lw='1', label="abad_wbc")
+        ax1_1.plot(time, data2[:, 1], lw='1', label="abad_atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 1, 2)
+        ax1_1.set_title('hip')
+        ax1_1.plot(time, data1[:, 2], lw='1', label="hip_wbc")
+        ax1_1.plot(time, data2[:, 2], lw='1', label="hip_atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 1, 3)
+        ax1_1.set_title('knee')
+        ax1_1.plot(time, data1[:, 3], lw='1', label="knee_wbc")
+        ax1_1.plot(time, data2[:, 3], lw='1', label="knee_atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
 
 
 if __name__ == "__main__":
-    d = DataPlot('./data_log_atsc_Sept28.txt')
-    d.main()
+    d = DataPlot('./actuator_cmds_log_wbc.txt', './actuator_cmds_log_atsc.txt')
+    d.actuators_cmds()
     plt.show()
 
