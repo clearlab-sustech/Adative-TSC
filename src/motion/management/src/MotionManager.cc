@@ -18,6 +18,9 @@ void MotionManager::init() {
   intializationPtr_ =
       std::make_shared<Initialization>(this->shared_from_this(), config_yaml_);
 
+  intializationPtr_->reset_simulation();
+  rclcpp::spin_some(this->shared_from_this());
+
   estimatorPtr_ = std::make_shared<StateEstimationLKF>(this->shared_from_this(),
                                                        config_yaml_);
   gaitSchedulePtr_ =
@@ -29,9 +32,6 @@ void MotionManager::init() {
 
   visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this(),
                                                 config_yaml_);
-
-  intializationPtr_->reset_simulation();
-  rclcpp::spin_some(this->shared_from_this());
 
   inner_loop_thread_ = std::thread(&MotionManager::inner_loop, this);
   run_.push(true);
