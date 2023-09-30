@@ -20,6 +20,7 @@
   <depend>ament_index_cpp</depend>
   <depend>asserts</depend>
   <depend>pinocchio_interface</depend>
+  <depend>hpipm_interface_ament</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

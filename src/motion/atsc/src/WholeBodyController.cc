@@ -238,10 +238,10 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     _spatialVelRef << base_pose.rotation().transpose() *
                           policy->state_des.segment(3, 3),
         base_pose.rotation().transpose() * omega_des;
-    // _spatialAccRef << base_pose.rotation().transpose() *
-    //                       policy->state_dot_des.segment(3, 3),
-    //     base_pose.rotation().transpose() * omega_dot_des;
-    _spatialAccRef.setZero();
+    _spatialAccRef << base_pose.rotation().transpose() *
+                          policy->state_dot_des.segment(3, 3),
+        base_pose.rotation().transpose() * omega_dot_des;
+    // _spatialAccRef.setZero();
 
     acc_fb = baseKp_ * log6(base_pose.actInv(pose_ref)).toVector() +
              baseKd_ * (_spatialVelRef - base_twist.toVector()) +
@@ -495,10 +495,10 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(60);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(30);
+  baseKp_.diagonal().fill(200);
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(2);
+  baseKd_.diagonal().fill(20);
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);
