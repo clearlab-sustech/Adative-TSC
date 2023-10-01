@@ -147,11 +147,43 @@ class DataPlot:
         plt.legend()
         plt.grid()
 
+    def push(self):
+        data1 = np.loadtxt(self.file1)
+        data2 = np.loadtxt(self.file2)
+        n = min(len(data1), len(data2))
+
+        time = np.linspace(0, (n - 1) * 0.02, n)
+    
+        ax1_1 = plt.subplot(3, 1, 1)
+        ax1_1.set_title('ang_vel_x')
+        ax1_1.plot(time, data1[:n, 6], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 6], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 1, 2)
+        ax1_1.set_title('ang_vel_y')
+        ax1_1.plot(time, data1[:n, 7], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 7], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
+        ax1_1 = plt.subplot(3, 1, 3)
+        ax1_1.set_title('ang_vel_z')
+        ax1_1.plot(time, data1[:n, 8], lw='1', label="wbc")
+        ax1_1.plot(time, data2[:n, 8], lw='1', label="atsc")
+        plt.autoscale(enable='true', axis='y')
+        plt.legend()
+        plt.grid()
+
 if __name__ == "__main__":
     # d = DataPlot('./actuator_cmds_log_wbc.txt', './actuator_cmds_log_atsc.txt')
     # d = DataPlot('./wbc/acc_log.txt', './atsc/acc_log.txt')
-    d = DataPlot('./wbc/push/acc_log.txt', './atsc/push/acc_log.txt')
+    # d = DataPlot('./wbc/push/acc_log.txt', './atsc/push/acc_log.txt')
+    d = DataPlot('./wbc/push/data_log.txt', './atsc/push/data_log.txt')
 
-    d.base_acc()
+    d.push()
     plt.show()
 

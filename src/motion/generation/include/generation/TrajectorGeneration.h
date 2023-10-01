@@ -56,6 +56,7 @@ private:
   Buffer<bool> run_;
   scalar_t freq_;
   std::string base_name;
+  std::vector<std::string> foot_names;
 
   std::map<std::string, std::pair<scalar_t, vector3_t>> footholds;
   std::map<std::string, std::pair<scalar_t, vector3_t>> xf_start_;

@@ -80,6 +80,10 @@ private:
   std::shared_ptr<ActuatorCmdsBuffer> actuator_cmds_buffer_;
 
   std::thread spin_thread;
+
+  const mjtNum noise_acc = 0.0;
+  const mjtNum noise_gyro = 0.0;
+  const mjtNum noise_joint_vel = 0.0;
 };
 
 } // namespace clear
