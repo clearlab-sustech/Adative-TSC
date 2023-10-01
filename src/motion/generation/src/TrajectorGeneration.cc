@@ -19,8 +19,7 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
   RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
-  auto foot_names =
-      config_["model"]["foot_names"].as<std::vector<std::string>>();
+  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
 
   pinocchioInterface_ptr_->setContactPoints(foot_names);
   base_name = config_["model"]["base_name"].as<std::string>();
@@ -137,6 +136,13 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
   std::vector<vector_t> rpy_t, pos_t;
   scalar_t horizon_time = mode_schedule_buffer.get()->duration();
   if (vel_cmd.norm() < 0.05) {
+    vector3_t foot_center = vector3_t::Zero();
+    for (size_t k = 0; k < foot_names.size(); k++) {
+      foot_center +=
+          pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
+    }
+    foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
+
     scalar_t zd = 0.38;
     scalar_t mod_z = 0.0;
     time.emplace_back(t_now);
@@ -145,11 +151,14 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
     rpy_t.emplace_back(vector3_t(0, 0, 0));
     rpy_t.emplace_back(vector3_t(0, 0, 0));
     rpy_t.emplace_back(vector3_t(0, 0, 0));
-    pos_t.emplace_back(vector3_t(0, 0, zd - mod_z * (0.05 * sin(6 * t_now))));
-    pos_t.emplace_back(vector3_t(
-        0, 0, zd - mod_z * (0.05 * sin(6 * (t_now + 0.5 * horizon_time)))));
+    pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(),
+                                 zd - mod_z * (0.05 * sin(6 * t_now))));
     pos_t.emplace_back(
-        vector3_t(0, 0, zd - mod_z * (0.05 * sin(6 * (t_now + horizon_time)))));
+        vector3_t(foot_center.x(), foot_center.y(),
+                  zd - mod_z * (0.05 * sin(6 * (t_now + 0.5 * horizon_time)))));
+    pos_t.emplace_back(
+        vector3_t(foot_center.x(), foot_center.y(),
+                  zd - mod_z * (0.05 * sin(6 * (t_now + horizon_time)))));
   } else {
     size_t N = horizon_time / 0.05;
     vector3_t vel_des;
@@ -261,6 +270,11 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
           xf_end_[foot_name].first - mode_schedule.get()->duration();
       xf_start_[foot_name].second = pos;
     }
+
+    auto base_pos =
+        pinocchioInterface_ptr_->getFramePose(base_name).translation();
+    xf_start_[foot_name].second.z() = std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_end_[foot_name].second.z() = std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
 
     std::vector<scalar_t> time;
     std::vector<vector_t> pos_t;

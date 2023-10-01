@@ -18,6 +18,9 @@ void MotionManager::init() {
   intializationPtr_ =
       std::make_shared<Initialization>(this->shared_from_this(), config_yaml_);
 
+  intializationPtr_->reset_simulation();
+  rclcpp::spin_some(this->shared_from_this());
+
   estimatorPtr_ = std::make_shared<StateEstimationLKF>(this->shared_from_this(),
                                                        config_yaml_);
   gaitSchedulePtr_ =
@@ -30,9 +33,6 @@ void MotionManager::init() {
   visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this(),
                                                 config_yaml_);
 
-  intializationPtr_->reset_simulation();
-  rclcpp::spin_some(this->shared_from_this());
-
   inner_loop_thread_ = std::thread(&MotionManager::inner_loop, this);
   run_.push(true);
 }
@@ -44,7 +44,7 @@ void MotionManager::inner_loop() {
   const scalar_t ts = this->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (this->now().seconds() > ts + 4.0) {
-      gaitSchedulePtr_->switch_gait("trot");
+      gaitSchedulePtr_->switch_gait("pawup");
     }
 
     if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
