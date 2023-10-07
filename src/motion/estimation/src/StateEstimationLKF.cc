@@ -134,8 +134,8 @@ void StateEstimationLKF::linearMotionEstimate(
   vector3_t g(0, 0, -9.81);
   w_acc = w_acc + g;
 
-  scalar_t noise_pimu = 0.01;
-  scalar_t noise_vimu = 0.01;
+  scalar_t noise_pimu = 0.3;
+  scalar_t noise_vimu = 0.3;
   scalar_t noise_pfoot = 0.01;
   scalar_t noise_pimu_rel_foot = 0.001;
   scalar_t noise_vimu_rel_foot = 0.2;
