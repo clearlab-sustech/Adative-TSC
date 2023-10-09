@@ -48,7 +48,7 @@ void MotionManager::inner_loop() {
     }
 
     if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.15, 0.0), 0.0);
+      trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
     }
 
     scalar_t horizon_time_ =

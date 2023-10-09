@@ -227,19 +227,21 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 
   if (policy.get() != nullptr && pos_traj.get() != nullptr &&
       rpy_traj.get() != nullptr) {
+    const scalar_t time_now_ = nodeHandle_->now().seconds();
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
     auto base_twist = pinocchioInterface_ptr_->getFrame6dVel_local(base_name);
     vector_t rpy = toEulerAngles(base_pose.rotation());
-    vector3_t omega_des = policy->state_des.tail(3);
+    vector3_t omega_des =
+        getJacobiFromRPYToOmega(rpy) * rpy_traj->derivative(time_now_, 1);
     vector3_t omega_dot_des = policy->state_dot_des.tail(3);
 
     pin::SE3 pose_ref;
-    pose_ref.rotation() = toRotationMatrix(policy->state_des.segment(6, 3));
-    pose_ref.translation() = policy->state_des.head(3);
+    pose_ref.rotation() = toRotationMatrix(rpy_traj->evaluate(time_now_));
+    pose_ref.translation() = pos_traj->evaluate(time_now_);
     vector6_t _spatialVelRef, _spatialAccRef;
     _spatialVelRef << base_pose.rotation().transpose() *
-                          policy->state_des.segment(3, 3),
+                          pos_traj->derivative(time_now_, 1),
         base_pose.rotation().transpose() * omega_des;
     _spatialAccRef << base_pose.rotation().transpose() *
                           policy->state_dot_des.segment(3, 3),
