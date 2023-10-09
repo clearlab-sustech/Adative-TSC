@@ -106,6 +106,6 @@ private:
   vector_t joint_acc_;
   std::shared_ptr<ActuatorCommands> actuator_commands_;
 
-  std::fstream save_acc;
+  std::fstream log_stream;
 };
 } // namespace clear
