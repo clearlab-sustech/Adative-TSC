@@ -50,7 +50,7 @@ class DataPlot:
 
 
         ax1_1 = plt.subplot(3, 2, 2)
-        ax1_1.set_title('roll')
+        ax1_1.set_title('roll vel')
         ax1_1.plot(time, data1[:n, 3], lw='1', label="wbc")
         ax1_1.plot(time, data2[:n, 3], lw='1', label="atsc")
         plt.autoscale(enable='true', axis='y')
@@ -81,7 +81,7 @@ class DataPlot:
         time = np.linspace(0, (n - 1) * 0.001, n)
 
         ax1_1 = plt.subplot(3, 2, 1)
-        ax1_1.set_title('pos x')
+        ax1_1.set_title('vel x')
         ax1_1.plot(time, data1[:n, 6], lw='1', label="wbc")
         ax1_1.plot(time, data2[:n, 6], lw='1', label="atsc")
         plt.autoscale(enable='true', axis='y')
@@ -89,7 +89,7 @@ class DataPlot:
         plt.grid()
 
         ax1_1 = plt.subplot(3, 2, 3)
-        ax1_1.set_title('pos y')
+        ax1_1.set_title('vel y')
         ax1_1.plot(time, data1[:n, 7], lw='1', label="wbc")
         ax1_1.plot(time, data2[:n, 7], lw='1', label="atsc")
         plt.autoscale(enable='true', axis='y')
@@ -97,7 +97,7 @@ class DataPlot:
         plt.grid()
 
         ax1_1 = plt.subplot(3, 2, 5)
-        ax1_1.set_title('pos z')
+        ax1_1.set_title('vel z')
         ax1_1.plot(time, data1[:n, 8], lw='1', label="wbc")
         ax1_1.plot(time, data2[:n, 8], lw='1', label="atsc")
         plt.autoscale(enable='true', axis='y')
@@ -106,7 +106,7 @@ class DataPlot:
 
 
         ax1_1 = plt.subplot(3, 2, 2)
-        ax1_1.set_title('roll')
+        ax1_1.set_title('roll vel')
         ax1_1.plot(time, data1[:n, 9], lw='1', label="wbc")
         ax1_1.plot(time, data2[:n, 9], lw='1', label="atsc")
         plt.autoscale(enable='true', axis='y')
@@ -114,7 +114,7 @@ class DataPlot:
         plt.grid()
 
         ax1_1 = plt.subplot(3, 2, 4)
-        ax1_1.set_title('pitch')
+        ax1_1.set_title('pitch vel')
         ax1_1.plot(time, data1[:n, 10], lw='1', label="wbc")
         ax1_1.plot(time, data2[:n, 10], lw='1', label="atsc")
         plt.autoscale(enable='true', axis='y')
@@ -122,7 +122,7 @@ class DataPlot:
         plt.grid()
 
         ax1_1 = plt.subplot(3, 2, 6)
-        ax1_1.set_title('yaw')
+        ax1_1.set_title('yaw vel')
         ax1_1.plot(time, data1[:n, 11], lw='1', label="wbc")
         ax1_1.plot(time, data2[:n, 11], lw='1', label="atsc")
         plt.autoscale(enable='true', axis='y')
