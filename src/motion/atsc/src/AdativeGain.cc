@@ -17,7 +17,7 @@ AdaptiveGain::AdaptiveGain(
 
   // weight_.diagonal() << 40, 40, 50, 3.0, 3.0, 3.0, 30, 30, 50, 4.0, 4.0, 4.0;
   // weight_ = 20.0 * weight_;
-  
+
   solver_settings.mode = hpipm::HpipmMode::Speed;
   solver_settings.iter_max = 50;
   solver_settings.alpha_min = 1e-8;
@@ -132,7 +132,7 @@ void AdaptiveGain::add_state_input_constraints(size_t k, size_t N) {
 
 void AdaptiveGain::add_cost(size_t k, size_t N) {
   const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
-  const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
+  const scalar_t time_k = time_now_ + k * dt_;
   auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
 
   ocp_[k].Q = weight_;
@@ -177,6 +177,7 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
       refTrajBuffer_.get()->get_foot_pos_traj().empty()) {
     return feedback_law_ptr;
   }
+  time_now_ = nodeHandle_->now().seconds();
 
   size_t N = pos_traj->duration() / dt_;
   ocp_.resize(N + 1);
@@ -196,18 +197,17 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
   }
   hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
 
-  scalar_t time_c = nodeHandle_->now().seconds();
   vector_t x0(12);
   auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
   auto base_twist =
       pinocchioInterfacePtr_->getFrame6dVel_localWorldAligned(base_name_);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
-  vector3_t rpy_des = rpy_traj->evaluate(time_c);
-  vector3_t rpy_dot_des = rpy_traj->derivative(time_c, 1);
+  vector3_t rpy_des = rpy_traj->evaluate(time_now_);
+  vector3_t rpy_dot_des = rpy_traj->derivative(time_now_, 1);
   auto rpy_err = compute_euler_angle_err(rpy, rpy_des);
 
-  x0 << base_pose.translation() - pos_traj->evaluate(time_c),
-      base_twist.linear() - pos_traj->derivative(time_c, 1), rpy_err,
+  x0 << base_pose.translation() - pos_traj->evaluate(time_now_),
+      base_twist.linear() - pos_traj->derivative(time_now_, 1), rpy_err,
       Ig_ * base_twist.angular() -
           Ig_ * getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
   const auto res = solver.solve(x0, ocp_, solution_);
@@ -229,6 +229,35 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
     feedback_law_ptr->b.tail(3) -= Ig_.inverse() *
                                    skew(base_twist.angular() - omega_des) *
                                    Ig_ * (base_twist.angular() - omega_des);
+
+    std::vector<scalar_t> time_array;
+    std::vector<vector_t> base_pos_array;
+    std::vector<vector_t> base_rpy_array;
+
+    for (size_t k = 0; k <= N; k++) {
+      time_array.emplace_back(time_now_ + k * dt_);
+      base_pos_array.emplace_back(solution_[k].x.head(3));
+      base_rpy_array.emplace_back(solution_[k].x.segment(6, 3));
+    }
+    auto base_pos_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
+        3, CubicSplineInterpolation::SplineType::cspline);
+    base_pos_traj_ptr_->set_boundary(
+        CubicSplineInterpolation::BoundaryType::first_deriv,
+        solution_[1].x.segment(3, 3),
+        CubicSplineInterpolation::BoundaryType::first_deriv,
+        solution_.back().x.segment(3, 3));
+    base_pos_traj_ptr_->fit(time_array, base_pos_array);
+
+    auto base_rpy_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
+        3, CubicSplineInterpolation::SplineType::cspline_hermite);
+    base_rpy_traj_ptr_->set_boundary(
+        CubicSplineInterpolation::BoundaryType::first_deriv,
+        Ig_.inverse() * solution_[1].x.tail(3),
+        CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+    base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
+
+    refTrajBuffer_.get()->set_optimized_base_pos_traj(base_pos_traj_ptr_);
+    refTrajBuffer_.get()->set_optimized_base_rpy_traj(base_rpy_traj_ptr_);
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */

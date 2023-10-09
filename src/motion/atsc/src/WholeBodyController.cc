@@ -225,6 +225,9 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
   auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
 
+  auto err_pos_traj = refTrajBuffer_.get()->get_optimized_base_pos_traj();
+  auto err_rpy_traj = refTrajBuffer_.get()->get_optimized_base_rpy_traj();
+
   if (policy.get() != nullptr && pos_traj.get() != nullptr &&
       rpy_traj.get() != nullptr) {
     scalar_t t = nodeHandle_->now().seconds() + dt_;
@@ -248,7 +251,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
-    log_stream << -x0.head(3).transpose() << " " << -rpy_err.transpose() << " "
+    log_stream << (err_pos_traj->evaluate(t) - x0.head(3)).transpose() << " "
+               << (err_rpy_traj->evaluate(t) - rpy_err).transpose() << " "
                << -x0.segment(3, 3).transpose() << " "
                << (omega_des - base_twist.angular()).transpose() << " "
                << acc_fb.transpose() << "\n";

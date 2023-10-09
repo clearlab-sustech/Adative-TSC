@@ -56,6 +56,7 @@ private:
   matrix3_t Ig_;
   const scalar_t mu_ = 0.5;
   matrix_t weight_;
+  scalar_t time_now_;
 
   std::vector<hpipm::OcpQp> ocp_;
   std::vector<hpipm::OcpQpSolution> solution_;
