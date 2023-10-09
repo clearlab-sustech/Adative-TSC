@@ -35,7 +35,7 @@ AdaptiveGain::AdaptiveGain(
 AdaptiveGain::~AdaptiveGain() {}
 
 void AdaptiveGain::update_trajectory_reference(
-    std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr) {
+    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
   refTrajBuffer_.push(referenceTrajectoriesPtr);
 }
 

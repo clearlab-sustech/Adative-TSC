@@ -26,7 +26,7 @@ public:
 
   void update_mode_schedule(std::shared_ptr<ModeSchedule> mode_schedule);
 
-  std::shared_ptr<const TrajectoriesArray> get_trajectory_reference();
+  std::shared_ptr<TrajectoriesArray> get_trajectory_reference();
 
   std::map<std::string, std::pair<scalar_t, vector3_t>> get_footholds();
 

@@ -24,7 +24,7 @@ public:
                             std::shared_ptr<vector_t> qvel_ptr);
 
   void update_trajectory_reference(
-      std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr);
+      std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr);
 
   void update_footholds(
       std::map<std::string, std::pair<scalar_t, vector3_t>> footholds);
@@ -52,7 +52,7 @@ private:
   Buffer<bool> run_;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer, qvel_ptr_buffer;
-  Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajBuffer_;
+  Buffer<std::shared_ptr<TrajectoriesArray>> refTrajBuffer_;
   Buffer<std::map<std::string, std::pair<scalar_t, vector3_t>>> footholds_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;

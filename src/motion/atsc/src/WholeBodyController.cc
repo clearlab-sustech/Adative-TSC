@@ -43,7 +43,7 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
 WholeBodyController::~WholeBodyController() { log_stream.close(); }
 
 void WholeBodyController::update_trajectory_reference(
-    std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr) {
+    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
   refTrajBuffer_.push(referenceTrajectoriesPtr);
 }
 

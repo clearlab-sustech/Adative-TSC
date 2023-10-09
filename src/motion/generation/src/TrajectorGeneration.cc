@@ -60,7 +60,7 @@ void TrajectorGeneration::update_mode_schedule(
   mode_schedule_buffer.push(mode_schedule);
 }
 
-std::shared_ptr<const TrajectoriesArray>
+std::shared_ptr<TrajectoriesArray>
 TrajectorGeneration::get_trajectory_reference() {
   return refTrajBuffer_;
 }

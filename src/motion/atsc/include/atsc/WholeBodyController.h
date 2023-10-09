@@ -43,7 +43,7 @@ public:
   void loadTasksSetting(bool verbose = true);
 
   void update_trajectory_reference(
-      std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr);
+      std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr);
 
   void update_mode(size_t mode);
 
@@ -80,7 +80,7 @@ private:
 
 private:
   Node::SharedPtr nodeHandle_;
-  Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajBuffer_;
+  Buffer<std::shared_ptr<TrajectoriesArray>> refTrajBuffer_;
   Buffer<size_t> mode_;
   Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> base_policy_;
   Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> swing_policy_;
