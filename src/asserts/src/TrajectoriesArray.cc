@@ -24,9 +24,7 @@ TrajectoriesArray::get_base_rpy_traj() const {
 
 std::shared_ptr<CubicSplineTrajectory>
 TrajectoriesArray::get_base_pos_traj() const {
-  if (optimized_base_pos_buffer_.get().get() != nullptr) {
-    return optimized_base_pos_buffer_.get();
-  } else if (base_pos_buffer_.get().get() != nullptr) {
+  if (base_pos_buffer_.get().get() != nullptr) {
     return base_pos_buffer_.get();
   } else {
     return base_pos_ref_buffer_.get();
@@ -73,6 +71,16 @@ TrajectoriesArray::get_joint_pos_traj() const {
   return joint_pos_buffer_.get();
 }
 
+std::shared_ptr<CubicSplineTrajectory>
+TrajectoriesArray::get_optimized_base_pos_traj() const {
+  return optimized_base_pos_buffer_.get();
+}
+
+std::shared_ptr<CubicSplineTrajectory>
+TrajectoriesArray::get_optimized_base_rpy_traj() const {
+  return optimized_base_rpy_buffer_.get();
+}
+
 void TrajectoriesArray::set_base_rpy_traj(
     std::shared_ptr<CubicSplineTrajectory> base_rpy_traj) {
   base_rpy_buffer_.push(base_rpy_traj);
@@ -86,6 +94,11 @@ void TrajectoriesArray::set_base_pos_traj(
 void TrajectoriesArray::set_optimized_base_pos_traj(
     std::shared_ptr<CubicSplineTrajectory> base_pos_traj) {
   optimized_base_pos_buffer_.push(base_pos_traj);
+}
+
+void TrajectoriesArray::set_optimized_base_rpy_traj(
+    std::shared_ptr<CubicSplineTrajectory> base_rpy_traj) {
+  optimized_base_rpy_buffer_.push(base_rpy_traj);
 }
 
 void TrajectoriesArray::set_base_pos_ref_traj(
