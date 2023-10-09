@@ -26,7 +26,7 @@ public:
                             std::shared_ptr<vector_t> qvel_ptr);
 
   void update_trajectory_reference(
-      std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr);
+      std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr);
 
   void update_mode_schedule(const std::shared_ptr<ModeSchedule> mode_schedule);
 
@@ -48,7 +48,7 @@ private:
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer, qvel_ptr_buffer;
   Buffer<std::shared_ptr<ModeSchedule>> mode_schedule_buffer;
-  Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajPtrBuffer_;
+  Buffer<std::shared_ptr<TrajectoriesArray>> refTrajPtrBuffer_;
 
   Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> feedback_gain_buffer_;
 

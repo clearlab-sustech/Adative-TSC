@@ -36,12 +36,19 @@ public:
 
   std::shared_ptr<CubicSplineTrajectory> get_joint_pos_traj() const;
 
+  std::shared_ptr<CubicSplineTrajectory> get_optimized_base_pos_traj() const;
+
+  std::shared_ptr<CubicSplineTrajectory> get_optimized_base_rpy_traj() const;
+
   void set_base_rpy_traj(std::shared_ptr<CubicSplineTrajectory> base_rpy_traj);
 
   void set_base_pos_traj(std::shared_ptr<CubicSplineTrajectory> base_pos_traj);
 
   void set_optimized_base_pos_traj(
       std::shared_ptr<CubicSplineTrajectory> base_pos_traj);
+
+  void set_optimized_base_rpy_traj(
+      std::shared_ptr<CubicSplineTrajectory> base_rpy_traj);
 
   void set_base_pos_ref_traj(
       std::shared_ptr<CubicSplineTrajectory> base_pos_ref_traj);
@@ -72,6 +79,7 @@ private:
   Buffer<std::shared_ptr<CubicSplineTrajectory>> base_rpy_buffer_;
   Buffer<std::shared_ptr<CubicSplineTrajectory>> base_pos_buffer_;
   Buffer<std::shared_ptr<CubicSplineTrajectory>> optimized_base_pos_buffer_;
+  Buffer<std::shared_ptr<CubicSplineTrajectory>> optimized_base_rpy_buffer_;
   Buffer<std::shared_ptr<CubicSplineTrajectory>> base_pos_ref_buffer_;
   Buffer<std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>>
       foot_rpy_buffer_;

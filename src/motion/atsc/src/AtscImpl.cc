@@ -63,7 +63,7 @@ void AtscImpl::update_current_state(std::shared_ptr<vector_t> qpos_ptr,
 }
 
 void AtscImpl::update_trajectory_reference(
-    std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr) {
+    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
   refTrajPtrBuffer_.push(referenceTrajectoriesPtr);
 }
 

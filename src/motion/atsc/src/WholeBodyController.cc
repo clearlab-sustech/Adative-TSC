@@ -222,8 +222,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   base_task.A.leftCols(nv) = J;
 
   vector6_t acc_fb;
-  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
-  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
+  auto pos_traj = refTrajBuffer_.get()->get_optimized_base_pos_traj();
+  auto rpy_traj = refTrajBuffer_.get()->get_optimized_base_rpy_traj();
 
   if (policy.get() != nullptr && pos_traj.get() != nullptr &&
       rpy_traj.get() != nullptr) {

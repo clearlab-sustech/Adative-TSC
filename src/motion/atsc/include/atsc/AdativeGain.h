@@ -29,7 +29,7 @@ public:
   ~AdaptiveGain();
 
   void update_trajectory_reference(
-      std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr);
+      std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr);
 
   void update_mode_schedule(const std::shared_ptr<ModeSchedule> mode_schedule);
 
@@ -51,7 +51,7 @@ private:
   std::string base_name_;
 
   Buffer<std::shared_ptr<ModeSchedule>> mode_schedule_buffer;
-  Buffer<std::shared_ptr<const TrajectoriesArray>> refTrajBuffer_;
+  Buffer<std::shared_ptr<TrajectoriesArray>> refTrajBuffer_;
   std::shared_ptr<FeedbackGain> feedback_law_ptr;
   const scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;
@@ -59,6 +59,7 @@ private:
   matrix3_t Ig_, Ig_inv;
   const scalar_t mu_ = 0.5;
   matrix_t weight_;
+  scalar_t time_now_;
 
   std::vector<hpipm::OcpQp> ocp_;
   std::vector<hpipm::OcpQpSolution> solution_;

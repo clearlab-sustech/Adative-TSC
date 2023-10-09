@@ -60,7 +60,7 @@ void TrajectorGeneration::update_mode_schedule(
   mode_schedule_buffer.push(mode_schedule);
 }
 
-std::shared_ptr<const TrajectoriesArray>
+std::shared_ptr<TrajectoriesArray>
 TrajectorGeneration::get_trajectory_reference() {
   return refTrajBuffer_;
 }
@@ -273,8 +273,10 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
 
     auto base_pos =
         pinocchioInterface_ptr_->getFramePose(base_name).translation();
-    xf_start_[foot_name].second.z() = std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
-    xf_end_[foot_name].second.z() = std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_start_[foot_name].second.z() =
+        std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_end_[foot_name].second.z() =
+        std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
 
     std::vector<scalar_t> time;
     std::vector<vector_t> pos_t;
