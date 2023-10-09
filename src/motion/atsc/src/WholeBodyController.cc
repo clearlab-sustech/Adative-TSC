@@ -251,11 +251,15 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
-    log_stream << (err_pos_traj->evaluate(t) - x0.head(3)).transpose() << " "
-               << (err_rpy_traj->evaluate(t) - rpy_err).transpose() << " "
-               << -x0.segment(3, 3).transpose() << " "
-               << (omega_des - base_twist.angular()).transpose() << " "
-               << acc_fb.transpose() << "\n";
+    log_stream
+        << (err_pos_traj->evaluate(t) - x0.head(3)).transpose() << " "
+        << (err_rpy_traj->evaluate(t) - rpy_err).transpose() << " "
+        << (err_pos_traj->derivative(t, 1) - x0.segment(3, 3)).transpose()
+        << " "
+        << (getJacobiFromRPYToOmega(rpy) * err_rpy_traj->derivative(t, 1) -
+            (base_twist.angular() - omega_des))
+               .transpose()
+        << " " << acc_fb.transpose() << "\n";
   } else {
     acc_fb.setZero();
   }
