@@ -243,7 +243,7 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
         3, CubicSplineInterpolation::SplineType::cspline);
     base_pos_traj_ptr_->set_boundary(
         CubicSplineInterpolation::BoundaryType::first_deriv,
-        solution_[1].x.segment(3, 3),
+        solution_[0].x.segment(3, 3),
         CubicSplineInterpolation::BoundaryType::first_deriv,
         solution_.back().x.segment(3, 3));
     base_pos_traj_ptr_->fit(time_array, base_pos_array);
@@ -252,7 +252,7 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
         3, CubicSplineInterpolation::SplineType::cspline_hermite);
     base_rpy_traj_ptr_->set_boundary(
         CubicSplineInterpolation::BoundaryType::first_deriv,
-        Ig_.inverse() * solution_[1].x.tail(3),
+        getJacobiFromRPYToOmega(rpy) * Ig_.inverse() * solution_[0].x.tail(3),
         CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
     base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
 
