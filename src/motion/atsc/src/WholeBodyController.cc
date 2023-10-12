@@ -479,7 +479,7 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   // Load task file
   weightMomentum_.setZero(6, 6);
   weightBase_.setZero(6, 6);
-  weightBase_.diagonal().fill(1000);
+  weightBase_.diagonal().fill(1);
 
   weightSwingLeg_.setZero(3, 3);
   weightSwingLeg_.diagonal().fill(100);
