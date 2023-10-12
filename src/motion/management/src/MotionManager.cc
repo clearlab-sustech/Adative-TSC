@@ -44,7 +44,7 @@ void MotionManager::inner_loop() {
   const scalar_t ts = this->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (this->now().seconds() > ts + 4.0) {
-      gaitSchedulePtr_->switch_gait("trot");
+      gaitSchedulePtr_->switch_gait("pawup");
     }
 
     if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
