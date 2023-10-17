@@ -144,7 +144,7 @@ void AtscImpl::inner_loop() {
 
 void AtscImpl::adapative_gain_loop() {
   benchmark::RepeatedTimer timer_;
-  rclcpp::Rate loop_rate(50.0);
+  rclcpp::Rate loop_rate(20.0);
   std::fstream save_state("data_log.txt", std::ios::ate | std::ios::out);
 
   while (rclcpp::ok() && run_.get()) {
