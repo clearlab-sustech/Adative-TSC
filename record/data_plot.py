@@ -329,8 +329,8 @@ if __name__ == "__main__":
     # d = DataPlot('./wbc/acc_log.txt', './atsc/acc_log.txt')
     # d = DataPlot('./wbc/push/acc_log.txt', './atsc/push/acc_log.txt')
     # d = DataPlot('./wbc/push/data_log.txt', './atsc/push/data_log.txt')
-    d = DataPlot('./wbc/no_noise/log_stream_wbc.txt', './atsc/no_noise/log_stream_wbc.txt')
+    d = DataPlot('./wbc/no_noise/low_freq/log_stream_wbc.txt', './atsc/no_noise/low_freq/log_stream_wbc.txt')
 
-    d.err_mse()
+    d.base_vel_err()
     plt.show()
 
