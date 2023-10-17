@@ -50,6 +50,39 @@ class DataPlot:
         ax.legend(loc='upper right', ncols=3)
         # ax.set_ylim(0, 250)
 
+    def err_mean(self):
+        data1 = np.loadtxt(self.file1)
+        data2 = np.loadtxt(self.file2)
+
+        mse_wbc = (data1).mean(axis=0)
+        mse_atsc = (data2).mean(axis=0)
+
+        species = (#"pos x", "pos y", "pos z", "roll", "pitch", "yaw", 
+                   "vel x", "vel y", "vel z", "omega x", "omega y", "omega z")
+    #    "acc x", "acc y", "acc z", "omega_dot x", "omega_dot y", "omega_dot z"
+        penguin_means = {
+            'mse_wbc': mse_wbc[6:12]/0.3,
+            'mse_atsc': mse_atsc[6:12]/0.3,
+        }
+
+        x = np.arange(len(species))  # the label locations
+        width = 0.25  # the width of the bars
+        multiplier = 0
+
+        fig, ax = plt.subplots(layout='constrained')
+
+        for attribute, measurement in penguin_means.items():
+            offset = width * multiplier
+            rects = ax.bar(x + offset, measurement, width, label=attribute)
+            ax.bar_label(rects, padding=3)
+            multiplier += 1
+
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.set_title('mean square error')
+        ax.set_xticks(x + width, species)
+        ax.legend(loc='upper right', ncols=3)
+        # ax.set_ylim(0, 250)
+
     def base_pose_err(self):
         data1 = np.loadtxt(self.file1)
         data2 = np.loadtxt(self.file2)
@@ -331,6 +364,6 @@ if __name__ == "__main__":
     # d = DataPlot('./wbc/push/data_log.txt', './atsc/push/data_log.txt')
     d = DataPlot('./wbc/no_noise/low_freq/log_stream_wbc.txt', './atsc/no_noise/low_freq/log_stream_wbc.txt')
 
-    d.base_vel_err()
+    d.err_mean()
     plt.show()
 
