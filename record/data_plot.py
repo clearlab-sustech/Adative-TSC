@@ -28,8 +28,8 @@ class DataPlot:
                    "vel x", "vel y", "vel z", "omega x", "omega y", "omega z")
     #    "acc x", "acc y", "acc z", "omega_dot x", "omega_dot y", "omega_dot z"
         penguin_means = {
-            'mse_wbc': mse_wbc[6:12]/0.3,
-            'mse_atsc': mse_atsc[6:12]/0.3,
+            'mse_wbc': mse_wbc[6:12],
+            'mse_atsc': mse_atsc[6:12],
         }
 
         x = np.arange(len(species))  # the label locations
@@ -362,8 +362,8 @@ if __name__ == "__main__":
     # d = DataPlot('./wbc/acc_log.txt', './atsc/acc_log.txt')
     # d = DataPlot('./wbc/push/acc_log.txt', './atsc/push/acc_log.txt')
     # d = DataPlot('./wbc/push/data_log.txt', './atsc/push/data_log.txt')
-    d = DataPlot('./wbc/30Hz05/log_stream_wbc.txt', './atsc/30Hz05/log_stream_wbc.txt')
+    d = DataPlot('./wbc/20Hz05/log_stream_wbc.txt', './atsc/20Hz05/log_stream_wbc.txt')
 
-    d.base_vel_err()
+    d.err_mse()
     plt.show()
 
