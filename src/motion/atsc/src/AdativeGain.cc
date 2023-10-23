@@ -12,8 +12,8 @@ AdaptiveGain::AdaptiveGain(
       base_name_(base_name) {
   total_mass_ = pinocchioInterfacePtr_->total_mass();
   weight_.setZero(12, 12);
-  weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 40.0,
-      40.0, 40.0;
+  weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
+      10.0, 10.0;
 
   // weight_.diagonal() << 40, 40, 50, 3.0, 3.0, 3.0, 30, 30, 50, 4.0, 4.0, 4.0;
   // weight_ = 20.0 * weight_;
