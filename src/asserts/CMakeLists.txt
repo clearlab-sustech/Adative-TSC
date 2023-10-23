@@ -56,4 +56,7 @@ install(
 install(DIRECTORY aliengo
   DESTINATION share/${PROJECT_NAME})
 
+install(DIRECTORY a1
+  DESTINATION share/${PROJECT_NAME})
+
 ament_package()
