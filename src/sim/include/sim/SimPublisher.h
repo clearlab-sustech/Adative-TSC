@@ -81,9 +81,12 @@ private:
 
   std::thread spin_thread;
 
-  const mjtNum noise_acc = 0.3;
-  const mjtNum noise_gyro = 0.05;
-  const mjtNum noise_joint_vel = 0.3;
+  // const mjtNum noise_acc = 0.5;
+  // const mjtNum noise_gyro = 0.05;
+  // const mjtNum noise_joint_vel = 0.6;  
+  const mjtNum noise_acc = 0.;
+  const mjtNum noise_gyro = 0.;
+  const mjtNum noise_joint_vel = 0.;
 };
 
 } // namespace clear
