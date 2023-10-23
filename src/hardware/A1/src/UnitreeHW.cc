@@ -5,11 +5,11 @@
 namespace clear {
 
 UnitreeHW::UnitreeHW(const std::string config_yaml) : Node("UnitreeHW") {
+  auto config_ = YAML::LoadFile(config_yaml);
+  robot_type_ = config_["model"]["name"].as<std::string>();
   if (init()) {
-    auto config_ = YAML::LoadFile(config_yaml);
     std::string name_prefix =
         config_["global"]["topic_prefix"].as<std::string>();
-    robot_type_ = config_["model"]["name"].as<std::string>();
     RCLCPP_INFO(this->get_logger(), "robot_type: %s", robot_type_.c_str());
 
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
@@ -61,6 +61,10 @@ UnitreeHW::UnitreeHW(const std::string config_yaml) : Node("UnitreeHW") {
             name_prefix + actuators_cmds_topic, qos,
             std::bind(&UnitreeHW::actuator_cmd_callback, this,
                       std::placeholders::_1));
+    timers_.emplace_back(
+        this->create_wall_timer(2ms, std::bind(&UnitreeHW::read, this)));
+    timers_.emplace_back(
+        this->create_wall_timer(2ms, std::bind(&UnitreeHW::write, this)));
   }
 }
 
@@ -85,6 +89,7 @@ bool UnitreeHW::init() {
 }
 
 void UnitreeHW::read() {
+  // RCLCPP_FATAL(this->get_logger(), "rec len: %d", udp_->Recv());
   udp_->Recv();
   udp_->GetRecv(lowState_);
 
@@ -101,6 +106,8 @@ void UnitreeHW::read() {
     joints_state_ptr->velocity[i] = lowState_.motorState[i].dq;
     joints_state_ptr->effort[i] = lowState_.motorState[i].tauEst;
     joints_state_ptr->name[i] = jointsIndex2NameMap[i];
+    // RCLCPP_INFO(this->get_logger(), "low state q[%ld]=%f", i,
+    //             lowState_.motorState[i].q);
   }
   joint_state_msg_buffer.push(joints_state_ptr);
 
@@ -137,43 +144,62 @@ void UnitreeHW::read() {
 
 void UnitreeHW::write() {
   const auto actuator_cmd_msg = actuator_cmd_msg_buffer.get();
-  const auto time_stamp =
-      rclcpp::Time(actuator_cmd_msg->header.stamp).seconds();
-  if (actuator_cmd_msg->header.frame_id == robot_type_ &&
-      abs(time_stamp - this->now().seconds()) < 0.2) {
-    for (int i = 0; i < actuator_cmd_msg->names.size(); ++i) {
-      const auto name = actuator_cmd_msg->names[i];
-      if (jointsName2IndexMap.find(name) != jointsName2IndexMap.end()) {
-        const auto idx = jointsName2IndexMap[name];
-        lowCmd_.motorCmd[idx].q =
-            static_cast<float>(actuator_cmd_msg->pos_des[i]);
-        lowCmd_.motorCmd[idx].dq =
-            static_cast<float>(actuator_cmd_msg->vel_des[i]);
-        lowCmd_.motorCmd[idx].Kp =
-            static_cast<float>(actuator_cmd_msg->gain_p[i]);
-        lowCmd_.motorCmd[idx].Kd =
-            static_cast<float>(actuator_cmd_msg->gaid_d[i]);
-        lowCmd_.motorCmd[idx].tau =
-            static_cast<float>(actuator_cmd_msg->feedforward_torque[i]);
+  if (actuator_cmd_msg != nullptr) {
+    const auto time_stamp =
+        rclcpp::Time(actuator_cmd_msg->header.stamp).seconds();
+    if (actuator_cmd_msg->header.frame_id == robot_type_ &&
+        abs(time_stamp - this->now().seconds()) < 0.2) {
+      for (size_t i = 0; i < actuator_cmd_msg->names.size(); ++i) {
+        const auto name = actuator_cmd_msg->names[i];
+        if (jointsName2IndexMap.find(name) != jointsName2IndexMap.end()) {
+          const auto idx = jointsName2IndexMap[name];
+          lowCmd_.motorCmd[idx].q =
+              static_cast<float>(actuator_cmd_msg->pos_des[i]);
+          lowCmd_.motorCmd[idx].dq =
+              static_cast<float>(actuator_cmd_msg->vel_des[i]);
+          lowCmd_.motorCmd[idx].Kp =
+              static_cast<float>(actuator_cmd_msg->gain_p[i]);
+          lowCmd_.motorCmd[idx].Kd =
+              static_cast<float>(actuator_cmd_msg->gaid_d[i]);
+          lowCmd_.motorCmd[idx].tau =
+              static_cast<float>(actuator_cmd_msg->feedforward_torque[i]);
+        }
       }
+      safety_->PositionLimit(lowCmd_);
+      safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
+      udp_->SetSend(lowCmd_);
+      udp_->Send();
     }
-    safety_->PositionLimit(lowCmd_);
-    safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
-    udp_->SetSend(lowCmd_);
-    udp_->Send();
   }
+  // for (size_t i = 0; i < 12; ++i) {
+  //   lowCmd_.motorCmd[i].q = 0.0;
+  //   lowCmd_.motorCmd[i].dq = 0.0;
+  //   lowCmd_.motorCmd[i].Kp = 0.0;
+  //   lowCmd_.motorCmd[i].Kd = 0.0;
+  //   lowCmd_.motorCmd[i].tau = 0.0;
+  // }
+  // safety_->PositionLimit(lowCmd_);
+  // safety_->PowerProtect(lowCmd_, lowState_, powerLimit_);
+  // udp_->SetSend(lowCmd_);
+  // udp_->Send();
 }
 
 void UnitreeHW::imu_callback() {
-  imu_publisher_->publish(*imu_msg_buffer.get());
+  if (imu_msg_buffer.get() != nullptr) {
+    imu_publisher_->publish(*imu_msg_buffer.get());
+  }
 }
 
 void UnitreeHW::joint_callback() {
-  joint_state_publisher_->publish(*joint_state_msg_buffer.get());
+  if (joint_state_msg_buffer.get() != nullptr) {
+    joint_state_publisher_->publish(*joint_state_msg_buffer.get());
+  }
 }
 
 void UnitreeHW::touch_callback() {
-  touch_publisher_->publish(*touch_msg_buffer.get());
+  if (touch_msg_buffer.get() != nullptr) {
+    touch_publisher_->publish(*touch_msg_buffer.get());
+  }
 }
 
 void UnitreeHW::actuator_cmd_callback(
@@ -183,15 +209,17 @@ void UnitreeHW::actuator_cmd_callback(
 
 void UnitreeHW::drop_old_message() {
   auto actuator_cmd_msg = actuator_cmd_msg_buffer.get();
-  const auto time_stamp =
-      rclcpp::Time(actuator_cmd_msg->header.stamp).seconds();
-  if (abs(time_stamp - this->now().seconds()) > 0.2) {
-    for (size_t k = 0; k < actuator_cmd_msg->names.size(); k++) {
-      actuator_cmd_msg->gain_p[k] = 0.0;
-      actuator_cmd_msg->pos_des[k] = 0.0;
-      actuator_cmd_msg->gaid_d[k] = -3.0;
-      actuator_cmd_msg->vel_des[k] = 0.0;
-      actuator_cmd_msg->feedforward_torque[k] = 0.0;
+  if (actuator_cmd_msg != nullptr) {
+    const auto time_stamp =
+        rclcpp::Time(actuator_cmd_msg->header.stamp).seconds();
+    if (abs(time_stamp - this->now().seconds()) > 0.2) {
+      for (size_t k = 0; k < actuator_cmd_msg->names.size(); k++) {
+        actuator_cmd_msg->gain_p[k] = 0.0;
+        actuator_cmd_msg->pos_des[k] = 0.0;
+        actuator_cmd_msg->gaid_d[k] = -3.0;
+        actuator_cmd_msg->vel_des[k] = 0.0;
+        actuator_cmd_msg->feedforward_torque[k] = 0.0;
+      }
     }
   }
 }

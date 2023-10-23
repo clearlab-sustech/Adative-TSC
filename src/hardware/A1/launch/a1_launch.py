@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    config_file_name = "aliengo/config.yaml"
+    config_file_name = "a1/config.yaml"
     config_file = os.path.join(get_package_share_path("asserts"), config_file_name)
     # print(config_file)
     return LaunchDescription(
