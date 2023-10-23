@@ -7,7 +7,7 @@ namespace clear {
 StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
                                        std::string config_yaml)
     : nodeHandle_(nodeHandle) {
-  auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_default);
+  auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
 
   auto config_ = YAML::LoadFile(config_yaml);
   std::string topic_prefix =
@@ -232,7 +232,7 @@ void StateEstimationLKF::inner_loop() {
     if (imu_msg_buffer.get().get() == nullptr ||
         touch_msg_buffer.get().get() == nullptr ||
         joint_state_msg_buffer.get().get() == nullptr ||
-        odom_msg_buffer.get().get() == nullptr) {
+        (use_odom_ && odom_msg_buffer.get().get() == nullptr)) {
       continue;
     }
     // do not delete these three lines
@@ -272,15 +272,12 @@ void StateEstimationLKF::inner_loop() {
       (*qpos_ptr_).segment(3, 4) << orientation.x, orientation.y, orientation.z,
           orientation.w;
       (*qvel_ptr_).segment(3, 3) << ang_vel.x, ang_vel.y, ang_vel.z;
-
-      /* const auto touch_sensor_data = touch_msg_buffer.get()->value;
-      printf("touch_sensor_data: ");
-      for (auto &data : touch_sensor_data) {
-        printf("%f,\t", data);
-      }
-      printf("\n"); */
-
     } else {
+      // const auto touch_sensor_data = touch_msg_buffer.get()->value;
+      // for (auto &data : touch_sensor_data) {
+      //   RCLCPP_INFO(nodeHandle_->get_logger(), "touch_sensor_data: %f",
+      //   data);
+      // }
       angularMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
       linearMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
     }
