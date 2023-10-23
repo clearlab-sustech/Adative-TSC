@@ -31,6 +31,7 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
               use_odom_ ? "true" : "false");
   for (const auto &name : foot_names) {
     RCLCPP_INFO(nodeHandle_->get_logger(), "foot name: %s", name.c_str());
+    cflag_.emplace_back(true);
   }
 
   std::string imu_topic =
@@ -116,6 +117,8 @@ void StateEstimationLKF::setup() {
   R0_.setIdentity();
 }
 
+void StateEstimationLKF::setContactFlag(vector<bool> flag) { cflag_ = flag; }
+
 void StateEstimationLKF::angularMotionEstimate(
     const sensor_msgs::msg::Imu &imu_data, std::shared_ptr<vector_t> qpos,
     std::shared_ptr<vector_t> qvel) {
@@ -188,10 +191,10 @@ void StateEstimationLKF::linearMotionEstimate(
     idx2 = 24 + i;
 
     scalar_t trust;
-    if (abs(touch_sensor_data[i]) > 2.0 || release_) {
+    if (touch_sensor_data[i] > 2.0 || release_) {
       trust = 1.0;
     } else {
-      trust = abs(touch_sensor_data[i]) / 2.0;
+      trust = std::max(touch_sensor_data[i] / 2.0, 0.0);
     }
     scalar_t high_suspect_number = 500.0;
 

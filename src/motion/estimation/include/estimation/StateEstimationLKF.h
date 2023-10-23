@@ -24,6 +24,8 @@ public:
 
   std::shared_ptr<vector_t> getQvel();
 
+  void setContactFlag(vector<bool> flag);
+
 private:
   void setup();
 
@@ -50,6 +52,7 @@ private:
   std::unique_ptr<PinocchioInterface> pinocchioInterface_ptr;
   std::string robot_name;
   std::vector<string> foot_names;
+  vector<bool> cflag_;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer, qvel_ptr_buffer;
   mutable Buffer<sensor_msgs::msg::Imu::SharedPtr> imu_msg_buffer;
