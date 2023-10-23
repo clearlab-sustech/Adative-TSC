@@ -40,16 +40,16 @@ void MotionManager::init() {
 void MotionManager::inner_loop() {
   std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-  rclcpp::Rate loop_rate(2000.0);
+  rclcpp::Rate loop_rate(500.0);
   const scalar_t ts = this->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (this->now().seconds() > ts + 4.0) {
       gaitSchedulePtr_->switch_gait("trot");
     }
 
-    if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
-    }
+    // if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
+    //   trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
+    // }
 
     scalar_t horizon_time_ =
         min(2.0, max(0.5, gaitSchedulePtr_->current_gait_cycle()));
