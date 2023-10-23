@@ -48,6 +48,7 @@ private:
 private:
   Node::SharedPtr nodeHandle_;
   std::unique_ptr<PinocchioInterface> pinocchioInterface_ptr;
+  std::string robot_name;
   std::vector<string> foot_names;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer, qvel_ptr_buffer;
