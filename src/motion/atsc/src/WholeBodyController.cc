@@ -499,16 +499,16 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   frictionCoeff_ = 0.5;
 
   swingKp_.setZero(3, 3);
-  swingKp_.diagonal().fill(500);
+  swingKp_.diagonal().fill(350);
 
   swingKd_.setZero(3, 3);
-  swingKd_.diagonal().fill(60);
+  swingKd_.diagonal().fill(37);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(100);
+  baseKp_.diagonal().fill(200);
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(10);
+  baseKd_.diagonal().fill(30);
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);
