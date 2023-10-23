@@ -165,9 +165,9 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
     vel_des << vel_cmd.x(), vel_cmd.y(), vel_cmd.z();
     vel_des = base_pose_m.rotation() * vel_des;
 
-    scalar_t h_des = 0.38;
-    if (0.35 > h_des || h_des > 0.6) {
-      h_des = 0.48;
+    scalar_t h_des = 0.32;
+    if (0.3 > h_des || h_des > 0.4) {
+      h_des = 0.32;
     }
     rpy_m.head(2).setZero();
     for (size_t k = 0; k < N; k++) {
