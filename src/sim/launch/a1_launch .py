@@ -7,25 +7,9 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    # config_file_name = "aliengo/config.yaml"
-    # config_file = os.path.join(get_package_share_path("asserts"), config_file_name)
-    # # print(config_file)
-    # return LaunchDescription(
-    #     [
-    #         Node(
-    #             package="sim",
-    #             executable="sim",
-    #             name="simulation_mujoco",
-    #             output="screen",
-    #             emulate_tty=True,
-    #             arguments=[config_file, ("__log_level:=debug")],
-    #         ),
-    #     ]
-    # )
-
-    config_file_name = "a1/config.yaml"
+    config_file_name = "a1/a1.yaml"
     config_file = os.path.join(get_package_share_path("asserts"), config_file_name)
-    print(config_file)
+    # print(config_file)
     return LaunchDescription(
         [
             Node(
