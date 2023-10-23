@@ -309,7 +309,7 @@ void DataVisualization::update_current_state(
 }
 
 void DataVisualization::update_trajectory_reference(
-    std::shared_ptr<const TrajectoriesArray> referenceTrajectoriesPtr) {
+    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
   refTrajBuffer_.push(referenceTrajectoriesPtr);
 }
 
