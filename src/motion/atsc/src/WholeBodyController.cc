@@ -505,10 +505,10 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(37);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(200);
+  baseKp_.diagonal().fill(0);
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(30);
+  baseKd_.diagonal().fill(0);
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);
