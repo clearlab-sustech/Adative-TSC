@@ -143,7 +143,7 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
     }
     foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
 
-    scalar_t zd = 0.38;
+    scalar_t zd = 0.32;
     scalar_t mod_z = 0.0;
     time.emplace_back(t_now);
     time.emplace_back(t_now + 0.5 * horizon_time);
@@ -165,9 +165,9 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
     vel_des << vel_cmd.x(), vel_cmd.y(), vel_cmd.z();
     vel_des = base_pose_m.rotation() * vel_des;
 
-    scalar_t h_des = 0.38;
-    if (0.35 > h_des || h_des > 0.6) {
-      h_des = 0.48;
+    scalar_t h_des = 0.32;
+    if (0.3 > h_des || h_des > 0.4) {
+      h_des = 0.32;
     }
     rpy_m.head(2).setZero();
     for (size_t k = 0; k < N; k++) {
@@ -273,10 +273,8 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
 
     auto base_pos =
         pinocchioInterface_ptr_->getFramePose(base_name).translation();
-    xf_start_[foot_name].second.z() =
-        std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
-    xf_end_[foot_name].second.z() =
-        std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_start_[foot_name].second.z() = std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_end_[foot_name].second.z() = std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
 
     std::vector<scalar_t> time;
     std::vector<vector_t> pos_t;
@@ -286,7 +284,7 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
                    (xf_start_[foot_name].first + xf_end_[foot_name].first));
     vector3_t middle_pos =
         0.5 * (xf_start_[foot_name].second + xf_end_[foot_name].second);
-    middle_pos.z() += contact_flag[k] ? 0.0 : 0.15;
+    middle_pos.z() += contact_flag[k] ? 0.0 : 0.1;
     pos_t.push_back(middle_pos);
     time.push_back(xf_end_[foot_name].first);
     pos_t.push_back(xf_end_[foot_name].second);
