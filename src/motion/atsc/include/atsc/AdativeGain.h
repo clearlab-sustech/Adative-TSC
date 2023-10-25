@@ -50,7 +50,7 @@ private:
   Buffer<std::shared_ptr<ModeSchedule>> mode_schedule_buffer;
   Buffer<std::shared_ptr<TrajectoriesArray>> refTrajBuffer_;
   std::shared_ptr<FeedbackGain> feedback_law_ptr;
-  const scalar_t dt_ = 0.05;
+  const scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;
   scalar_t total_mass_;
   matrix3_t Ig_;

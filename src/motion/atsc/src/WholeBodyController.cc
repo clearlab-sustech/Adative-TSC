@@ -420,17 +420,20 @@ void WholeBodyController::differential_inv_kin() {
         vel_des = 0.5 * vel_err.normalized() + vel_m;
       }
 
-      scalar_t kp_val, kd_val;
-      if (pos_err.norm() < 3e-2) {
-        kp_val = 60;
-      } else {
-        kp_val = 30;
-      }
-      if (vel_err.norm() < 0.1) {
-        kd_val = 2;
-      } else {
-        kp_val = 1.0;
-      }
+      scalar_t kp_val = 30.0;
+      scalar_t kd_val = 1.0;
+
+      // scalar_t kp_val, kd_val;
+      // if (pos_err.norm() < 3e-2) {
+      //   kp_val = 60;
+      // } else {
+      //   kp_val = 30;
+      // }
+      // if (vel_err.norm() < 0.1) {
+      //   kd_val = 2;
+      // } else {
+      //   kd_val = 1.0;
+      // }
       vector3_t q_des = J_inv * pos_err + qpos_s;
       vector3_t qd_des = J_inv * vel_des;
       for (size_t i = 0; i < 3; i++) {
