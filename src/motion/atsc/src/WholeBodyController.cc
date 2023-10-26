@@ -252,6 +252,10 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 
     acc_fb = baseKp_ * pose_err + baseKd_ * vel_err + _spatialAccRef;
 
+    if (abs(acc_fb.z()) > 5.0) {
+      acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
+    }
+
     auto pose_par = base_pose;
     pose_par.translation().setZero();
     log_stream << (pose_par.toActionMatrix() * pose_err).transpose() << " "
