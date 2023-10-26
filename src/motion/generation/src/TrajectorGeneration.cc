@@ -142,7 +142,6 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
           pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
     }
     foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
-    foot_center.setZero();
     scalar_t zd = 0.32;
     scalar_t mod_z = 0.0;
     time.emplace_back(t_now);
@@ -151,9 +150,8 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
     rpy_t.emplace_back(vector3_t(0, 0, 0));
     rpy_t.emplace_back(vector3_t(0, 0, 0));
     rpy_t.emplace_back(vector3_t(0, 0, 0));
-    // pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(),
-    //                              zd - mod_z * (0.05 * sin(6 * t_now))));
-    pos_t.emplace_back(pos_m);
+    pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(),
+                                 zd - mod_z * (0.05 * sin(6 * t_now))));
     pos_t.emplace_back(
         vector3_t(foot_center.x(), foot_center.y(),
                   zd - mod_z * (0.05 * sin(6 * (t_now + 0.5 * horizon_time)))));
