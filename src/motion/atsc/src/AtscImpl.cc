@@ -155,8 +155,8 @@ void AtscImpl::adapative_gain_loop() {
         refTrajPtrBuffer_.get().get() == nullptr) {
       continue;
     } else {
-      // RCLCPP_INFO(nodeHandle_->get_logger(), "Adaptive Gain Computaion:
-      // run");
+      // RCLCPP_INFO(nodeHandle_->get_logger(),
+      //             "Adaptive Gain Computaion: run");
       adaptiveGain_ptr_->update_mode_schedule(mode_schedule_buffer.get());
       adaptiveGain_ptr_->update_trajectory_reference(refTrajPtrBuffer_.get());
       feedback_gain_buffer_.push(adaptiveGain_ptr_->compute());

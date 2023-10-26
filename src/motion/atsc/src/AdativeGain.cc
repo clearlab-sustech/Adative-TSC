@@ -11,11 +11,13 @@ AdaptiveGain::AdaptiveGain(
     : nodeHandle_(nodeHandle), pinocchioInterfacePtr_(pinocchioInterfacePtr),
       base_name_(base_name) {
   total_mass_ = pinocchioInterfacePtr_->total_mass();
+  Ig_ << 0.106745, -0.000225255, -0.00498299, -0.000225255, 0.356584,
+      6.49409e-05, -0.00498299, 6.49409e-05, 0.435839;
   weight_.setZero(12, 12);
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
   //     10.0, 10.0;
   weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 1.3, 30, 30, 50, 0.2, 0.2, 0.3;
-  
+
   solver_settings.mode = hpipm::HpipmMode::Speed;
   solver_settings.iter_max = 50;
   solver_settings.alpha_min = 1e-8;
@@ -61,7 +63,7 @@ void AdaptiveGain::add_linear_system(size_t k) {
   vector3_t rpy_dot_des = rpy_traj->derivative(time_k, 1);
   vector3_t omega_des = getJacobiFromOmegaToRPY(rpy) * rpy_dot_des;
 
-  Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
+  // Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
   auto Iworld = base_pose.rotation() * Ig_ * base_pose.rotation().transpose();
   Ig_inv = Iworld.inverse();
 

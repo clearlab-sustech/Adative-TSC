@@ -2,6 +2,7 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <core/optimization/MathematicalProgram.h>
+#include <eiquadprog/eiquadprog-fast.hpp>
 #include <pinocchio/Orientation.h>
 #include <rcpputils/asserts.hpp>
 #include <utility>
@@ -88,31 +89,66 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   formulate();
 
   matrix_t H = weighedTask.A.transpose() * weighedTask.A;
-  // H.diagonal() += 1e-8 * vector_t::Ones(numDecisionVars_);
+  H.diagonal() += 1e-12 * vector_t::Ones(numDecisionVars_);
   vector_t g = -weighedTask.A.transpose() * weighedTask.b;
 
   // Solve
-  MathematicalProgram prog;
-  auto var = prog.newVectorVariables(numDecisionVars_);
-  prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
-  prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
-                                      constraints.ub, var);
-  prog.addQuadraticCost(H, g, var);
-  vector_t tau;
-  if (prog.solve()) {
-    actuator_commands_->torque =
-        prog.getSolution(var).tail(actuated_joints_name.size());
-    joint_acc_ = prog.getSolution()
-                     .head(pinocchioInterface_ptr_->nv())
+  // MathematicalProgram prog;
+  // auto var = prog.newVectorVariables(numDecisionVars_);
+  // prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
+  // prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
+  //                                     constraints.ub, var);
+  // prog.addQuadraticCost(H, g, var);
+  // vector_t tau;
+  // if (prog.solve()) {
+  //   actuator_commands_->torque =
+  //       prog.getSolution(var).tail(actuated_joints_name.size());
+  //   joint_acc_ = prog.getSolution()
+  //                    .head(pinocchioInterface_ptr_->nv())
+  //                    .tail(actuated_joints_name.size());
+  //   differential_inv_kin();
+  // } else {
+  //   joint_acc_.setZero(actuated_joints_name.size());
+  //   std::cerr << "wbc failed ...\n";
+  //   actuator_commands_->torque =
+  //       pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+  // }
+
+  eiquadprog::solvers::EiquadprogFast eiquadprog_solver;
+  eiquadprog_solver.reset(numDecisionVars_, constraints.b.size(),
+                          2 * constraints.lb.size());
+  matrix_t Cin(constraints.C.rows() * 2, numDecisionVars_);
+  Cin << constraints.C, -constraints.C;
+  vector_t cin(constraints.C.rows() * 2), ce0;
+  cin << -constraints.lb, constraints.ub;
+  ce0 = -constraints.b;
+  vector_t optimal_u = vector_t::Zero(numDecisionVars_);
+  auto solver_state = eiquadprog_solver.solve_quadprog(H, g, constraints.A, ce0,
+                                                       Cin, cin, optimal_u);
+  // printf("solver state: %d\n", solver_state);
+  if (solver_state == eiquadprog::solvers::EIQUADPROG_FAST_OPTIMAL) {
+    actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
+    joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
+    differential_inv_kin();
   } else {
     joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
-    actuator_commands_->torque =
-        pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+    actuator_commands_->setZero(actuated_joints_name.size());
+    actuator_commands_->Kd.fill(-1.0);
   }
-  differential_inv_kin();
-
+  // const auto policy = base_policy_.get();
+  // vector_t x0(12);
+  // auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
+  // auto base_twist =
+  //     pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+  // vector3_t rpy = toEulerAngles(base_pose.rotation());
+  // x0 << base_pose.translation(), base_twist.linear(), rpy,
+  // base_twist.angular(); actuator_commands_->torque =
+  //     -Jc.rightCols(actuated_joints_name.size()).transpose() *
+  //         (policy->K * x0 + policy->b) +
+  //     pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+  // differential_inv_kin();
   return actuator_commands_;
 }
 
@@ -512,10 +548,10 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(37);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(0);
+  baseKp_.diagonal().fill(30.0);
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(0);
+  baseKd_.diagonal().fill(2.0);
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);
