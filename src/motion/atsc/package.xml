@@ -21,6 +21,7 @@
   <depend>ament_index_cpp</depend>
   <depend>asserts</depend>
   <depend>hpipm_interface_ament</depend>
+  <depend>eiquadprog</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
