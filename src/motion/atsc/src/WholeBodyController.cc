@@ -2,6 +2,7 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <core/optimization/MathematicalProgram.h>
+#include <eiquadprog/eiquadprog-fast.hpp>
 #include <pinocchio/Orientation.h>
 #include <rcpputils/asserts.hpp>
 #include <utility>
@@ -88,31 +89,54 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   formulate();
 
   matrix_t H = weighedTask.A.transpose() * weighedTask.A;
-  // H.diagonal() += 1e-8 * vector_t::Ones(numDecisionVars_);
+  H.diagonal() += 1e-12 * vector_t::Ones(numDecisionVars_);
   vector_t g = -weighedTask.A.transpose() * weighedTask.b;
 
   // Solve
-  MathematicalProgram prog;
-  auto var = prog.newVectorVariables(numDecisionVars_);
-  prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
-  prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
-                                      constraints.ub, var);
-  prog.addQuadraticCost(H, g, var);
-  vector_t tau;
-  if (prog.solve()) {
-    actuator_commands_->torque =
-        prog.getSolution(var).tail(actuated_joints_name.size());
-    joint_acc_ = prog.getSolution()
-                     .head(pinocchioInterface_ptr_->nv())
+  // MathematicalProgram prog;
+  // auto var = prog.newVectorVariables(numDecisionVars_);
+  // prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
+  // prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
+  //                                     constraints.ub, var);
+  // prog.addQuadraticCost(H, g, var);
+  // vector_t tau;
+  // if (prog.solve()) {
+  //   actuator_commands_->torque =
+  //       prog.getSolution(var).tail(actuated_joints_name.size());
+  //   joint_acc_ = prog.getSolution()
+  //                    .head(pinocchioInterface_ptr_->nv())
+  //                    .tail(actuated_joints_name.size());
+  // } else {
+  //   joint_acc_.setZero(actuated_joints_name.size());
+  //   std::cerr << "wbc failed ...\n";
+  //   actuator_commands_->torque =
+  //       pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+  // }
+  // differential_inv_kin();
+
+  eiquadprog::solvers::EiquadprogFast eiquadprog_solver;
+  eiquadprog_solver.reset(numDecisionVars_, constraints.b.size(),
+                          2 * constraints.lb.size());
+  matrix_t Cin(constraints.C.rows() * 2, numDecisionVars_);
+  Cin << constraints.C, -constraints.C;
+  vector_t cin(constraints.C.rows() * 2), ce0;
+  cin << -constraints.lb, constraints.ub;
+  ce0 = -constraints.b;
+  vector_t optimal_u = vector_t::Zero(numDecisionVars_);
+  auto solver_state = eiquadprog_solver.solve_quadprog(H, g, constraints.A, ce0,
+                                                       Cin, cin, optimal_u);
+  // printf("solver state: %d\n", solver_state);
+  if (solver_state == eiquadprog::solvers::EIQUADPROG_FAST_OPTIMAL) {
+    actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
+    joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
+    differential_inv_kin();
   } else {
     joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
-    actuator_commands_->torque =
-        pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+    actuator_commands_->setZero(actuated_joints_name.size());
+    actuator_commands_->Kd.fill(1.0);
   }
-  differential_inv_kin();
-
   return actuator_commands_;
 }
 
@@ -251,6 +275,10 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
+
+    if (abs(acc_fb.z()) > 5.0) {
+      acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
+    }
     log_stream
         << (err_pos_traj->evaluate(t) - x0.head(3)).transpose() << " "
         << (err_rpy_traj->evaluate(t) - rpy_err).transpose() << " "
