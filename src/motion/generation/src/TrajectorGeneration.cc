@@ -142,7 +142,6 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
           pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
     }
     foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
-
     scalar_t zd = 0.32;
     scalar_t mod_z = 0.0;
     time.emplace_back(t_now);

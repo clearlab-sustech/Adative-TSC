@@ -95,7 +95,7 @@ void FootholdOptimization::heuristic(
     pfy_rel = std::min(std::max(pfy_rel, -p_rel_y_max), p_rel_y_max);
     foothold.second.x() += pfx_rel;
     foothold.second.y() += pfy_rel;
-    foothold.second.z() = 0.023;
+    foothold.second.z() = 0.02;
     footholds_[foot_name] = foothold;
   }
 }
