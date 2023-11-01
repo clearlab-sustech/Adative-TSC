@@ -182,7 +182,7 @@ void StateEstimationLKF::linearMotionEstimate(
     auto v =
         pinocchioInterface_ptr->getFrame6dVel_localWorldAligned(foot_names[i]);
     vector3_t p_f = pose.translation();
-    p_f.z() -= 0.0335; // the foot radius, be careful
+    p_f.z() -= 0.02; // the foot radius, be careful
     vector3_t v_f = v.linear();
 
     int i1 = 3 * i;
