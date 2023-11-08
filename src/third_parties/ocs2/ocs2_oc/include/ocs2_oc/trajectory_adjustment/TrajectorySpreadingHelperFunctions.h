@@ -55,7 +55,8 @@ inline TrajectorySpreading::Status trajectorySpread(const ModeSchedule& oldModeS
   const auto status = trajectorySpreading.set(oldModeSchedule, newModeSchedule, controller.timeStamp_);
 
   // adjust bias, gain, and time
-  trajectorySpreading.adjustTrajectory(controller.biasArray_);
+  trajectorySpreading.adjustTrajectory(controller.feedForward_);
+  trajectorySpreading.adjustTrajectory(controller.stateRef_);
   trajectorySpreading.adjustTrajectory(controller.gainArray_);
   trajectorySpreading.adjustTimeTrajectory(controller.timeStamp_);
 

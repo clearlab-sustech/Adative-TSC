@@ -28,10 +28,11 @@ void MotionManager::init() {
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this(),
                                                       config_yaml_);
   atscImplPtr_ =
-      std::make_shared<AtscImpl>(this->shared_from_this(), config_yaml_);
+      std::make_shared<AtscImpl>(this->shared_from_this(), config_yaml_,
+                                 trajGenPtr_->get_robot_interface());
 
-  visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this(),
-                                                config_yaml_);
+  // visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this(),
+  //                                               config_yaml_);
 
   auto config_ = YAML::LoadFile(config_yaml_);
   bool hardware_ = config_["estimation"]["hardware"].as<bool>();
@@ -76,20 +77,17 @@ void MotionManager::inner_loop() {
     atscImplPtr_->update_current_state(estimatorPtr_->getQpos(),
                                        estimatorPtr_->getQvel());
 
-    atscImplPtr_->update_trajectory_reference(
-        trajGenPtr_->get_trajectory_reference());
+    atscImplPtr_->update_mpc_solution(trajGenPtr_->get_mpc_sol());
 
-    atscImplPtr_->update_mode_schedule(mode_schedule_ptr);
+    // if (unitreeHWPtr_ != nullptr) {
+    //   unitreeHWPtr_->set_actuator_cmds(atscImplPtr_->getCmds());
+    //   unitreeHWPtr_->send();
+    // }
 
-    if (unitreeHWPtr_ != nullptr) {
-      unitreeHWPtr_->set_actuator_cmds(atscImplPtr_->getCmds());
-      unitreeHWPtr_->send();
-    }
-
-    visPtr_->update_current_state(estimatorPtr_->getQpos(),
-                                  estimatorPtr_->getQvel());
-    visPtr_->update_trajectory_reference(
-        trajGenPtr_->get_trajectory_reference());
+    // visPtr_->update_current_state(estimatorPtr_->getQpos(),
+    //                               estimatorPtr_->getQvel());
+    // visPtr_->update_trajectory_reference(
+    //     trajGenPtr_->get_trajectory_reference());
 
     loop_rate.sleep();
   }

@@ -86,7 +86,7 @@ SqpSolver::SqpSolver(sqp::Settings settings,
 
 SqpSolver::~SqpSolver() {
   if (settings_.printSolverStatistics) {
-    std::cerr << getBenchmarkingInformation() << std::endl;
+    std::cerr << getBenchmarkingInfo() << std::endl;
   }
 }
 
@@ -104,7 +104,7 @@ void SqpSolver::reset() {
   computeControllerTimer_.reset();
 }
 
-std::string SqpSolver::getBenchmarkingInformation() const {
+std::string SqpSolver::getBenchmarkingInfo() const {
   const auto linearQuadraticApproximationTotal =
       linearQuadraticApproximationTimer_.getTotalInMilliseconds();
   const auto solveQpTotal = solveQpTimer_.getTotalInMilliseconds();
@@ -220,7 +220,7 @@ void SqpSolver::runImpl(scalar_t initTime, const vector_t &initState,
   performanceIndeces_.clear();
   std::vector<Metrics> metrics;
 
-  int iter = 0;
+  size_t iter = 0;
   sqp::Convergence convergence = sqp::Convergence::FALSE;
   while (convergence == sqp::Convergence::FALSE) {
     if (settings_.printSolverStatus || settings_.printLinesearch) {
@@ -621,7 +621,7 @@ sqp::StepInfo SqpSolver::takeStep(
 }
 
 sqp::Convergence
-SqpSolver::checkConvergence(int iteration, const PerformanceIndex &baseline,
+SqpSolver::checkConvergence(size_t iteration, const PerformanceIndex &baseline,
                             const sqp::StepInfo &stepInfo) const {
   using Convergence = sqp::Convergence;
   if ((iteration + 1) >= settings_.sqpIteration) {

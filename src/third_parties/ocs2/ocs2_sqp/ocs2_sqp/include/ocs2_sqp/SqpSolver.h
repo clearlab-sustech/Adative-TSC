@@ -48,60 +48,89 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace ocs2 {
 
 class SqpSolver : public SolverBase {
- public:
+public:
   /**
    * Constructor
    *
    * @param settings : settings for the multiple shooting SQP solver.
    * @param [in] optimalControlProblem: The optimal control problem formulation.
-   * @param [in] initializer: This class initializes the state-input for the time steps that no controller is available.
+   * @param [in] initializer: This class initializes the state-input for the
+   * time steps that no controller is available.
    */
-  SqpSolver(sqp::Settings settings, const OptimalControlProblem& optimalControlProblem, const Initializer& initializer);
+  SqpSolver(sqp::Settings settings,
+            const OptimalControlProblem &optimalControlProblem,
+            const Initializer &initializer);
 
   ~SqpSolver() override;
 
   void reset() override;
 
-  scalar_t getFinalTime() const override { return primalSolution_.timeTrajectory_.back(); };
+  scalar_t getFinalTime() const override {
+    return primalSolution_.timeTrajectory_.back();
+  };
 
-  void getPrimalSolution(scalar_t finalTime, PrimalSolution* primalSolutionPtr) const override { *primalSolutionPtr = primalSolution_; }
+  void getPrimalSolution(scalar_t finalTime,
+                         PrimalSolution *primalSolutionPtr) const override {
+    *primalSolutionPtr = primalSolution_;
+  }
 
-  const ProblemMetrics& getSolutionMetrics() const override { return problemMetrics_; }
+  const ProblemMetrics &getSolutionMetrics() const override {
+    return problemMetrics_;
+  }
 
   size_t getNumIterations() const override { return totalNumIterations_; }
 
-  const OptimalControlProblem& getOptimalControlProblem() const override { return ocpDefinitions_.front(); }
+  const OptimalControlProblem &getOptimalControlProblem() const override {
+    return ocpDefinitions_.front();
+  }
 
-  const PerformanceIndex& getPerformanceIndeces() const override { return getIterationsLog().back(); };
+  const PerformanceIndex &getPerformanceIndeces() const override {
+    return getIterationsLog().back();
+  };
 
-  const std::vector<PerformanceIndex>& getIterationsLog() const override;
+  const std::vector<PerformanceIndex> &getIterationsLog() const override;
 
-  ScalarFunctionQuadraticApproximation getValueFunction(scalar_t time, const vector_t& state) const override;
+  ScalarFunctionQuadraticApproximation
+  getValueFunction(scalar_t time, const vector_t &state) const override;
 
-  ScalarFunctionQuadraticApproximation getHamiltonian(scalar_t time, const vector_t& state, const vector_t& input) override {
+  ScalarFunctionQuadraticApproximation
+  getHamiltonian(scalar_t time, const vector_t &state,
+                 const vector_t &input) override {
     throw std::runtime_error("[SqpSolver] getHamiltonian() not available yet.");
   }
 
-  vector_t getStateInputEqualityConstraintLagrangian(scalar_t time, const vector_t& state) const override {
-    throw std::runtime_error("[SqpSolver] getStateInputEqualityConstraintLagrangian() not available yet.");
+  vector_t getStateInputEqualityConstraintLagrangian(
+      scalar_t time, const vector_t &state) const override {
+    throw std::runtime_error(
+        "[SqpSolver] getStateInputEqualityConstraintLagrangian() not available "
+        "yet.");
   }
 
-  MultiplierCollection getIntermediateDualSolution(scalar_t time) const override {
-    throw std::runtime_error("[SqpSolver] getIntermediateDualSolution() not available yet.");
+  MultiplierCollection
+  getIntermediateDualSolution(scalar_t time) const override {
+    throw std::runtime_error(
+        "[SqpSolver] getIntermediateDualSolution() not available yet.");
   }
 
- private:
-  void runImpl(scalar_t initTime, const vector_t& initState, scalar_t finalTime) override;
+  /** Get profiling information as a string */
+  virtual std::string getBenchmarkingInfo() const;
 
-  void runImpl(scalar_t initTime, const vector_t& initState, scalar_t finalTime, const ControllerBase* externalControllerPtr) override {
+private:
+  void runImpl(scalar_t initTime, const vector_t &initState,
+               scalar_t finalTime) override;
+
+  void runImpl(scalar_t initTime, const vector_t &initState, scalar_t finalTime,
+               const ControllerBase *externalControllerPtr) override {
     if (externalControllerPtr == nullptr) {
       runImpl(initTime, initState, finalTime);
     } else {
-      throw std::runtime_error("[SqpSolver::run] This solver does not support external controller!");
+      throw std::runtime_error(
+          "[SqpSolver::run] This solver does not support external controller!");
     }
   }
 
-  void runImpl(scalar_t initTime, const vector_t& initState, scalar_t finalTime, const PrimalSolution& primalSolution) override {
+  void runImpl(scalar_t initTime, const vector_t &initState, scalar_t finalTime,
+               const PrimalSolution &primalSolution) override {
     // Copy all except the controller
     primalSolution_.timeTrajectory_ = primalSolution.timeTrajectory_;
     primalSolution_.stateTrajectory_ = primalSolution.stateTrajectory_;
@@ -114,38 +143,52 @@ class SqpSolver : public SolverBase {
   /** Run a task in parallel with settings.nThreads */
   void runParallel(std::function<void(int)> taskFunction);
 
-  /** Get profiling information as a string */
-  std::string getBenchmarkingInformation() const;
-
-  /** Creates QP around t, x(t), u(t). Returns performance metrics at the current {t, x(t), u(t)} */
-  PerformanceIndex setupQuadraticSubproblem(const std::vector<AnnotatedTime>& time, const vector_t& initState, const vector_array_t& x,
-                                            const vector_array_t& u, std::vector<Metrics>& metrics);
+  /** Creates QP around t, x(t), u(t). Returns performance metrics at the
+   * current {t, x(t), u(t)} */
+  PerformanceIndex
+  setupQuadraticSubproblem(const std::vector<AnnotatedTime> &time,
+                           const vector_t &initState, const vector_array_t &x,
+                           const vector_array_t &u,
+                           std::vector<Metrics> &metrics);
 
   /** Computes only the performance metrics at the current {t, x(t), u(t)} */
-  PerformanceIndex computePerformance(const std::vector<AnnotatedTime>& time, const vector_t& initState, const vector_array_t& x,
-                                      const vector_array_t& u, std::vector<Metrics>& metrics);
+  PerformanceIndex computePerformance(const std::vector<AnnotatedTime> &time,
+                                      const vector_t &initState,
+                                      const vector_array_t &x,
+                                      const vector_array_t &u,
+                                      std::vector<Metrics> &metrics);
 
   /** Returns solution of the QP subproblem in delta coordinates: */
   struct OcpSubproblemSolution {
-    vector_array_t deltaXSol;      // delta_x(t)
-    vector_array_t deltaUSol;      // delta_u(t)
-    scalar_t armijoDescentMetric;  // inner product of the cost gradient and decision variable step
+    vector_array_t deltaXSol;     // delta_x(t)
+    vector_array_t deltaUSol;     // delta_u(t)
+    scalar_t armijoDescentMetric; // inner product of the cost gradient and
+                                  // decision variable step
   };
-  OcpSubproblemSolution getOCPSolution(const vector_t& delta_x0);
+  OcpSubproblemSolution getOCPSolution(const vector_t &delta_x0);
 
   /** Extract the value function based on the last solved QP */
-  void extractValueFunction(const std::vector<AnnotatedTime>& time, const vector_array_t& x);
+  void extractValueFunction(const std::vector<AnnotatedTime> &time,
+                            const vector_array_t &x);
 
-  /** Constructs the primal solution based on the optimized state and input trajectories */
-  PrimalSolution toPrimalSolution(const std::vector<AnnotatedTime>& time, vector_array_t&& x, vector_array_t&& u);
+  /** Constructs the primal solution based on the optimized state and input
+   * trajectories */
+  PrimalSolution toPrimalSolution(const std::vector<AnnotatedTime> &time,
+                                  vector_array_t &&x, vector_array_t &&u);
 
-  /** Decides on the step to take and overrides given trajectories {x(t), u(t)} <- {x(t) + a*dx(t), u(t) + a*du(t)} */
-  sqp::StepInfo takeStep(const PerformanceIndex& baseline, const std::vector<AnnotatedTime>& timeDiscretization, const vector_t& initState,
-                         const OcpSubproblemSolution& subproblemSolution, vector_array_t& x, vector_array_t& u,
-                         std::vector<Metrics>& metrics);
+  /** Decides on the step to take and overrides given trajectories {x(t), u(t)}
+   * <- {x(t) + a*dx(t), u(t) + a*du(t)} */
+  sqp::StepInfo takeStep(const PerformanceIndex &baseline,
+                         const std::vector<AnnotatedTime> &timeDiscretization,
+                         const vector_t &initState,
+                         const OcpSubproblemSolution &subproblemSolution,
+                         vector_array_t &x, vector_array_t &u,
+                         std::vector<Metrics> &metrics);
 
   /** Determine convergence after a step */
-  sqp::Convergence checkConvergence(int iteration, const PerformanceIndex& baseline, const sqp::StepInfo& stepInfo) const;
+  sqp::Convergence checkConvergence(size_t iteration,
+                                    const PerformanceIndex &baseline,
+                                    const sqp::StepInfo &stepInfo) const;
 
   // Problem definition
   const sqp::Settings settings_;
@@ -176,7 +219,8 @@ class SqpSolver : public SolverBase {
   std::vector<VectorFunctionLinearApproximation> constraintsProjection_;
 
   // Lagrange multipliers
-  std::vector<multiple_shooting::ProjectionMultiplierCoefficients> projectionMultiplierCoefficients_;
+  std::vector<multiple_shooting::ProjectionMultiplierCoefficients>
+      projectionMultiplierCoefficients_;
 
   // Iteration performance log
   std::vector<PerformanceIndex> performanceIndeces_;
@@ -193,4 +237,4 @@ class SqpSolver : public SolverBase {
   benchmark::RepeatedTimer computeControllerTimer_;
 };
 
-}  // namespace ocs2
+} // namespace ocs2

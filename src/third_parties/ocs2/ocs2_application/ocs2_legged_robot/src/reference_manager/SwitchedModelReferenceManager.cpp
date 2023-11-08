@@ -35,8 +35,9 @@ namespace legged_robot {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-SwitchedModelReferenceManager::SwitchedModelReferenceManager(std::shared_ptr<GaitSchedule> gaitSchedulePtr,
-                                                             std::shared_ptr<SwingTrajectoryPlanner> swingTrajectoryPtr)
+SwitchedModelReferenceManager::SwitchedModelReferenceManager(
+    std::shared_ptr<GaitSchedule> gaitSchedulePtr,
+    std::shared_ptr<SwingTrajectoryPlanner> swingTrajectoryPtr)
     : ReferenceManager(TargetTrajectories(), ModeSchedule()),
       gaitSchedulePtr_(std::move(gaitSchedulePtr)),
       swingTrajectoryPtr_(std::move(swingTrajectoryPtr)) {}
@@ -44,7 +45,8 @@ SwitchedModelReferenceManager::SwitchedModelReferenceManager(std::shared_ptr<Gai
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-void SwitchedModelReferenceManager::setModeSchedule(const ModeSchedule& modeSchedule) {
+void SwitchedModelReferenceManager::setModeSchedule(
+    const ModeSchedule &modeSchedule) {
   ReferenceManager::setModeSchedule(modeSchedule);
   gaitSchedulePtr_->setModeSchedule(modeSchedule);
 }
@@ -52,21 +54,23 @@ void SwitchedModelReferenceManager::setModeSchedule(const ModeSchedule& modeSche
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-contact_flag_t SwitchedModelReferenceManager::getContactFlags(scalar_t time) const {
+contact_flag_t
+SwitchedModelReferenceManager::getContactFlags(scalar_t time) const {
   return modeNumber2StanceLeg(this->getModeSchedule().modeAtTime(time));
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-void SwitchedModelReferenceManager::modifyReferences(scalar_t initTime, scalar_t finalTime, const vector_t& initState,
-                                                     TargetTrajectories& targetTrajectories, ModeSchedule& modeSchedule) {
+void SwitchedModelReferenceManager::modifyReferences(
+    scalar_t initTime, scalar_t finalTime, const vector_t &,
+    TargetTrajectories &, ModeSchedule &modeSchedule) {
   const auto timeHorizon = finalTime - initTime;
-  modeSchedule = gaitSchedulePtr_->getModeSchedule(initTime - timeHorizon, finalTime + timeHorizon);
-
+  modeSchedule = gaitSchedulePtr_->getModeSchedule(initTime - timeHorizon,
+                                                   finalTime + timeHorizon);
   const scalar_t terrainHeight = 0.0;
   swingTrajectoryPtr_->update(modeSchedule, terrainHeight);
 }
 
-}  // namespace legged_robot
-}  // namespace ocs2
+} // namespace legged_robot
+} // namespace ocs2

@@ -35,48 +35,64 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace ocs2 {
 
 /**
- * Implements the reference manager with a thread-safe buffer for setting and getting the references.
- * A protected virtual interface is provided to modify the references before each solver run.
+ * Implements the reference manager with a thread-safe buffer for setting and
+ * getting the references. A protected virtual interface is provided to modify
+ * the references before each solver run.
  */
 class ReferenceManager : public ReferenceManagerInterface {
- public:
-  explicit ReferenceManager(TargetTrajectories initialTargetTrajectories = TargetTrajectories(),
-                            ModeSchedule initialModeSchedule = ModeSchedule());
+public:
+  explicit ReferenceManager(
+      TargetTrajectories initialTargetTrajectories = TargetTrajectories(),
+      ModeSchedule initialModeSchedule = ModeSchedule());
 
   ~ReferenceManager() override = default;
 
-  void preSolverRun(scalar_t initTime, scalar_t finalTime, const vector_t& initState) override;
+  void preSolverRun(scalar_t initTime, scalar_t finalTime,
+                    const vector_t &initState) override;
 
-  const ModeSchedule& getModeSchedule() const override { return modeSchedule_.get(); }
-  void setModeSchedule(const ModeSchedule& modeSchedule) override { modeSchedule_.setBuffer(modeSchedule); }
-  void setModeSchedule(ModeSchedule&& modeSchedule) override { modeSchedule_.setBuffer(std::move(modeSchedule)); }
+  const ModeSchedule &getModeSchedule() const override {
+    return modeSchedule_.get();
+  }
+  void setModeSchedule(const ModeSchedule &modeSchedule) override {
+    modeSchedule_.setBuffer(modeSchedule);
+  }
+  void setModeSchedule(ModeSchedule &&modeSchedule) override {
+    modeSchedule_.setBuffer(std::move(modeSchedule));
+  }
 
-  const TargetTrajectories& getTargetTrajectories() const override { return targetTrajectories_.get(); }
-  void setTargetTrajectories(const TargetTrajectories& targetTrajectories) override {
+  const TargetTrajectories &getTargetTrajectories() const override {
+    return targetTrajectories_.get();
+  }
+  void
+  setTargetTrajectories(const TargetTrajectories &targetTrajectories) override {
     return targetTrajectories_.setBuffer(targetTrajectories);
   }
-  void setTargetTrajectories(TargetTrajectories&& targetTrajectories) override {
+  void setTargetTrajectories(TargetTrajectories &&targetTrajectories) override {
     return targetTrajectories_.setBuffer(std::move(targetTrajectories));
   }
 
- protected:
+protected:
   /**
    * Modifies the active ModeSchedule and TargetTrajectories.
    *
    * @param [in] initTime : Start time of the optimization horizon.
    * @param [in] finalTime : Final time of the optimization horizon.
    * @param [in] initState : State at the start of the optimization horizon.
-   * @param [in, out] targetTrajectories : The updated TargetTrajectories. If setTargetTrajectories() has been called before,
-   * TargetTrajectories is already updated by the set value.
-   * @param [in, out] modeSchedule : The updated ModeSchedule. If setModeSchedule() has been called before, modeSchedule is
+   * @param [in, out] targetTrajectories : The updated TargetTrajectories. If
+   * setTargetTrajectories() has been called before, TargetTrajectories is
    * already updated by the set value.
+   * @param [in, out] modeSchedule : The updated ModeSchedule. If
+   * setModeSchedule() has been called before, modeSchedule is already updated
+   * by the set value.
    */
-  virtual void modifyReferences(scalar_t initTime, scalar_t finalTime, const vector_t& initState, TargetTrajectories& targetTrajectories,
-                                ModeSchedule& modeSchedule) {}
+  virtual void modifyReferences(scalar_t initTime, scalar_t finalTime,
+                                const vector_t &initState,
+                                TargetTrajectories &targetTrajectories,
+                                ModeSchedule &modeSchedule) {}
 
- private:
-  BufferedValue<ModeSchedule> modeSchedule_;
+private:
   BufferedValue<TargetTrajectories> targetTrajectories_;
+  BufferedValue<ModeSchedule> modeSchedule_;
 };
 
-}  // namespace ocs2
+} // namespace ocs2

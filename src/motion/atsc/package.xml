@@ -22,6 +22,10 @@
   <depend>asserts</depend>
   <depend>hpipm_interface_ament</depend>
   <depend>eiquadprog</depend>
+  <depend>ocs2_oc</depend>
+  <depend>ocs2_centroidal_model</depend>
+  <depend>ocs2_legged_robot</depend>
+  <depend>ocs2_mpc</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

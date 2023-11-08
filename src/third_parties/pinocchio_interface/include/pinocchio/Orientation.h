@@ -16,6 +16,8 @@ vector3_t toEulerAngles(const Eigen::Quaternion<scalar_t> &q);
 
 vector3_t toEulerAngles(const matrix3_t &R);
 
+vector_t toEulerAnglesZYX(const Eigen::Quaternion<scalar_t> &q);
+
 Eigen::Quaternion<scalar_t> toQuaternion(const matrix3_t &R);
 
 Eigen::Quaternion<scalar_t>

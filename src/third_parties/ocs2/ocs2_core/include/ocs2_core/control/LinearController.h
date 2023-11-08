@@ -40,46 +40,56 @@ namespace ocs2 {
  * form u[x,t] = k[t] * x + uff[t]
  */
 class LinearController final : public ControllerBase {
- public:
+public:
   /** Constructor, leaves object uninitialized */
   LinearController() = default;
 
   /**
    * @brief Constructor initializes all required members of the controller.
-   *
    * @param [in] controllerTime: Time stamp array of the controller
-   * @param [in] controllerBias: The bias array.
+   * @param [in] stateRef: The state reference
+   * @param [in] controllerFeedForward: The feedforward array.
    * @param [in] controllerGain: The feedback gain array.
    */
-  LinearController(scalar_array_t controllerTime, vector_array_t controllerBias, matrix_array_t controllerGain)
-      : timeStamp_(std::move(controllerTime)), biasArray_(std::move(controllerBias)), gainArray_(std::move(controllerGain)) {}
+  LinearController(scalar_array_t controllerTime, vector_array_t stateRef,
+                   vector_array_t controllerFeedForward,
+                   matrix_array_t controllerGain)
+      : timeStamp_(std::move(controllerTime)),
+        stateRef_(std::move(stateRef)),
+        feedForward_(std::move(controllerFeedForward)),
+        gainArray_(std::move(controllerGain)) {}
 
   /** Copy constructor */
-  LinearController(const LinearController& other);
+  LinearController(const LinearController &other);
 
   /** Move constructor */
-  LinearController(LinearController&& other);
+  LinearController(LinearController &&other);
 
   /** Copy assignment (copy and swap idiom) */
-  LinearController& operator=(LinearController rhs);
+  LinearController &operator=(LinearController rhs);
 
   /** Destructor */
   ~LinearController() override = default;
 
   /** Clone */
-  LinearController* clone() const override;
+  LinearController *clone() const override;
 
   /**
    * @brief setController Assign control law
    * @param [in] controllerTime: Time stamp array of the controller
-   * @param [in] controllerBias: The bias array.
+   * @param [in] stateRef: The state reference
+   * @param [in] controllerFeedForward: The feedforward array.
    * @param [in] controllerGain: The feedback gain array.
    */
-  void setController(const scalar_array_t& controllerTime, const vector_array_t& controllerBias, const matrix_array_t& controllerGain);
+  void setController(const scalar_array_t &controllerTime,
+                     const vector_array_t &stateRef,
+                     const vector_array_t &controllerFeedForward,
+                     const matrix_array_t &controllerGain);
 
-  vector_t computeInput(scalar_t t, const vector_t& x) override;
+  vector_t computeInput(scalar_t t, const vector_t &x) override;
 
-  void concatenate(const ControllerBase* nextController, int index, int length) override;
+  void concatenate(const ControllerBase *nextController, int index,
+                   int length) override;
 
   int size() const override;
 
@@ -91,31 +101,36 @@ class LinearController final : public ControllerBase {
 
   void display() const override;
 
-  void getFeedbackGain(scalar_t time, matrix_t& gain) const;
+  void getFeedbackGain(scalar_t time, matrix_t &gain) const;
 
-  void getBias(scalar_t time, vector_t& bias) const;
+  void getFeedForward(scalar_t time, vector_t &feedforward) const;
 
   scalar_array_t controllerEventTimes() const override;
 
-  void flatten(const scalar_array_t& timeArray, const std::vector<std::vector<float>*>& flatArray2) const override;
+  void
+  flatten(const scalar_array_t &timeArray,
+          const std::vector<std::vector<float> *> &flatArray2) const override;
 
-  static LinearController unFlatten(const size_array_t& stateDim, const size_array_t& inputDim, const scalar_array_t& timeArray,
-                                    const std::vector<std::vector<float> const*>& flatArray2);
+  static LinearController
+  unFlatten(const size_array_t &stateDim, const size_array_t &inputDim,
+            const scalar_array_t &timeArray,
+            const std::vector<std::vector<float> const *> &flatArray2);
 
- private:
-  void flattenSingle(scalar_t time, std::vector<float>& flatArray) const;
+private:
+  void flattenSingle(scalar_t time, std::vector<float> &flatArray) const;
 
- public:
+public:
   scalar_array_t timeStamp_;
-  vector_array_t biasArray_;
+  vector_array_t stateRef_;
+  vector_array_t feedForward_;
   vector_array_t deltaBiasArray_;
   matrix_array_t gainArray_;
 
-  friend void swap(LinearController& a, LinearController& b) noexcept;
+  friend void swap(LinearController &a, LinearController &b) noexcept;
 };
 
-void swap(LinearController& a, LinearController& b) noexcept;
+void swap(LinearController &a, LinearController &b) noexcept;
 
-std::ostream& operator<<(std::ostream& out, const LinearController& controller);
+std::ostream &operator<<(std::ostream &out, const LinearController &controller);
 
-}  // namespace ocs2
+} // namespace ocs2

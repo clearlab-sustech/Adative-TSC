@@ -146,11 +146,11 @@ protected:
   /*
    * Variables
    */
+  Node::SharedPtr nodeHandle_;
+
   MPC_BASE &mpc_;
 
   std::string topicPrefix_;
-
-  Node::SharedPtr nodeHandle_;
 
   // Publishers and subscribers
   Subscription<ocs2_msgs::msg::MpcObservation>::SharedPtr

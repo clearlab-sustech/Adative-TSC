@@ -32,6 +32,19 @@ vector3_t toEulerAngles(const Eigen::Quaternion<scalar_t> &q) {
   return pinocchio::rpy::matrixToRpy(q.toRotationMatrix());
 }
 
+vector_t toEulerAnglesZYX(const Eigen::Quaternion<scalar_t> &q) {
+  vector_t angles(3);
+  scalar_t as = std::min(-2. * (q.x() * q.z() - q.w() * q.y()), .99999);
+  angles(0) =
+      std::atan2(2 * (q.x() * q.y() + q.w() * q.z()),
+                 q.w() * q.w() + q.x() * q.x() - q.y() * q.y() - q.z() * q.z());
+  angles(1) = std::asin(as);
+  angles(2) =
+      std::atan2(2 * (q.y() * q.z() + q.w() * q.x()),
+                 q.w() * q.w() - q.x() * q.x() - q.y() * q.y() + q.z() * q.z());
+  return angles;
+}
+
 Eigen::Quaternion<scalar_t>
 toQuaternion(const vector3_t &rpy) // roll (x), pitch (Y), yaw (z)
 {

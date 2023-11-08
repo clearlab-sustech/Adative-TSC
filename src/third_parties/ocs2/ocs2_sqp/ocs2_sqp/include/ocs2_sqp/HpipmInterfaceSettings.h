@@ -43,13 +43,13 @@ namespace hpipm_interface {
  */
 struct Settings {
   hpipm_mode hpipmMode = hpipm_mode::SPEED;
-  int iter_max = 30;
-  scalar_t alpha_min = 1e-12;
-  scalar_t mu0 = 1e1;
+  int iter_max = 80;
+  scalar_t alpha_min = 1e-8;
+  scalar_t mu0 = 1e2;
   scalar_t tol_stat = 1e-6;  // res_g_max
-  scalar_t tol_eq = 1e-8;    // res_b_max
-  scalar_t tol_ineq = 1e-8;  // res_d_max
-  scalar_t tol_comp = 1e-8;  // res_m_max
+  scalar_t tol_eq = 1e-6;    // res_b_max
+  scalar_t tol_ineq = 1e-6;  // res_d_max
+  scalar_t tol_comp = 1e-6;  // res_m_max
   scalar_t reg_prim = 1e-12;
   int warm_start = 0;
   int pred_corr = 1;
