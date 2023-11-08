@@ -26,6 +26,7 @@
   <depend>atsc</depend>
   <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
+  <depend>hardware</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

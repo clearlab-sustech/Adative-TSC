@@ -26,6 +26,12 @@ public:
 
   void setContactFlag(vector<bool> flag);
 
+  void set_imu_msg(sensor_msgs::msg::Imu::SharedPtr msg);
+
+  void set_touch_msg(trans::msg::TouchSensor::SharedPtr msg);
+
+  void set_joint_msg(sensor_msgs::msg::JointState::SharedPtr msg);
+
 private:
   void setup();
 

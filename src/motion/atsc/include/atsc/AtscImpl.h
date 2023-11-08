@@ -30,6 +30,8 @@ public:
 
   void update_mode_schedule(const std::shared_ptr<ModeSchedule> mode_schedule);
 
+  trans::msg::ActuatorCmds::SharedPtr getCmds();
+
 private:
   void publishCmds();
 

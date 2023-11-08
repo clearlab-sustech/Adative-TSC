@@ -33,6 +33,13 @@ void MotionManager::init() {
   visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this(),
                                                 config_yaml_);
 
+  auto config_ = YAML::LoadFile(config_yaml_);
+  bool hardware_ = config_["estimation"]["hardware"].as<bool>();
+  if (hardware_) {
+    unitreeHWPtr_ =
+        std::make_shared<UnitreeHW>(this->shared_from_this(), config_yaml_);
+  }
+
   inner_loop_thread_ = std::thread(&MotionManager::inner_loop, this);
   run_.push(true);
 }
@@ -46,11 +53,16 @@ void MotionManager::inner_loop() {
     if (this->now().seconds() > ts + 4.0) {
       gaitSchedulePtr_->switch_gait("trot");
     }
-
-    if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
-    } else {
-      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
+    // if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
+    //   trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
+    // } else {
+    //   trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
+    // }
+    if (unitreeHWPtr_ != nullptr) {
+      unitreeHWPtr_->read();
+      estimatorPtr_->set_imu_msg(unitreeHWPtr_->get_imu_msg());
+      estimatorPtr_->set_touch_msg(unitreeHWPtr_->get_touch_msg());
+      estimatorPtr_->set_joint_msg(unitreeHWPtr_->get_joint_msg());
     }
 
     scalar_t horizon_time_ =
@@ -61,8 +73,6 @@ void MotionManager::inner_loop() {
     trajGenPtr_->update_current_state(estimatorPtr_->getQpos(),
                                       estimatorPtr_->getQvel());
 
-    trajGenPtr_->update_mode_schedule(mode_schedule_ptr);
-
     atscImplPtr_->update_current_state(estimatorPtr_->getQpos(),
                                        estimatorPtr_->getQvel());
 
@@ -71,12 +81,15 @@ void MotionManager::inner_loop() {
 
     atscImplPtr_->update_mode_schedule(mode_schedule_ptr);
 
+    if (unitreeHWPtr_ != nullptr) {
+      unitreeHWPtr_->set_actuator_cmds(atscImplPtr_->getCmds());
+      unitreeHWPtr_->send();
+    }
+
     visPtr_->update_current_state(estimatorPtr_->getQpos(),
                                   estimatorPtr_->getQvel());
     visPtr_->update_trajectory_reference(
         trajGenPtr_->get_trajectory_reference());
-
-    visPtr_->update_footholds(trajGenPtr_->get_footholds());
 
     loop_rate.sleep();
   }

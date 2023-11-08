@@ -88,6 +88,7 @@ simulation:
 estimation:
   dt: 0.002
   use_odom: false
+  hardware: false
 
 controller:
   frequency: 500.0

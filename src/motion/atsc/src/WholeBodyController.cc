@@ -93,26 +93,25 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   vector_t g = -weighedTask.A.transpose() * weighedTask.b;
 
   // Solve
-  // MathematicalProgram prog;
-  // auto var = prog.newVectorVariables(numDecisionVars_);
-  // prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
-  // prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
-  //                                     constraints.ub, var);
-  // prog.addQuadraticCost(H, g, var);
-  // vector_t tau;
-  // if (prog.solve()) {
-  //   actuator_commands_->torque =
-  //       prog.getSolution(var).tail(actuated_joints_name.size());
-  //   joint_acc_ = prog.getSolution()
-  //                    .head(pinocchioInterface_ptr_->nv())
-  //                    .tail(actuated_joints_name.size());
-  // } else {
-  //   joint_acc_.setZero(actuated_joints_name.size());
-  //   std::cerr << "wbc failed ...\n";
-  //   actuator_commands_->torque =
-  //       pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
-  // }
-  // differential_inv_kin();
+  /* MathematicalProgram prog;
+  auto var = prog.newVectorVariables(numDecisionVars_);
+  prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
+  prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
+                                      constraints.ub, var);
+  prog.addQuadraticCost(H, g, var);
+  vector_t tau;
+  if (prog.solve()) {
+    actuator_commands_->torque =
+        prog.getSolution(var).tail(actuated_joints_name.size());
+    joint_acc_ = prog.getSolution()
+                     .head(pinocchioInterface_ptr_->nv())
+                     .tail(actuated_joints_name.size());
+  } else {
+    joint_acc_.setZero(actuated_joints_name.size());
+    std::cerr << "wbc failed ...\n";
+    actuator_commands_->torque =
+        pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+  } */
 
   eiquadprog::solvers::EiquadprogFast eiquadprog_solver;
   eiquadprog_solver.reset(numDecisionVars_, constraints.b.size(),
@@ -135,8 +134,9 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
     joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
     actuator_commands_->setZero(actuated_joints_name.size());
-    actuator_commands_->Kd.fill(1.0);
+    actuator_commands_->Kd.fill(-1.0);
   }
+
   return actuator_commands_;
 }
 
@@ -450,15 +450,13 @@ void WholeBodyController::differential_inv_kin() {
 
       scalar_t kp_val = 30.0;
       scalar_t kd_val = 1.0;
-
-      // scalar_t kp_val, kd_val;
       // if (pos_err.norm() < 3e-2) {
-      //   kp_val = 60;
+      //   kp_val = 60.0;
       // } else {
-      //   kp_val = 30;
+      //   kp_val = 30.0;
       // }
       // if (vel_err.norm() < 0.1) {
-      //   kd_val = 2;
+      //   kd_val = 2.0;
       // } else {
       //   kd_val = 1.0;
       // }
