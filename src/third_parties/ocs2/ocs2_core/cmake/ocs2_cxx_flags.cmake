@@ -1,8 +1,5 @@
-# The list of compiler flags used in piano can be prefixed with catkin config
-# Addition flags are to be separated by \;
-# For example, to turn on architecture specific optimizations:
-#   catkin config --cmake-args -DPIANO_CXX_FLAGS=-march=native\;-mtune=native
-list(APPEND PIANO_CXX_FLAGS
+
+list(APPEND OCS2_CXX_FLAGS
   "-march=native"
   "-mtune=native"
   "-fPIC"
@@ -12,7 +9,8 @@ list(APPEND PIANO_CXX_FLAGS
   )
 
 # Force Boost dynamic linking
-list(APPEND PIANO_CXX_FLAGS
+find_package(Boost COMPONENTS log REQUIRED)
+list(APPEND ocs2_CXX_FLAGS
   "-DBOOST_ALL_DYN_LINK"
   )
 
@@ -20,10 +18,10 @@ list(APPEND PIANO_CXX_FLAGS
 if (NOT DEFINED OpenMP_CXX_FOUND)
   find_package(OpenMP REQUIRED)
 endif (NOT DEFINED OpenMP_CXX_FOUND)
-list(APPEND PIANO_CXX_FLAGS
+list(APPEND OCS2_CXX_FLAGS
   ${OpenMP_CXX_FLAGS}
   )
 
 # Cpp standard version
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

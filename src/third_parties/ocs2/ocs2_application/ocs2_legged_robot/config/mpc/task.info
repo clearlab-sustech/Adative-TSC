@@ -14,7 +14,7 @@ model_settings
 
   verboseCppAd                  true
   recompileLibrariesCppAd       true
-  modelFolderCppAd              /tmp/piano
+  modelFolderCppAd              /tmp/ocs2
 }
 
 swing_trajectory_config

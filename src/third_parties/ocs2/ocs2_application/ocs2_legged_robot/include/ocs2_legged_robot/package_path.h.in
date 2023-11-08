@@ -32,13 +32,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstddef>
 #include <string>
 
-namespace piano {
-namespace legged_robot {
+namespace ocs2
+{
+  namespace legged_robot
+  {
 
-/** Gets the path to the package source directory. */
-inline std::string getPath() {
-  return "@PROJECT_SOURCE_DIR@";
-}
+    /** Gets the path to the package source directory. */
+    inline std::string getPath()
+    {
+      return "@PROJECT_SOURCE_DIR@";
+    }
 
-}  // namespace legged_robot
-}  // namespace piano
+  } // namespace legged_robot
+} // namespace ocs2
