@@ -1,0 +1,4 @@
+uint16 size
+float32[] qpos
+---
+bool is_success
