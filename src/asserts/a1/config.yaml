@@ -12,6 +12,11 @@ global:
     mode_schedule: "mode_schedule"
     trajectories: "trajectories"
 
+ocs2:
+  package: "ocs2_legged_robot"
+  reference_file: "/config/command/reference.info"
+  task_file: "/config/mpc/task.info"
+
 model:
   name: "a1"
   package: "asserts"
