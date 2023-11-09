@@ -4,4 +4,3 @@ log/*
 site/*
 data_log.txt
 actuator_cmds_log.txt
-*.txt

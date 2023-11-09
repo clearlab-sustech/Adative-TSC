@@ -1,0 +1,83 @@
+cmake_minimum_required(VERSION 3.8)
+project(ocs2_legged_robot)
+
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
+
+# Default to C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(ocs2_core REQUIRED)
+find_package(ocs2_oc REQUIRED)
+find_package(ocs2_msgs REQUIRED)
+find_package(ocs2_mpc REQUIRED)
+find_package(ocs2_sqp REQUIRED)
+find_package(ocs2_robotic_tools REQUIRED)
+find_package(ocs2_pinocchio_interface REQUIRED)
+find_package(ocs2_ros_interfaces REQUIRED)
+find_package(ocs2_centroidal_model REQUIRED)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(pinocchio REQUIRED pinocchio)
+
+set(TARGET_DEPENDENCIES
+  ocs2_ros_interfaces
+  ocs2_core
+  ocs2_oc
+  ocs2_msgs
+  ocs2_mpc
+  ocs2_sqp
+  ocs2_robotic_tools
+  ocs2_pinocchio_interface
+  ocs2_centroidal_model
+  pinocchio
+)
+
+include(cmake/pinocchio_config.cmake)
+
+file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+add_library(${PROJECT_NAME} SHARED ${source})
+target_link_libraries(${PROJECT_NAME}
+    ${LIBS}
+    ${pinocchio_LIBRARIES}
+)
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+    ${pinocchio_INCLUDE_DIRS}
+    ${proxsuite_INCLUDE_DIRS}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+target_compile_options(${PROJECT_NAME} PUBLIC ${FLAGS})   
+
+ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCIES})
+ament_export_targets(${PROJECT_NAME}_Targets HAS_LIBRARY_TARGET)
+ament_export_dependencies(${TARGET_DEPENDENCIES})
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}_Targets
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
+
+ament_package()
