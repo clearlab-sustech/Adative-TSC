@@ -1,4 +1,4 @@
-centroidalModelType             1      // 0: FullCentroidalDynamics, 1: Single Rigid Body Dynamics
+centroidalModelType             0      // 0: FullCentroidalDynamics, 1: Single Rigid Body Dynamics
   
 legged_robot_interface
 {
@@ -20,7 +20,7 @@ model_settings
 swing_trajectory_config
 {
   liftOffVelocity               0.2
-  touchDownVelocity            -0.4
+  touchDownVelocity            -0.1
   swingHeight                   0.1
   touchdownAfterHorizon         0.2
   swingTimeScale                0.15
@@ -39,7 +39,7 @@ sqp
   inequalityConstraintDelta             5.0
   projectStateInputEqualityConstraints  true
   printSolverStatistics                 false
-  printSolverStatus                     true
+  printSolverStatus                     false
   printLinesearch                       false
   useFeedbackPolicy                     true
   integratorType                        RK2
@@ -88,16 +88,16 @@ initialState
    (11,0) 0.0     ; theta_base_x
 
    ;; Leg Joint Positions: [LF, LH, RF, RH] ;;
-   (12,0) -0.20   ; LF_HAA
+   (12,0) -0.10   ; LF_HAA
    (13,0)  0.72   ; LF_HFE
    (14,0) -1.44   ; LF_KFE
-   (15,0) -0.20   ; LH_HAA
+   (15,0)  0.10   ; LH_HAA
    (16,0)  0.72   ; LH_HFE
    (17,0) -1.44   ; LH_KFE
-   (18,0)  0.20   ; RF_HAA
+   (18,0) -0.10   ; RF_HAA
    (19,0)  0.72   ; RF_HFE
    (20,0) -1.44   ; RF_KFE
-   (21,0)  0.20   ; RH_HAA
+   (21,0)  0.10   ; RH_HAA
    (22,0)  0.72   ; RH_HFE
    (23,0) -1.44   ; RH_KFE
 }
@@ -108,12 +108,12 @@ Q
   scaling 1e+0
 
   ;; Normalized Centroidal Momentum: [linear, angular] ;;
-  (0,0)   15.0     ; vcom_x
-  (1,1)   15.0     ; vcom_y
-  (2,2)   100.0    ; vcom_z
-  (3,3)   10.0     ; L_x / robotMass
-  (4,4)   30.0     ; L_y / robotMass
-  (5,5)   30.0     ; L_z / robotMass
+  (0,0)   1.0     ; vcom_x
+  (1,1)   1.0     ; vcom_y
+  (2,2)   1.0    ; vcom_z
+  (3,3)   1.0     ; L_x / robotMass
+  (4,4)   3.0     ; L_y / robotMass
+  (5,5)   3.0     ; L_z / robotMass
 
   ;; Base Pose: [position, orientation] ;;
   (6,6)   1000.0   ; p_base_x
@@ -124,16 +124,16 @@ Q
   (11,11) 300.0    ; theta_base_x
 
   ;; Leg Joint Positions: [LF, LH, RF, RH] ;;
-  (12,12) 5.0     ; LF_HAA
+  (12,12) 15.0     ; LF_HAA
   (13,13) 5.0     ; LF_HFE
   (14,14) 2.5     ; LF_KFE
-  (15,15) 5.0     ; LH_HAA
+  (15,15) 15.0     ; LH_HAA
   (16,16) 5.0     ; LH_HFE
   (17,17) 2.5     ; LH_KFE
-  (18,18) 5.0     ; RF_HAA
+  (18,18) 15.0     ; RF_HAA
   (19,19) 5.0     ; RF_HFE
   (20,20) 2.5     ; RF_KFE
-  (21,21) 5.0     ; RH_HAA
+  (21,21) 15.0     ; RH_HAA
   (22,22) 5.0     ; RH_HFE
   (23,23) 2.5     ; RH_KFE
 }

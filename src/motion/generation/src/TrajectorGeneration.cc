@@ -102,9 +102,17 @@ void TrajectorGeneration::inner_loop() {
             conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
         currentObservation.state[8] = 0.3;
         currentObservation.input = vector_t::Zero(info_.inputDim);
+        currentObservation.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72,
+            -1.46, -0.1, 0.72, -1.48, 0.1, 0.72, -1.48;
         currentObservation.mode = 15; // stance
+
+        auto node1 = currentObservation;
+        node1.state[3] = currentObservation.state[6] + 3.0;
         ocs2::TargetTrajectories initTargetTrajectories(
-            {0}, {currentObservation.state}, {currentObservation.input});
+            {currentObservation.time, currentObservation.time + 2,
+             currentObservation.time + 12},
+            {currentObservation.state, currentObservation.state, node1.state},
+            {currentObservation.input, currentObservation.input, node1.input});
 
         mpc_ptr_->reset();
         mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
