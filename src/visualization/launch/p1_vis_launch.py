@@ -35,7 +35,7 @@ def generate_launch_description():
             Node(
                 package="visualization",
                 executable="visualization",
-                name="aliengo_visualization",
+                name="p1_visualization",
                 output="screen",
                 emulate_tty=True,
                 arguments=[config_file, ("__log_level:=debug")],

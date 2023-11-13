@@ -30,8 +30,8 @@ defaultModeSequenceTemplate
 {
    modeSequence
    {
-     [0]     LF
-     [1]     RF
+     [0]     STANCE
+     [1]     STANCE
    }
    switchingTimes
    {

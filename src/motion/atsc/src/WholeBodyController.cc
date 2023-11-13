@@ -160,36 +160,18 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
       if (!contactFlag_[i]) {
         switch (i) {
         case 0:
-          id1 = model.getJointId("FL_hip_joint") - 2;
-          id2 = model.getJointId("FL_thigh_joint") - 2;
-          id3 = model.getJointId("FL_calf_joint") - 2;
+          id1 = model.getJointId("abad_L_joint") - 2;
+          id2 = model.getJointId("hip_L_joint") - 2;
+          id3 = model.getJointId("knee_L_joint") - 2;
           actuator_commands_->torque(id1) = nle(id1);
           actuator_commands_->torque(id2) = nle(id2);
           actuator_commands_->torque(id3) = nle(id3);
           break;
 
         case 1:
-          id1 = model.getJointId("FR_hip_joint") - 2;
-          id2 = model.getJointId("FR_thigh_joint") - 2;
-          id3 = model.getJointId("FR_calf_joint") - 2;
-          actuator_commands_->torque(id1) = nle(id1);
-          actuator_commands_->torque(id2) = nle(id2);
-          actuator_commands_->torque(id3) = nle(id3);
-          break;
-
-        case 2:
-          id1 = model.getJointId("RL_hip_joint") - 2;
-          id2 = model.getJointId("RL_thigh_joint") - 2;
-          id3 = model.getJointId("RL_calf_joint") - 2;
-          actuator_commands_->torque(id1) = nle(id1);
-          actuator_commands_->torque(id2) = nle(id2);
-          actuator_commands_->torque(id3) = nle(id3);
-          break;
-
-        case 3:
-          id1 = model.getJointId("RR_hip_joint") - 2;
-          id2 = model.getJointId("RR_thigh_joint") - 2;
-          id3 = model.getJointId("RR_calf_joint") - 2;
+          id1 = model.getJointId("abad_R_joint") - 2;
+          id2 = model.getJointId("hip_R_joint") - 2;
+          id3 = model.getJointId("knee_R_joint") - 2;
           actuator_commands_->torque(id1) = nle(id1);
           actuator_commands_->torque(id2) = nle(id2);
           actuator_commands_->torque(id3) = nle(id3);
@@ -361,9 +343,9 @@ MatrixDB WholeBodyController::formulateJointTask() {
     if (contactFlag_[i]) {
       switch (i) {
       case 0:
-        id1 = model.getJointId("FL_hip_joint") - 2;
-        id2 = model.getJointId("FL_thigh_joint") - 2;
-        id3 = model.getJointId("FL_calf_joint") - 2;
+        id1 = model.getJointId("abad_L_joint") - 2;
+        id2 = model.getJointId("hip_L_joint") - 2;
+        id3 = model.getJointId("knee_L_joint") - 2;
         joints_task.A.rightCols(na)(id1, id1) = 0.0;
         joints_task.A.rightCols(na)(id2, id2) = 0.0;
         joints_task.A.rightCols(na)(id3, id3) = 0.0;
@@ -373,33 +355,9 @@ MatrixDB WholeBodyController::formulateJointTask() {
         break;
 
       case 1:
-        id1 = model.getJointId("FR_hip_joint") - 2;
-        id2 = model.getJointId("FR_thigh_joint") - 2;
-        id3 = model.getJointId("FR_calf_joint") - 2;
-        joints_task.A.rightCols(na)(id1, id1) = 0.0;
-        joints_task.A.rightCols(na)(id2, id2) = 0.0;
-        joints_task.A.rightCols(na)(id3, id3) = 0.0;
-        joints_task.b(id1) = 0.0;
-        joints_task.b(id2) = 0.0;
-        joints_task.b(id3) = 0.0;
-        break;
-
-      case 2:
-        id1 = model.getJointId("RL_hip_joint") - 2;
-        id2 = model.getJointId("RL_thigh_joint") - 2;
-        id3 = model.getJointId("RL_calf_joint") - 2;
-        joints_task.A.rightCols(na)(id1, id1) = 0.0;
-        joints_task.A.rightCols(na)(id2, id2) = 0.0;
-        joints_task.A.rightCols(na)(id3, id3) = 0.0;
-        joints_task.b(id1) = 0.0;
-        joints_task.b(id2) = 0.0;
-        joints_task.b(id3) = 0.0;
-        break;
-
-      case 3:
-        id1 = model.getJointId("RR_hip_joint") - 2;
-        id2 = model.getJointId("RR_thigh_joint") - 2;
-        id3 = model.getJointId("RR_calf_joint") - 2;
+        id1 = model.getJointId("abad_R_joint") - 2;
+        id2 = model.getJointId("hip_R_joint") - 2;
+        id3 = model.getJointId("knee_R_joint") - 2;
         joints_task.A.rightCols(na)(id1, id1) = 0.0;
         joints_task.A.rightCols(na)(id2, id2) = 0.0;
         joints_task.A.rightCols(na)(id3, id3) = 0.0;

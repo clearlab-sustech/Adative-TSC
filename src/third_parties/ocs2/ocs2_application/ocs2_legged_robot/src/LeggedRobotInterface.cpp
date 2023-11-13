@@ -138,7 +138,7 @@ void LeggedRobotInterface::setupOptimalConrolProblem(
   // Swing trajectory planner
   auto swingTrajectoryPlanner = std::make_unique<SwingTrajectoryPlanner>(
       loadSwingTrajectorySettings(taskFile, "swing_trajectory_config", verbose),
-      4);
+      2);
 
   // Mode schedule manager
   referenceManagerPtr_ = std::make_shared<SwitchedModelReferenceManager>(
@@ -367,12 +367,12 @@ LeggedRobotInterface::getBaseTrackingCost(const std::string &taskFile,
       *pinocchioInterfacePtr_, "tracking_cost", modelSettings_.modelFolderCppAd,
       modelSettings_.recompileLibrariesCppAd, modelSettings_.verboseCppAd); */
 
-  /* return std::make_unique<LeggedRobotStateInputQuadraticCost>(
-      std::move(Q), std::move(R), info, *referenceManagerPtr_); */
-  return std::make_unique<LeggedRobotStateInputCost>(
+  return std::make_unique<LeggedRobotStateInputQuadraticCost>(
+      std::move(Q), std::move(R), info, *referenceManagerPtr_);
+  /* return std::make_unique<LeggedRobotStateInputCost>(
       std::move(Q), std::move(R), info, *referenceManagerPtr_,
       *pinocchioInterfacePtr_, "tracking_cost", modelSettings_.modelFolderCppAd,
-      modelSettings_.recompileLibrariesCppAd, modelSettings_.verboseCppAd);
+      modelSettings_.recompileLibrariesCppAd, modelSettings_.verboseCppAd); */
 }
 
 /******************************************************************************************************/

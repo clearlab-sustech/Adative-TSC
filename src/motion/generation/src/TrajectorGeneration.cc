@@ -102,15 +102,14 @@ void TrajectorGeneration::set_reference() {
     node1.state.head(6).setZero();
     node1.state.head(3) = vel_cmd;
     node1.state[3] = yawd_;
-    if (0.3 - node1.state[8] > 0.03) {
+    if (0.636 - node1.state[8] > 0.03) {
       node1.state[8] += (0.02 * 0.5); // height
     } else {
-      node1.state[8] = 0.3;
+      node1.state[8] = 0.636;
     }
     node1.state.segment(10, 2).setZero();
     node1.input = vector_t::Zero(info_.inputDim);
-    node1.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
-        -1.48, 0.1, 0.72, -1.48;
+    node1.state.tail(6).setZero();
     node1.mode = 3; // stance
 
     node2.time =
@@ -120,8 +119,7 @@ void TrajectorGeneration::set_reference() {
         (mpc_ptr_->settings().timeHorizon_ + 0.1) * vel_cmd;
     node2.state[9] += yawd_ * (mpc_ptr_->settings().timeHorizon_ + 0.1);
     node2.input = vector_t::Zero(info_.inputDim);
-    node2.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
-        -1.48, 0.1, 0.72, -1.48;
+    node2.state.tail(6).setZero();
     node2.mode = 3; // stance
 
     ocs2::TargetTrajectories initTargetTrajectories({node1.time, node2.time},
@@ -164,21 +162,14 @@ void TrajectorGeneration::inner_loop() {
                                                     primalSolutionPtr.get());
         printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
                "$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-        for (size_t i = 0; i < primalSolutionPtr->timeTrajectory_.size(); i++) {
+        std::cout << "x0 =" << currentObservation.state.transpose() << "\n";
+        for (size_t i = 0; i < primalSolutionPtr->timeTrajectory_.size();
+        i++) {
           std::cout
               << "sol t="
               << std::to_string(primalSolutionPtr->timeTrajectory_[i])
               << ", state: "
-              << primalSolutionPtr->stateTrajectory_[i].head(12).transpose()
-              << "\n"
-              << "ref t="
-              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
-              << ", state: "
-              << robot_interface_ptr_->getSwitchedModelReferenceManagerPtr()
-                     ->getTargetTrajectories()
-                     .getDesiredState(primalSolutionPtr->timeTrajectory_[i])
-                     .head(12)
-                     .transpose()
+              << primalSolutionPtr->stateTrajectory_[i].transpose()
               << "\n";
         }
         mpc_sol_buffer.push(std::move(primalSolutionPtr));

@@ -92,7 +92,6 @@ void SolverBase::printString(const std::string& text) const {
 /******************************************************************************************************/
 void SolverBase::preRun(scalar_t initTime, const vector_t& initState, scalar_t finalTime) {
   referenceManagerPtr_->preSolverRun(initTime, finalTime, initState);
-
   for (auto& module : synchronizedModules_) {
     module->preSolverRun(initTime, finalTime, initState, *referenceManagerPtr_);
   }

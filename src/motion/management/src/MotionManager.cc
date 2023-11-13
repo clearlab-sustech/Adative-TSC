@@ -25,9 +25,9 @@ void MotionManager::init() {
                                                        config_yaml_);
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this(),
                                                       config_yaml_);
-  atscImplPtr_ =
-      std::make_shared<AtscImpl>(this->shared_from_this(), config_yaml_,
-                                 trajGenPtr_->get_robot_interface());
+  // atscImplPtr_ =
+  //     std::make_shared<AtscImpl>(this->shared_from_this(), config_yaml_,
+  //                                trajGenPtr_->get_robot_interface());
 
   auto config_ = YAML::LoadFile(config_yaml_);
   bool hardware_ = config_["estimation"]["hardware"].as<bool>();
@@ -64,10 +64,10 @@ void MotionManager::inner_loop() {
     trajGenPtr_->update_current_state(estimatorPtr_->getQpos(),
                                       estimatorPtr_->getQvel());
 
-    atscImplPtr_->update_current_state(estimatorPtr_->getQpos(),
-                                       estimatorPtr_->getQvel());
+    // atscImplPtr_->update_current_state(estimatorPtr_->getQpos(),
+    //                                    estimatorPtr_->getQvel());
 
-    atscImplPtr_->update_mpc_solution(trajGenPtr_->get_mpc_sol());
+    // atscImplPtr_->update_mpc_solution(trajGenPtr_->get_mpc_sol());
 
     // if (unitreeHWPtr_ != nullptr) {
     //   unitreeHWPtr_->set_actuator_cmds(atscImplPtr_->getCmds());
