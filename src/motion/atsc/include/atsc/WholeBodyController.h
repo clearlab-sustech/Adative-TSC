@@ -65,11 +65,8 @@ private:
   MatrixDB formulateMaintainContactTask();
   MatrixDB formulateFrictionConeTask();
   MatrixDB formulateMomentumTask();
-  MatrixDB formulateSwingLegTask();
+  MatrixDB formulateJointTask();
   MatrixDB formulateContactForceTask();
-
-  vector3_t compute_euler_angle_err(const vector3_t &rpy_m,
-                                    const vector3_t &rpy_d);
 
   void differential_inv_kin();
 

@@ -52,6 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ocs2_legged_robot/constraint/ZeroForceConstraint.h"
 #include "ocs2_legged_robot/constraint/ZeroVelocityConstraintCppAd.h"
 #include "ocs2_legged_robot/cost/LeggedRobotQuadraticTrackingCost.h"
+#include "ocs2_legged_robot/cost/LeggedRobotStateInputCost.h"
 #include "ocs2_legged_robot/dynamics/LeggedRobotDynamicsAD.h"
 
 // Boost
@@ -359,8 +360,19 @@ LeggedRobotInterface::getBaseTrackingCost(const std::string &taskFile,
                  "================\n";
   }
 
-  return std::make_unique<LeggedRobotStateInputQuadraticCost>(
+  /* auto c1 = std::make_unique<LeggedRobotStateInputQuadraticCost>(
       std::move(Q), std::move(R), info, *referenceManagerPtr_);
+  auto c2 = std::make_unique<LeggedRobotStateInputCost>(
+      std::move(Q), std::move(R), info, *referenceManagerPtr_,
+      *pinocchioInterfacePtr_, "tracking_cost", modelSettings_.modelFolderCppAd,
+      modelSettings_.recompileLibrariesCppAd, modelSettings_.verboseCppAd); */
+
+  /* return std::make_unique<LeggedRobotStateInputQuadraticCost>(
+      std::move(Q), std::move(R), info, *referenceManagerPtr_); */
+  return std::make_unique<LeggedRobotStateInputCost>(
+      std::move(Q), std::move(R), info, *referenceManagerPtr_,
+      *pinocchioInterfacePtr_, "tracking_cost", modelSettings_.modelFolderCppAd,
+      modelSettings_.recompileLibrariesCppAd, modelSettings_.verboseCppAd);
 }
 
 /******************************************************************************************************/

@@ -239,9 +239,12 @@ void SimPublisher::odom_callback() {
       message.twist.twist.linear.x = sim_->d_->qvel[0];
       message.twist.twist.linear.y = sim_->d_->qvel[1];
       message.twist.twist.linear.z = sim_->d_->qvel[2];
-      message.twist.twist.angular.x = sim_->d_->qvel[3];
-      message.twist.twist.angular.y = sim_->d_->qvel[4];
-      message.twist.twist.angular.z = sim_->d_->qvel[5];
+      message.twist.twist.angular.x =
+          sim_->d_->qvel[3] + noise_gyro * mju_standardNormal(nullptr);
+      message.twist.twist.angular.y =
+          sim_->d_->qvel[4] + noise_gyro * mju_standardNormal(nullptr);
+      message.twist.twist.angular.z =
+          sim_->d_->qvel[5] + noise_gyro * mju_standardNormal(nullptr);
     }
     odom_publisher_->publish(message);
   }

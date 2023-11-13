@@ -58,8 +58,7 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
       robot_interface_ptr_->getInitializer());
   mpc_ptr_->getSolverPtr()->setReferenceManager(reference_manager_ptr_);
   mpc_ptr_->getSolverPtr()->addSynchronizedModule(gait_receiver_ptr_);
-
-  refTrajBuffer_ = std::make_shared<TrajectoriesArray>();
+  mpc_ptr_->reset();
 
   vel_cmd.setZero();
   yawd_ = 0.0;
@@ -79,10 +78,65 @@ void TrajectorGeneration::update_current_state(
   qvel_ptr_buffer.push(qvel_ptr);
 }
 
+void TrajectorGeneration::set_reference() {
+  if (mpc_sol_buffer.get() == nullptr) {
+    ocs2::SystemObservation currentObservation;
+    const vector_t rbdState = get_rbd_state();
+    const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
+    currentObservation.time = nodeHandle_->now().seconds();
+    currentObservation.state =
+        conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
+    currentObservation.input = vector_t::Zero(info_.inputDim);
+    currentObservation.mode = 15; // stance
+    ocs2::TargetTrajectories initTargetTrajectories({currentObservation.time},
+                                                    {currentObservation.state},
+                                                    {currentObservation.input});
+
+    mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
+        std::move(initTargetTrajectories));
+  } else {
+    ocs2::SystemObservation node1, node2;
+    const vector_t rbdState = get_rbd_state();
+    const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
+    node1.time = nodeHandle_->now().seconds();
+    node1.state =
+        conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
+    node1.state.head(6).setZero();
+    node1.state.head(3) = vel_cmd;
+    node1.state[3] = yawd_;
+    if (0.3 - node1.state[8] > 0.03) {
+      node1.state[8] += (0.02 * 0.5); // height
+    } else {
+      node1.state[8] = 0.3;
+    }
+    node1.state.segment(10, 2).setZero();
+    node1.input = vector_t::Zero(info_.inputDim);
+    node1.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
+        -1.48, 0.1, 0.72, -1.48;
+    node1.mode = 15; // stance
+
+    node2.time =
+        nodeHandle_->now().seconds() + mpc_ptr_->settings().timeHorizon_ + 0.1;
+    node2.state = node1.state;
+    node2.state.segment(6, 3) +=
+        (mpc_ptr_->settings().timeHorizon_ + 0.1) * vel_cmd;
+    node2.state[9] += yawd_ * (mpc_ptr_->settings().timeHorizon_ + 0.1);
+    node2.input = vector_t::Zero(info_.inputDim);
+    node2.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
+        -1.48, 0.1, 0.72, -1.48;
+    node2.mode = 15; // stance
+
+    ocs2::TargetTrajectories initTargetTrajectories({node1.time, node2.time},
+                                                    {node1.state, node2.state},
+                                                    {node1.input, node2.input});
+    mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
+        std::move(initTargetTrajectories));
+  }
+}
+
 void TrajectorGeneration::inner_loop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
-  bool init_ = true;
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
 
@@ -91,62 +145,44 @@ void TrajectorGeneration::inner_loop() {
       continue;
 
     } else {
+
+      set_reference();
+
       ocs2::SystemObservation currentObservation;
-
-      if (init_) {
-        init_ = false;
-        const vector_t rbdState = get_rbd_state();
-        const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
-        currentObservation.time = nodeHandle_->now().seconds();
-        currentObservation.state =
-            conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
-        currentObservation.state[8] = 0.3;
-        currentObservation.input = vector_t::Zero(info_.inputDim);
-        currentObservation.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72,
-            -1.46, -0.1, 0.72, -1.48, 0.1, 0.72, -1.48;
-        currentObservation.mode = 15; // stance
-
-        auto node1 = currentObservation;
-        node1.state[3] = currentObservation.state[6] + 3.0;
-        ocs2::TargetTrajectories initTargetTrajectories(
-            {currentObservation.time, currentObservation.time + 2,
-             currentObservation.time + 12},
-            {currentObservation.state, currentObservation.state, node1.state},
-            {currentObservation.input, currentObservation.input, node1.input});
-
-        mpc_ptr_->reset();
-        mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
-            std::move(initTargetTrajectories));
-
-        RCLCPP_INFO(nodeHandle_->get_logger(), "SQP MPC init done");
-      } else {
-        vector_t rbdState = get_rbd_state();
-        currentObservation.time = nodeHandle_->now().seconds();
-        currentObservation.state =
-            conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
-        bool mpcIsUpdated =
-            mpc_ptr_->run(currentObservation.time, currentObservation.state);
-        if (mpcIsUpdated) {
-          auto primalSolutionPtr = std::make_unique<ocs2::PrimalSolution>();
-          const scalar_t finalTime =
-              (mpc_ptr_->settings().solutionTimeWindow_ < 0)
-                  ? mpc_ptr_->getSolverPtr()->getFinalTime()
-                  : currentObservation.time +
-                        mpc_ptr_->settings().solutionTimeWindow_;
-          mpc_ptr_->getSolverPtr()->getPrimalSolution(finalTime,
-                                                      primalSolutionPtr.get());
-          // for (size_t i = 0; i < primalSolutionPtr->timeTrajectory_.size();
-          //      i++) {
-          //   std::cout
-          //       << "sol t="
-          //       << std::to_string(primalSolutionPtr->timeTrajectory_[i])
-          //       << ", state: "
-          //       <<
-          //       primalSolutionPtr->stateTrajectory_[i].head(12).transpose()
-          //       << "\n";
-          // }
-          mpc_sol_buffer.push(std::move(primalSolutionPtr));
-        }
+      vector_t rbdState = get_rbd_state();
+      currentObservation.time = nodeHandle_->now().seconds();
+      currentObservation.state =
+          conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
+      bool mpcIsUpdated =
+          mpc_ptr_->run(currentObservation.time, currentObservation.state);
+      if (mpcIsUpdated) {
+        auto primalSolutionPtr = std::make_unique<ocs2::PrimalSolution>();
+        const scalar_t finalTime =
+            (mpc_ptr_->settings().solutionTimeWindow_ < 0)
+                ? mpc_ptr_->getSolverPtr()->getFinalTime()
+                : currentObservation.time +
+                      mpc_ptr_->settings().solutionTimeWindow_;
+        mpc_ptr_->getSolverPtr()->getPrimalSolution(finalTime,
+                                                    primalSolutionPtr.get());
+        /* printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
+               "$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+        for (size_t i = 0; i < primalSolutionPtr->timeTrajectory_.size(); i++) {
+          std::cout
+              << "sol t="
+              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
+              << ", state: "
+              << primalSolutionPtr->stateTrajectory_[i].head(12).transpose()
+              << "\n"
+              << "ref t="
+              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
+              << ", state: "
+              << reference_manager_ptr_->getTargetTrajectories()
+                     .getDesiredState(primalSolutionPtr->timeTrajectory_[i])
+                     .head(12)
+                     .transpose()
+              << "\n";
+        } */
+        mpc_sol_buffer.push(std::move(primalSolutionPtr));
       }
     }
     timer_.endTimer();

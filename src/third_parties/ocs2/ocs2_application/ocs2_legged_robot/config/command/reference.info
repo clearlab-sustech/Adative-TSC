@@ -34,15 +34,15 @@ initialModeSchedule
 
 defaultModeSequenceTemplate
 {
-  modeSequence
-  {
-    [0]     STANCE
-    [1]     LF_RH
-  }
-  switchingTimes
-  {
-    [0]     0.0
-    [1]     0.3
-    [2]     14.6
-  }
+   modeSequence
+   {
+     [0]     LF_RH
+     [1]     RF_LH
+   }
+   switchingTimes
+   {
+     [0]     0.0
+     [1]     0.3
+     [2]     0.6
+   }
 }

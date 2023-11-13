@@ -23,8 +23,6 @@ void MotionManager::init() {
 
   estimatorPtr_ = std::make_shared<StateEstimationLKF>(this->shared_from_this(),
                                                        config_yaml_);
-  gaitSchedulePtr_ =
-      std::make_shared<GaitSchedule>(this->shared_from_this(), config_yaml_);
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this(),
                                                       config_yaml_);
   atscImplPtr_ =
@@ -52,7 +50,7 @@ void MotionManager::inner_loop() {
   const scalar_t ts = this->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (this->now().seconds() > ts + 4.0) {
-      gaitSchedulePtr_->switch_gait("trot");
+      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.5);
     }
     // if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
     //   trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
@@ -65,11 +63,6 @@ void MotionManager::inner_loop() {
       estimatorPtr_->set_touch_msg(unitreeHWPtr_->get_touch_msg());
       estimatorPtr_->set_joint_msg(unitreeHWPtr_->get_joint_msg());
     }
-
-    scalar_t horizon_time_ =
-        min(2.0, max(0.5, gaitSchedulePtr_->current_gait_cycle()));
-
-    auto mode_schedule_ptr = gaitSchedulePtr_->eval(horizon_time_);
 
     trajGenPtr_->update_current_state(estimatorPtr_->getQpos(),
                                       estimatorPtr_->getQvel());

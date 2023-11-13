@@ -36,9 +36,10 @@ private:
 
   vector_t get_rbd_state();
 
+  void  set_reference();
+
 private:
   Node::SharedPtr nodeHandle_;
-  std::shared_ptr<TrajectoriesArray> refTrajBuffer_;
   std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
       robot_interface_ptr_;
   std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;

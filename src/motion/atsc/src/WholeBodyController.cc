@@ -86,6 +86,7 @@ void WholeBodyController::formulate() {
 
   mpcInput = activePrimalSolutionPtr_->controllerPtr_->computeInput(
       currentTime, currentObservation.state);
+
   xDot = robot_interface_ptr_->getOptimalControlProblem()
              .dynamicsPtr->computeFlowMap(currentTime, currentObservation.state,
                                           mpcInput, ocs2::PreComputation());
@@ -98,7 +99,7 @@ void WholeBodyController::formulate() {
   constraints = formulateFloatingBaseEulerNewtonEqu() +
                 formulateTorqueLimitsTask() + formulateFrictionConeTask() +
                 formulateMaintainContactTask();
-  weighedTask = formulateMomentumTask() + formulateSwingLegTask() +
+  weighedTask = formulateMomentumTask() + formulateJointTask() +
                 formulateContactForceTask();
 }
 
@@ -150,6 +151,56 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   // printf("solver state: %d\n", solver_state);
   if (solver_state == eiquadprog::solvers::EIQUADPROG_FAST_OPTIMAL) {
     actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
+    const size_t na = actuated_joints_name.size();
+    vector_t nle = pinocchioInterface_ptr_->nle().tail(na);
+    size_t nc = foot_names.size();
+    const auto &model = pinocchioInterface_ptr_->getModel();
+    pin::Index id1, id2, id3;
+    for (size_t i = 0; i < nc; i++) {
+      if (!contactFlag_[i]) {
+        switch (i) {
+        case 0:
+          id1 = model.getJointId("FL_hip_joint") - 2;
+          id2 = model.getJointId("FL_thigh_joint") - 2;
+          id3 = model.getJointId("FL_calf_joint") - 2;
+          actuator_commands_->torque(id1) = nle(id1);
+          actuator_commands_->torque(id2) = nle(id2);
+          actuator_commands_->torque(id3) = nle(id3);
+          break;
+
+        case 1:
+          id1 = model.getJointId("FR_hip_joint") - 2;
+          id2 = model.getJointId("FR_thigh_joint") - 2;
+          id3 = model.getJointId("FR_calf_joint") - 2;
+          actuator_commands_->torque(id1) = nle(id1);
+          actuator_commands_->torque(id2) = nle(id2);
+          actuator_commands_->torque(id3) = nle(id3);
+          break;
+
+        case 2:
+          id1 = model.getJointId("RL_hip_joint") - 2;
+          id2 = model.getJointId("RL_thigh_joint") - 2;
+          id3 = model.getJointId("RL_calf_joint") - 2;
+          actuator_commands_->torque(id1) = nle(id1);
+          actuator_commands_->torque(id2) = nle(id2);
+          actuator_commands_->torque(id3) = nle(id3);
+          break;
+
+        case 3:
+          id1 = model.getJointId("RR_hip_joint") - 2;
+          id2 = model.getJointId("RR_thigh_joint") - 2;
+          id3 = model.getJointId("RR_calf_joint") - 2;
+          actuator_commands_->torque(id1) = nle(id1);
+          actuator_commands_->torque(id2) = nle(id2);
+          actuator_commands_->torque(id3) = nle(id3);
+          break;
+
+        default:
+          break;
+        }
+      }
+    }
+
     joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
     differential_inv_kin();
@@ -278,11 +329,92 @@ MatrixDB WholeBodyController::formulateMomentumTask() {
   return momentum_task;
 }
 
-MatrixDB WholeBodyController::formulateSwingLegTask() {
-  MatrixDB swing_task("swing_task");
-  scalar_t t = nodeHandle_->now().seconds() + dt_;
+MatrixDB WholeBodyController::formulateJointTask() {
+  MatrixDB joints_task("joint_task");
+  const size_t na = actuated_joints_name.size();
+  joints_task.A.setZero(na, numDecisionVars_);
+  joints_task.A.rightCols(na).setIdentity();
 
-  return swing_task;
+  auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
+  vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
+                                nodeHandle_->now().seconds(),
+                                activePrimalSolutionPtr_->timeTrajectory_,
+                                activePrimalSolutionPtr_->stateTrajectory_)
+                                .tail(actuated_joints_name.size());
+  vector_t joints_vel_des = ocs2::LinearInterpolation::interpolate(
+                                nodeHandle_->now().seconds(),
+                                activePrimalSolutionPtr_->timeTrajectory_,
+                                activePrimalSolutionPtr_->inputTrajectory_)
+                                .tail(actuated_joints_name.size());
+
+  vector_t joints_pos = pinocchioInterface_ptr_->qpos().tail(na);
+  vector_t joints_vel = pinocchioInterface_ptr_->qvel().tail(na);
+
+  joints_task.b = 30.0 * (joints_pos_des - joints_pos) +
+                  (joints_vel_des - joints_vel) +
+                  pinocchioInterface_ptr_->nle().tail(na);
+
+  size_t nc = foot_names.size();
+  const auto &model = pinocchioInterface_ptr_->getModel();
+  pin::Index id1, id2, id3;
+  for (size_t i = 0; i < nc; i++) {
+    if (contactFlag_[i]) {
+      switch (i) {
+      case 0:
+        id1 = model.getJointId("FL_hip_joint") - 2;
+        id2 = model.getJointId("FL_thigh_joint") - 2;
+        id3 = model.getJointId("FL_calf_joint") - 2;
+        joints_task.A.rightCols(na)(id1, id1) = 0.0;
+        joints_task.A.rightCols(na)(id2, id2) = 0.0;
+        joints_task.A.rightCols(na)(id3, id3) = 0.0;
+        joints_task.b(id1) = 0.0;
+        joints_task.b(id2) = 0.0;
+        joints_task.b(id3) = 0.0;
+        break;
+
+      case 1:
+        id1 = model.getJointId("FR_hip_joint") - 2;
+        id2 = model.getJointId("FR_thigh_joint") - 2;
+        id3 = model.getJointId("FR_calf_joint") - 2;
+        joints_task.A.rightCols(na)(id1, id1) = 0.0;
+        joints_task.A.rightCols(na)(id2, id2) = 0.0;
+        joints_task.A.rightCols(na)(id3, id3) = 0.0;
+        joints_task.b(id1) = 0.0;
+        joints_task.b(id2) = 0.0;
+        joints_task.b(id3) = 0.0;
+        break;
+
+      case 2:
+        id1 = model.getJointId("RL_hip_joint") - 2;
+        id2 = model.getJointId("RL_thigh_joint") - 2;
+        id3 = model.getJointId("RL_calf_joint") - 2;
+        joints_task.A.rightCols(na)(id1, id1) = 0.0;
+        joints_task.A.rightCols(na)(id2, id2) = 0.0;
+        joints_task.A.rightCols(na)(id3, id3) = 0.0;
+        joints_task.b(id1) = 0.0;
+        joints_task.b(id2) = 0.0;
+        joints_task.b(id3) = 0.0;
+        break;
+
+      case 3:
+        id1 = model.getJointId("RR_hip_joint") - 2;
+        id2 = model.getJointId("RR_thigh_joint") - 2;
+        id3 = model.getJointId("RR_calf_joint") - 2;
+        joints_task.A.rightCols(na)(id1, id1) = 0.0;
+        joints_task.A.rightCols(na)(id2, id2) = 0.0;
+        joints_task.A.rightCols(na)(id3, id3) = 0.0;
+        joints_task.b(id1) = 0.0;
+        joints_task.b(id2) = 0.0;
+        joints_task.b(id3) = 0.0;
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+
+  return joints_task;
 }
 
 void WholeBodyController::differential_inv_kin() {
@@ -363,24 +495,8 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   }
 }
 
-vector3_t WholeBodyController::compute_euler_angle_err(const vector3_t &rpy_m,
-                                                       const vector3_t &rpy_d) {
-  vector3_t rpy_err = rpy_m - rpy_d;
-  if (rpy_err.norm() > 1.5 * M_PI) {
-    if (abs(rpy_err(0)) > M_PI) {
-      rpy_err(0) += (rpy_err(0) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(1)) > M_PI) {
-      rpy_err(1) += (rpy_err(1) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(2)) > M_PI) {
-      rpy_err(2) += (rpy_err(2) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-  }
-  return rpy_err;
-}
-
 vector_t WholeBodyController::get_rbd_state() {
+  auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
   const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
   vector_t rbdState(2 * info_.generalizedCoordinatesNum);
 
@@ -391,7 +507,24 @@ vector_t WholeBodyController::get_rbd_state() {
   vector_t b_angVel = qvel.segment(3, 3);
   vector_t w_angVel = quat.toRotationMatrix() * b_angVel;
 
-  rbdState.head(3) = toEulerAnglesZYX(quat);
+  vector_t euler_zyx = toEulerAnglesZYX(quat);
+  vector_t euler_zyx_des = ocs2::LinearInterpolation::interpolate(
+                               nodeHandle_->now().seconds(),
+                               activePrimalSolutionPtr_->timeTrajectory_,
+                               activePrimalSolutionPtr_->stateTrajectory_)
+                               .segment(9, 3);
+
+  for (size_t i = 0; i < 3; i++) {
+    if (abs(euler_zyx(i) - euler_zyx_des(i)) > M_PI) {
+      if (euler_zyx(i) < euler_zyx_des(i)) {
+        euler_zyx(i) += 2.0 * M_PI;
+      } else {
+        euler_zyx(i) -= 2.0 * M_PI;
+      }
+    }
+  }
+
+  rbdState.head(3) = euler_zyx;
   rbdState.segment<3>(3) = qpos.head(3);
   rbdState.segment(info_.generalizedCoordinatesNum, 3) = w_angVel;
   rbdState.segment(info_.generalizedCoordinatesNum + 3, 3) =

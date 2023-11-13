@@ -4,7 +4,6 @@
 #include "Initialization.h"
 #include <atsc/AtscImpl.h>
 #include <estimation/StateEstimationLKF.h>
-#include <gait/GaitSchedule.h>
 #include <generation/TrajectorGeneration.h>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
@@ -28,7 +27,6 @@ private:
 private:
   std::string config_yaml_;
   std::shared_ptr<StateEstimationLKF> estimatorPtr_;
-  std::shared_ptr<GaitSchedule> gaitSchedulePtr_;
   std::shared_ptr<TrajectorGeneration> trajGenPtr_;
   std::shared_ptr<AtscImpl> atscImplPtr_;
   std::shared_ptr<DataVisualization> visPtr_;
