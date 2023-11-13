@@ -73,11 +73,6 @@ namespace
 
   using Seconds = std::chrono::duration<double>;
 
-  mjtNum q_init[] = {0.0, 0.0, 0.38, 1, 0,
-                     0, 0, 0.190553, 0.688524, -1.42573,
-                     -0.190553, 0.688524, -1.42573, 0.190553, 0.688524,
-                     -1.42573, -0.190553, 0.688524, -1.42573};
-
   //---------------------------------------- plugin handling
   //-----------------------------------------
 
@@ -390,7 +385,6 @@ namespace
           m = mnew;
           d = dnew;
           mj_forward(m, d);
-          mju_copy(d->qpos, q_init, m->nq);
 
           // allocate ctrlnoise
           free(ctrlnoise);

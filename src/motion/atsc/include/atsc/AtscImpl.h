@@ -1,16 +1,12 @@
 #pragma once
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
-#include <asserts/trajectory/TrajectoriesArray.h>
+#include "atsc/WholeBodyController.h"
 #include <core/misc/Buffer.h>
 #include <memory>
+#include <ocs2_legged_robot/LeggedRobotInterface.h>
+#include <ocs2_oc/oc_data/PrimalSolution.h>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <trans/msg/actuator_cmds.hpp>
-
-#include "asserts/trajectory/TrajectoriesArray.h"
-#include "atsc/AdativeGain.h"
-#include "atsc/WholeBodyController.h"
 
 using namespace rclcpp;
 
@@ -18,41 +14,39 @@ namespace clear {
 class AtscImpl {
 
 public:
-  AtscImpl(Node::SharedPtr nodeHandle, const std::string config_yaml);
+  AtscImpl(Node::SharedPtr nodeHandle, const std::string config_yaml,
+           std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+               robot_interface_ptr);
 
   ~AtscImpl();
 
   void update_current_state(std::shared_ptr<vector_t> qpos_ptr,
                             std::shared_ptr<vector_t> qvel_ptr);
 
-  void update_trajectory_reference(
-      std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr);
+  void update_mpc_solution(std::shared_ptr<ocs2::PrimalSolution> mpc_sol);
 
-  void update_mode_schedule(const std::shared_ptr<ModeSchedule> mode_schedule);
+  trans::msg::ActuatorCmds::SharedPtr getCmds();
 
 private:
   void publishCmds();
 
   void inner_loop();
 
-  void adapative_gain_loop();
-
 private:
   Node::SharedPtr nodeHandle_;
+  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+      robot_interface_ptr_;
+
   rclcpp::Publisher<trans::msg::ActuatorCmds>::SharedPtr
       actuators_cmds_pub_ptr_;
 
-  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
-  std::shared_ptr<AdaptiveGain> adaptiveGain_ptr_;
+  Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
   std::shared_ptr<WholeBodyController> wbcPtr_;
+  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer, qvel_ptr_buffer;
-  Buffer<std::shared_ptr<ModeSchedule>> mode_schedule_buffer;
-  Buffer<std::shared_ptr<TrajectoriesArray>> refTrajPtrBuffer_;
 
-  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> feedback_gain_buffer_;
-
-  std::thread inner_loop_thread_, adapative_gain_thread_;
+  std::thread inner_loop_thread_;
   Buffer<bool> run_;
   scalar_t freq_;
 

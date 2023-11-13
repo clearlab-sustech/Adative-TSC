@@ -21,7 +21,6 @@
   <depend>visualization_msgs</depend>
   <depend>trans</depend>
   <depend>yaml-cpp</depend>
-  <depend>asserts</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -26,6 +26,10 @@ find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(pinocchio_interface)
 find_package(asserts)
+find_package(OpenMP REQUIRED)
+find_package(ocs2_mpc)
+find_package(ocs2_sqp)
+find_package(ocs2_legged_robot)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(pinocchio REQUIRED pinocchio)
@@ -45,6 +49,9 @@ set(TARGET_DEPENDENCE
   sensor_msgs
   asserts
   yaml-cpp
+  ocs2_mpc
+  ocs2_sqp
+  ocs2_legged_robot
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)

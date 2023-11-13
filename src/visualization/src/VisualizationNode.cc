@@ -26,11 +26,6 @@ VisualizationNode::VisualizationNode(std::string config_yaml)
           topic_prefix + estimated_state_topic, qos,
           std::bind(&VisualizationNode::estimated_state_callback, this,
                     std::placeholders::_1));
-  mode_schedule_subscription_ =
-      this->create_subscription<trans::msg::ModeScheduleTrans>(
-          topic_prefix + mode_schedule_topic, qos,
-          std::bind(&VisualizationNode::mode_schedule_callback, this,
-                    std::placeholders::_1));
   trajectories_subscription_ =
       this->create_subscription<trans::msg::TrajectoryArray>(
           topic_prefix + trajectories_topic, qos,
@@ -89,23 +84,6 @@ void VisualizationNode::estimated_state_callback(
   estimated_state_buffer.push(msg);
 }
 
-void VisualizationNode::mode_schedule_callback(
-    const trans::msg::ModeScheduleTrans::SharedPtr msg) const {
-  std::vector<scalar_t> event_phases;
-  for (const auto &phase : msg->event_phases) {
-    event_phases.push_back(phase);
-  }
-  std::vector<size_t> mode_sequence;
-  for (const auto &mode : msg->mode_sequence) {
-    mode_sequence.push_back(static_cast<scalar_t>(mode));
-  }
-  auto mode_schedule = std::make_shared<ModeSchedule>(
-      static_cast<scalar_t>(msg->duration), event_phases, mode_sequence);
-  mode_schedule_buffer.push(mode_schedule);
-
-  // mode_schedule->print();
-}
-
 void VisualizationNode::trajectories_callback(
     const trans::msg::TrajectoryArray::SharedPtr msg) const {
   trajectories_msg_buffer_.push(msg);
@@ -116,7 +94,6 @@ void VisualizationNode::inner_loop() {
   size_t iter = 0;
   while (rclcpp::ok() && run_.get()) {
     if (estimated_state_buffer.get().get() == nullptr ||
-        mode_schedule_buffer.get().get() == nullptr ||
         trajectories_msg_buffer_.get().get() == nullptr) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
       continue;

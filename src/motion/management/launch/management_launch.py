@@ -7,7 +7,8 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    config_file_name = "aliengo/config.yaml"
+    # config_file_name = "aliengo/config.yaml"
+    config_file_name = "p1/config.yaml"
     config_file = os.path.join(get_package_share_path("asserts"), config_file_name)
     # print(config_file)
     return LaunchDescription(
@@ -15,7 +16,7 @@ def generate_launch_description():
             Node(
                 package="management",
                 executable="management",
-                name="aliengo_management",
+                name="a1_management",
                 output="screen",
                 emulate_tty=True,
                 arguments=[config_file, ("__log_level:=debug")],

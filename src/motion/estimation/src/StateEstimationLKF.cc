@@ -7,11 +7,12 @@ namespace clear {
 StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
                                        std::string config_yaml)
     : nodeHandle_(nodeHandle) {
-  auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_default);
 
   auto config_ = YAML::LoadFile(config_yaml);
-  std::string topic_prefix =
-      config_["global"]["topic_prefix"].as<std::string>();
+
+  robot_name = config_["model"]["name"].as<std::string>();
+  RCLCPP_INFO(nodeHandle_->get_logger(), "robot_name: %s", robot_name.c_str());
+
   std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
@@ -24,43 +25,53 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
   use_odom_ = config_["estimation"]["use_odom"].as<bool>();
 
   RCLCPP_INFO(nodeHandle_->get_logger(), "dt: %f", dt_);
-  RCLCPP_INFO(nodeHandle_->get_logger(), "use odom: %s", use_odom_ ? "true" : "false");
+  RCLCPP_INFO(nodeHandle_->get_logger(), "use odom: %s",
+              use_odom_ ? "true" : "false");
   for (const auto &name : foot_names) {
     RCLCPP_INFO(nodeHandle_->get_logger(), "foot name: %s", name.c_str());
+    cflag_.emplace_back(true);
   }
 
-  std::string imu_topic =
-      config_["global"]["topic_names"]["imu"].as<std::string>();
-  imu_subscription_ = nodeHandle_->create_subscription<sensor_msgs::msg::Imu>(
-      topic_prefix + imu_topic, qos,
-      std::bind(&StateEstimationLKF::imu_callback, this,
-                std::placeholders::_1));
+  bool hardware_ = config_["estimation"]["hardware"].as<bool>();
 
-  std::string touch_sensor_topic =
-      config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
-  touch_subscription_ = nodeHandle_->create_subscription<trans::msg::TouchSensor>(
-      topic_prefix + touch_sensor_topic, qos,
-      std::bind(&StateEstimationLKF::touch_callback, this,
-                std::placeholders::_1));
+  if (!hardware_) {
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
+    std::string topic_prefix =
+        config_["global"]["topic_prefix"].as<std::string>();
+    std::string imu_topic =
+        config_["global"]["topic_names"]["imu"].as<std::string>();
+    imu_subscription_ = nodeHandle_->create_subscription<sensor_msgs::msg::Imu>(
+        topic_prefix + imu_topic, qos,
+        std::bind(&StateEstimationLKF::imu_callback, this,
+                  std::placeholders::_1));
 
-  std::string joints_topic =
-      config_["global"]["topic_names"]["joints_state"].as<std::string>();
-  joints_state_subscription_ =
-      nodeHandle_->create_subscription<sensor_msgs::msg::JointState>(
-          topic_prefix + joints_topic, qos,
-          std::bind(&StateEstimationLKF::joint_callback, this,
-                    std::placeholders::_1));
+    std::string touch_sensor_topic =
+        config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
+    touch_subscription_ =
+        nodeHandle_->create_subscription<trans::msg::TouchSensor>(
+            topic_prefix + touch_sensor_topic, qos,
+            std::bind(&StateEstimationLKF::touch_callback, this,
+                      std::placeholders::_1));
 
-  std::string odom_topic =
-      config_["global"]["topic_names"]["odom"].as<std::string>();
-  odom_subscription_ = nodeHandle_->create_subscription<nav_msgs::msg::Odometry>(
-      topic_prefix + odom_topic, qos,
-      std::bind(&StateEstimationLKF::odom_callback, this,
-                std::placeholders::_1));
+    std::string joints_topic =
+        config_["global"]["topic_names"]["joints_state"].as<std::string>();
+    joints_state_subscription_ =
+        nodeHandle_->create_subscription<sensor_msgs::msg::JointState>(
+            topic_prefix + joints_topic, qos,
+            std::bind(&StateEstimationLKF::joint_callback, this,
+                      std::placeholders::_1));
+
+    std::string odom_topic =
+        config_["global"]["topic_names"]["odom"].as<std::string>();
+    odom_subscription_ =
+        nodeHandle_->create_subscription<nav_msgs::msg::Odometry>(
+            topic_prefix + odom_topic, qos,
+            std::bind(&StateEstimationLKF::odom_callback, this,
+                      std::placeholders::_1));
+  }
 
   inner_loop_thread_ = std::thread(&StateEstimationLKF::inner_loop, this);
   run_.push(true);
-
   setup();
 }
 
@@ -110,6 +121,8 @@ void StateEstimationLKF::setup() {
   R0_.setIdentity();
 }
 
+void StateEstimationLKF::setContactFlag(vector<bool> flag) { cflag_ = flag; }
+
 void StateEstimationLKF::angularMotionEstimate(
     const sensor_msgs::msg::Imu &imu_data, std::shared_ptr<vector_t> qpos,
     std::shared_ptr<vector_t> qvel) {
@@ -134,11 +147,11 @@ void StateEstimationLKF::linearMotionEstimate(
   vector3_t g(0, 0, -9.81);
   w_acc = w_acc + g;
 
-  scalar_t noise_pimu = 0.3;
-  scalar_t noise_vimu = 0.3;
-  scalar_t noise_pfoot = 0.01;
+  scalar_t noise_pimu = 0.02;
+  scalar_t noise_vimu = 0.02;
+  scalar_t noise_pfoot = 0.002;
   scalar_t noise_pimu_rel_foot = 0.001;
-  scalar_t noise_vimu_rel_foot = 0.2;
+  scalar_t noise_vimu_rel_foot = 0.02;
   scalar_t noise_zfoot = 0.001;
 
   matrix_t Q = matrix_t::Identity(18, 18);
@@ -173,7 +186,7 @@ void StateEstimationLKF::linearMotionEstimate(
     auto v =
         pinocchioInterface_ptr->getFrame6dVel_localWorldAligned(foot_names[i]);
     vector3_t p_f = pose.translation();
-    p_f.z() -= 0.0335; // the foot radius, be careful
+    p_f.z() -= 0.02; // the foot radius, be careful
     vector3_t v_f = v.linear();
 
     int i1 = 3 * i;
@@ -182,10 +195,10 @@ void StateEstimationLKF::linearMotionEstimate(
     idx2 = 24 + i;
 
     scalar_t trust;
-    if (abs(touch_sensor_data[i]) > 2.0 || release_) {
+    if (touch_sensor_data[i] > 2.0 || release_) {
       trust = 1.0;
     } else {
-      trust = abs(touch_sensor_data[i]) / 2.0;
+      trust = std::max(touch_sensor_data[i] / 2.0, 0.0);
     }
     scalar_t high_suspect_number = 500.0;
 
@@ -226,7 +239,7 @@ void StateEstimationLKF::inner_loop() {
     if (imu_msg_buffer.get().get() == nullptr ||
         touch_msg_buffer.get().get() == nullptr ||
         joint_state_msg_buffer.get().get() == nullptr ||
-        odom_msg_buffer.get().get() == nullptr) {
+        (use_odom_ && odom_msg_buffer.get().get() == nullptr)) {
       continue;
     }
     // do not delete these three lines
@@ -266,15 +279,12 @@ void StateEstimationLKF::inner_loop() {
       (*qpos_ptr_).segment(3, 4) << orientation.x, orientation.y, orientation.z,
           orientation.w;
       (*qvel_ptr_).segment(3, 3) << ang_vel.x, ang_vel.y, ang_vel.z;
-
-      /* const auto touch_sensor_data = touch_msg_buffer.get()->value;
-      printf("touch_sensor_data: ");
-      for (auto &data : touch_sensor_data) {
-        printf("%f,\t", data);
-      }
-      printf("\n"); */
-
     } else {
+      // const auto touch_sensor_data = touch_msg_buffer.get()->value;
+      // for (auto &data : touch_sensor_data) {
+      //   RCLCPP_INFO(nodeHandle_->get_logger(), "touch_sensor_data: %f",
+      //   data);
+      // }
       angularMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
       linearMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
     }
@@ -301,22 +311,49 @@ std::shared_ptr<vector_t> StateEstimationLKF::getQvel() {
 
 void StateEstimationLKF::imu_callback(
     const sensor_msgs::msg::Imu::SharedPtr msg) const {
-  imu_msg_buffer.push(msg);
+  if (msg->header.frame_id == robot_name) {
+    imu_msg_buffer.push(msg);
+  }
 }
 
 void StateEstimationLKF::touch_callback(
     const trans::msg::TouchSensor::SharedPtr msg) const {
-  touch_msg_buffer.push(msg);
+  if (msg->header.frame_id == robot_name) {
+    touch_msg_buffer.push(msg);
+  }
 }
 
 void StateEstimationLKF::joint_callback(
     const sensor_msgs::msg::JointState::SharedPtr msg) const {
-  joint_state_msg_buffer.push(msg);
+  if (msg->header.frame_id == robot_name) {
+    joint_state_msg_buffer.push(msg);
+  }
+}
+
+void StateEstimationLKF::set_imu_msg(sensor_msgs::msg::Imu::SharedPtr msg) {
+  if (msg->header.frame_id == robot_name) {
+    imu_msg_buffer.push(msg);
+  }
+}
+
+void StateEstimationLKF::set_touch_msg(trans::msg::TouchSensor::SharedPtr msg) {
+  if (msg->header.frame_id == robot_name) {
+    touch_msg_buffer.push(msg);
+  }
+}
+
+void StateEstimationLKF::set_joint_msg(
+    sensor_msgs::msg::JointState::SharedPtr msg) {
+  if (msg->header.frame_id == robot_name) {
+    joint_state_msg_buffer.push(msg);
+  }
 }
 
 void StateEstimationLKF::odom_callback(
     const nav_msgs::msg::Odometry::SharedPtr msg) const {
-  odom_msg_buffer.push(msg);
+  if (msg->header.frame_id == robot_name) {
+    odom_msg_buffer.push(msg);
+  }
 }
 
 } // namespace clear

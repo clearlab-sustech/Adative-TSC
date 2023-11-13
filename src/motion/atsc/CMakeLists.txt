@@ -26,6 +26,11 @@ find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(asserts REQUIRED)
 find_package(hpipm-cpp REQUIRED)
+find_package(eiquadprog REQUIRED)
+find_package(ocs2_oc REQUIRED)
+find_package(ocs2_centroidal_model REQUIRED)
+find_package(ocs2_legged_robot REQUIRED)
+find_package(ocs2_mpc REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(pinocchio REQUIRED pinocchio)
@@ -50,6 +55,11 @@ set(TARGET_DEPENDENCE
   hpipm-cpp
   pinocchio_interface
   tsc
+  eiquadprog
+  ocs2_oc
+  ocs2_centroidal_model
+  ocs2_legged_robot
+  ocs2_mpc
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
@@ -63,6 +73,7 @@ target_link_libraries(${PROJECT_NAME}
   ${pinocchio_LIBRARIES}
   ${YAML_CPP_LIBRARIES}
   hpipm-cpp::hpipm-cpp
+  eiquadprog::eiquadprog
 )
 
 ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})

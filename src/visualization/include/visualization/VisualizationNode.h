@@ -1,7 +1,5 @@
 #pragma once
 
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -26,9 +24,6 @@ private:
   void estimated_state_callback(
       const trans::msg::EstimatedStates::SharedPtr msg) const;
 
-  void mode_schedule_callback(
-      const trans::msg::ModeScheduleTrans::SharedPtr msg) const;
-
   void
   trajectories_callback(const trans::msg::TrajectoryArray::SharedPtr msg) const;
 
@@ -43,13 +38,10 @@ private:
 private:
   rclcpp::Subscription<trans::msg::EstimatedStates>::SharedPtr
       estimated_state_subscription_;
-  rclcpp::Subscription<trans::msg::ModeScheduleTrans>::SharedPtr
-      mode_schedule_subscription_;
   rclcpp::Subscription<trans::msg::TrajectoryArray>::SharedPtr
       trajectories_subscription_;
 
   mutable Buffer<trans::msg::EstimatedStates::SharedPtr> estimated_state_buffer;
-  mutable Buffer<std::shared_ptr<ModeSchedule>> mode_schedule_buffer;
   mutable Buffer<trans::msg::TrajectoryArray::SharedPtr>
       trajectories_msg_buffer_;
 

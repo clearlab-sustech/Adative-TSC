@@ -1,12 +1,12 @@
 #pragma once
-
-#include "generation/FootholdOptimization.h"
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
-#include <asserts/trajectory/TrajectoriesArray.h>
 #include <core/misc/Buffer.h>
+#include <core/types.h>
 #include <memory>
-#include <pinocchio/PinocchioInterface.h>
+#include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
+#include <ocs2_legged_robot/LeggedRobotInterface.h>
+#include <ocs2_legged_robot/gait/GaitManager.h>
+#include <ocs2_mpc/SystemObservation.h>
+#include <ocs2_sqp/SqpMpc.h>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 
@@ -24,44 +24,36 @@ public:
   void update_current_state(std::shared_ptr<vector_t> qpos_ptr,
                             std::shared_ptr<vector_t> qvel_ptr);
 
-  void update_mode_schedule(std::shared_ptr<ModeSchedule> mode_schedule);
+  std::shared_ptr<ocs2::PrimalSolution> get_mpc_sol();
 
-  std::shared_ptr<TrajectoriesArray> get_trajectory_reference();
-
-  std::map<std::string, std::pair<scalar_t, vector3_t>> get_footholds();
+  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+  get_robot_interface();
 
   void setVelCmd(vector3_t vd, scalar_t yawd);
 
 private:
   void inner_loop();
 
-  void generate_base_traj(scalar_t t_now);
+  vector_t get_rbd_state();
 
-  void generate_footholds(scalar_t t_now);
-
-  void generate_foot_traj(scalar_t t_now);
+  void set_reference();
 
 private:
   Node::SharedPtr nodeHandle_;
-  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
-  std::shared_ptr<TrajectoriesArray> refTrajBuffer_;
+  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+      robot_interface_ptr_;
+  std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
+  std::shared_ptr<ocs2::legged_robot::GaitManager> gait_receiver_ptr_;
+  std::shared_ptr<ocs2::SqpMpc> mpc_ptr_;
 
-  std::shared_ptr<FootholdOptimization> footholdOpt_ptr;
+  Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
   Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;
-  Buffer<std::shared_ptr<ModeSchedule>> mode_schedule_buffer;
 
   std::thread inner_loop_thread_;
   Buffer<bool> run_;
   scalar_t freq_;
-  std::string base_name;
-  std::vector<std::string> foot_names;
-
-  std::map<std::string, std::pair<scalar_t, vector3_t>> footholds;
-  std::map<std::string, std::pair<scalar_t, vector3_t>> xf_start_;
-  std::map<std::string, std::pair<scalar_t, vector3_t>> xf_end_;
-  quadruped::contact_flag_t contact_flag_;
 
   vector3_t vel_cmd;
   scalar_t yawd_;

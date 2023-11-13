@@ -1,0 +1,82 @@
+global:
+  topic_prefix: "simulation/"
+  service_names:
+    sim_reset: "sim_reset"
+  topic_names:
+    joints_state: "joints_state"
+    imu: "imu_data"
+    touch_sensor: "touch_sensor"
+    odom: "odom"
+    estimated_states: "estimated_states"
+    actuators_cmds: "actuators_cmds"
+    mode_schedule: "mode_schedule"
+    trajectories: "trajectories"
+
+ocs2:
+  package: "ocs2_legged_robot"
+  reference_file: "/config/command/reference.info"
+  task_file: "/config/mpc/task.info"
+
+model:
+  name: "p1"
+  package: "asserts"
+  urdf: "/p1/p1.urdf"
+  xml: "/p1/p1.xml"
+  base_name: "base"
+  foot_names: ["foot_L", "foot_R"]
+  actuated_joints_name:
+    [
+      "abad_L_joint",
+      "hip_L_joint",
+      "knee_L_joint",
+      "abad_R_joint",
+      "hip_R_joint", 
+      "knee_R_joint"
+    ]
+  default:
+    joint_pos:
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    base_pos: [0, 0, 0.636]
+    base_quat: [1, 0, 0, 0]
+
+gait:
+  list: ["stance", "walk"]
+
+  stance:
+    modeSequence: ["STANCE"]
+    switchingTimes: [0.0, 0.5]
+
+  walk:
+    modeSequence: ["LF", "RF"]
+    switchingTimes: [0.0, 0.5, 1.0]
+
+  topic_prefix: "simulation/"
+  topic_names:
+    mode_schedule: "mode_schedule"
+  frequency: 500.0
+
+simulation:
+  frequency: # Hz
+    joints_state: 500.0
+    imu: 400.0
+    touch_sensor: 500.0
+    odom: 500.0
+    drop_old_message: 10.0
+
+estimation:
+  dt: 0.002
+  use_odom: true
+  hardware: false
+
+controller:
+  frequency: 500.0
+
+generation:
+  frequency: 100.0

@@ -33,7 +33,6 @@ set(TARGET_DEPENDENCE
   visualization_msgs
   trans
   yaml-cpp
-  asserts
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)

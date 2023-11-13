@@ -12,30 +12,51 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
     : nodeHandle_(nodeHandle) {
   auto config_ = YAML::LoadFile(config_yaml);
 
+  std::string robot_name = config_["model"]["name"].as<std::string>();
   std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
   RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
-  pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
-
-  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
-
-  pinocchioInterface_ptr_->setContactPoints(foot_names);
-  base_name = config_["model"]["base_name"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "[TrajectorGeneration]  base name: %s",
-              base_name.c_str());
 
   freq_ = config_["generation"]["frequency"].as<scalar_t>();
   RCLCPP_INFO(nodeHandle_->get_logger(), "[TrajectorGeneration] frequency: %f",
               freq_);
 
-  contact_flag_ = {true, true, true, true};
+  std::string ocs2_leg_robot_package =
+      config_["ocs2"]["package"].as<std::string>();
+  std::string reference_file =
+      ament_index_cpp::get_package_share_directory(ocs2_leg_robot_package) +
+      config_["ocs2"]["reference_file"].as<std::string>();
+  RCLCPP_INFO(nodeHandle_->get_logger(), "reference file: %s",
+              reference_file.c_str());
 
-  refTrajBuffer_ = std::make_shared<TrajectoriesArray>();
+  std::string task_file =
+      ament_index_cpp::get_package_share_directory(ocs2_leg_robot_package) +
+      config_["ocs2"]["task_file"].as<std::string>();
+  RCLCPP_INFO(nodeHandle_->get_logger(), "task file: %s", task_file.c_str());
 
-  footholdOpt_ptr = std::make_shared<FootholdOptimization>(
-      config_yaml, pinocchioInterface_ptr_, refTrajBuffer_);
+  robot_interface_ptr_ =
+      std::make_shared<ocs2::legged_robot::LeggedRobotInterface>(
+          task_file, urdf, reference_file);
+  gait_receiver_ptr_ = std::make_shared<ocs2::legged_robot::GaitManager>(
+      nodeHandle_,
+      robot_interface_ptr_->getSwitchedModelReferenceManagerPtr()
+          ->getGaitSchedule(),
+      robot_name);
+
+  conversions_ptr_ = std::make_shared<ocs2::CentroidalModelRbdConversions>(
+      robot_interface_ptr_->getPinocchioInterface(),
+      robot_interface_ptr_->getCentroidalModelInfo());
+
+  mpc_ptr_ = std::make_shared<ocs2::SqpMpc>(
+      robot_interface_ptr_->mpcSettings(), robot_interface_ptr_->sqpSettings(),
+      robot_interface_ptr_->getOptimalControlProblem(),
+      robot_interface_ptr_->getInitializer());
+  mpc_ptr_->getSolverPtr()->setReferenceManager(
+      robot_interface_ptr_->getSwitchedModelReferenceManagerPtr());
+  mpc_ptr_->getSolverPtr()->addSynchronizedModule(gait_receiver_ptr_);
+  mpc_ptr_->reset();
 
   vel_cmd.setZero();
   yawd_ = 0.0;
@@ -55,18 +76,60 @@ void TrajectorGeneration::update_current_state(
   qvel_ptr_buffer.push(qvel_ptr);
 }
 
-void TrajectorGeneration::update_mode_schedule(
-    std::shared_ptr<ModeSchedule> mode_schedule) {
-  mode_schedule_buffer.push(mode_schedule);
-}
+void TrajectorGeneration::set_reference() {
+  if (mpc_sol_buffer.get() == nullptr) {
+    ocs2::SystemObservation currentObservation;
+    const vector_t rbdState = get_rbd_state();
+    const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
+    currentObservation.time = nodeHandle_->now().seconds();
+    currentObservation.state =
+        conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
+    currentObservation.input = vector_t::Zero(info_.inputDim);
+    currentObservation.mode = 3; // stance
+    ocs2::TargetTrajectories initTargetTrajectories({currentObservation.time},
+                                                    {currentObservation.state},
+                                                    {currentObservation.input});
 
-std::shared_ptr<TrajectoriesArray>
-TrajectorGeneration::get_trajectory_reference() {
-  return refTrajBuffer_;
-}
-std::map<std::string, std::pair<scalar_t, vector3_t>>
-TrajectorGeneration::get_footholds() {
-  return footholds;
+    mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
+        std::move(initTargetTrajectories));
+  } else {
+    ocs2::SystemObservation node1, node2;
+    const vector_t rbdState = get_rbd_state();
+    const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
+    node1.time = nodeHandle_->now().seconds();
+    node1.state =
+        conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
+    node1.state.head(6).setZero();
+    node1.state.head(3) = vel_cmd;
+    node1.state[3] = yawd_;
+    if (0.3 - node1.state[8] > 0.03) {
+      node1.state[8] += (0.02 * 0.5); // height
+    } else {
+      node1.state[8] = 0.3;
+    }
+    node1.state.segment(10, 2).setZero();
+    node1.input = vector_t::Zero(info_.inputDim);
+    node1.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
+        -1.48, 0.1, 0.72, -1.48;
+    node1.mode = 3; // stance
+
+    node2.time =
+        nodeHandle_->now().seconds() + mpc_ptr_->settings().timeHorizon_ + 0.1;
+    node2.state = node1.state;
+    node2.state.segment(6, 3) +=
+        (mpc_ptr_->settings().timeHorizon_ + 0.1) * vel_cmd;
+    node2.state[9] += yawd_ * (mpc_ptr_->settings().timeHorizon_ + 0.1);
+    node2.input = vector_t::Zero(info_.inputDim);
+    node2.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
+        -1.48, 0.1, 0.72, -1.48;
+    node2.mode = 3; // stance
+
+    ocs2::TargetTrajectories initTargetTrajectories({node1.time, node2.time},
+                                                    {node1.state, node2.state},
+                                                    {node1.input, node2.input});
+    mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
+        std::move(initTargetTrajectories));
+  }
 }
 
 void TrajectorGeneration::inner_loop() {
@@ -74,22 +137,52 @@ void TrajectorGeneration::inner_loop() {
   rclcpp::Rate loop_rate(freq_);
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
+
     if (qpos_ptr_buffer.get().get() == nullptr ||
-        qvel_ptr_buffer.get().get() == nullptr ||
-        mode_schedule_buffer.get().get() == nullptr) {
+        qvel_ptr_buffer.get().get() == nullptr) {
       continue;
+
     } else {
-      std::shared_ptr<vector_t> qpos_ptr = qpos_ptr_buffer.get();
-      std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
-      pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 
-      scalar_t t = nodeHandle_->now().seconds();
+      set_reference();
 
-      generate_base_traj(t);
-
-      generate_footholds(t);
-
-      generate_foot_traj(t);
+      ocs2::SystemObservation currentObservation;
+      vector_t rbdState = get_rbd_state();
+      currentObservation.time = nodeHandle_->now().seconds();
+      currentObservation.state =
+          conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
+      bool mpcIsUpdated =
+          mpc_ptr_->run(currentObservation.time, currentObservation.state);
+      if (mpcIsUpdated) {
+        auto primalSolutionPtr = std::make_unique<ocs2::PrimalSolution>();
+        const scalar_t finalTime =
+            (mpc_ptr_->settings().solutionTimeWindow_ < 0)
+                ? mpc_ptr_->getSolverPtr()->getFinalTime()
+                : currentObservation.time +
+                      mpc_ptr_->settings().solutionTimeWindow_;
+        mpc_ptr_->getSolverPtr()->getPrimalSolution(finalTime,
+                                                    primalSolutionPtr.get());
+        printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
+               "$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+        for (size_t i = 0; i < primalSolutionPtr->timeTrajectory_.size(); i++) {
+          std::cout
+              << "sol t="
+              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
+              << ", state: "
+              << primalSolutionPtr->stateTrajectory_[i].head(12).transpose()
+              << "\n"
+              << "ref t="
+              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
+              << ", state: "
+              << robot_interface_ptr_->getSwitchedModelReferenceManagerPtr()
+                     ->getTargetTrajectories()
+                     .getDesiredState(primalSolutionPtr->timeTrajectory_[i])
+                     .head(12)
+                     .transpose()
+              << "\n";
+        }
+        mpc_sol_buffer.push(std::move(primalSolutionPtr));
+      }
     }
     timer_.endTimer();
     loop_rate.sleep();
@@ -98,226 +191,44 @@ void TrajectorGeneration::inner_loop() {
               "[TrajectorGeneration] max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
-}
-
-void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
-    scalar_t t_now) {
-  vector_t rpy_m, rpy_dot_m;
-  vector_t pos_m, vel_m;
-  auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
-  auto base_twist =
-      pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
-
-  if (refTrajBuffer_->get_base_pos_ref_traj().get() == nullptr ||
-      refTrajBuffer_->get_base_rpy_traj().get() == nullptr) {
-    rpy_m = toEulerAngles(base_pose_m.rotation());
-    rpy_dot_m = getJacobiFromOmegaToRPY(rpy_m) * base_twist.angular();
-    pos_m = base_pose_m.translation();
-    vel_m = base_twist.linear();
-  } else {
-    auto base_pos_traj = refTrajBuffer_->get_base_pos_ref_traj();
-    auto base_rpy_traj = refTrajBuffer_->get_base_rpy_traj();
-
-    rpy_m = base_rpy_traj->evaluate(t_now);
-    rpy_dot_m = getJacobiFromOmegaToRPY(rpy_m) * base_twist.angular();
-    vector_t rpy_c = toEulerAngles(base_pose_m.rotation());
-    if ((rpy_c - rpy_m).norm() > 0.1) {
-      rpy_m = 0.1 * (rpy_m - rpy_c).normalized() + rpy_c;
-    }
-    pos_m = base_pos_traj->evaluate(t_now);
-    vector_t pos_c = base_pose_m.translation();
-    if ((pos_c - pos_m).norm() > 0.03) {
-      pos_m = 0.03 * (pos_m - pos_c).normalized() + pos_c;
-    }
-    vel_m = base_twist.linear();
-  }
-
-  std::vector<scalar_t> time;
-  std::vector<vector_t> rpy_t, pos_t;
-  scalar_t horizon_time = mode_schedule_buffer.get()->duration();
-  if (vel_cmd.norm() < 0.05) {
-    vector3_t foot_center = vector3_t::Zero();
-    for (size_t k = 0; k < foot_names.size(); k++) {
-      foot_center +=
-          pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
-    }
-    foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
-
-    scalar_t zd = 0.38;
-    scalar_t mod_z = 0.0;
-    time.emplace_back(t_now);
-    time.emplace_back(t_now + 0.5 * horizon_time);
-    time.emplace_back(t_now + horizon_time);
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(),
-                                 zd - mod_z * (0.05 * sin(6 * t_now))));
-    pos_t.emplace_back(
-        vector3_t(foot_center.x(), foot_center.y(),
-                  zd - mod_z * (0.05 * sin(6 * (t_now + 0.5 * horizon_time)))));
-    pos_t.emplace_back(
-        vector3_t(foot_center.x(), foot_center.y(),
-                  zd - mod_z * (0.05 * sin(6 * (t_now + horizon_time)))));
-  } else {
-    size_t N = horizon_time / 0.05;
-    vector3_t vel_des;
-    vel_des << vel_cmd.x(), vel_cmd.y(), vel_cmd.z();
-    vel_des = base_pose_m.rotation() * vel_des;
-
-    scalar_t h_des = 0.38;
-    if (0.35 > h_des || h_des > 0.6) {
-      h_des = 0.48;
-    }
-    rpy_m.head(2).setZero();
-    for (size_t k = 0; k < N; k++) {
-      time.push_back(t_now + 0.05 * k);
-      rpy_m.z() += 0.05 * yawd_;
-      rpy_t.emplace_back(rpy_m);
-      pos_m += 0.05 * vel_des;
-      pos_m.z() = h_des;
-      pos_t.emplace_back(pos_m);
-    }
-  }
-
-  /* std::cout << "############# "
-            << "base traj des"
-            << " ##############\n";
-  for (size_t i = 0; i < time.size(); i++) {
-    std::cout << " t: " << time[i] - time.front()
-              << " pos: " << pos_t[i].transpose() << "\n";
-  } */
-
-  auto cubicspline_pos = std::make_shared<CubicSplineTrajectory>(3);
-  cubicspline_pos->set_boundary(
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
-  cubicspline_pos->fit(time, pos_t);
-  refTrajBuffer_->set_base_pos_ref_traj(cubicspline_pos);
-  refTrajBuffer_->set_base_pos_traj(cubicspline_pos);
-
-  /* if (refTrajBuffer_->get_base_pos_traj().get() == nullptr) {
-    refTrajBuffer_->set_base_pos_traj(cubicspline_pos);
-  } */
-
-  auto cubicspline_rpy = std::make_shared<CubicSplineTrajectory>(3);
-  cubicspline_rpy->set_boundary(
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
-  cubicspline_rpy->fit(time, rpy_t);
-  refTrajBuffer_->set_base_rpy_traj(cubicspline_rpy);
-}
-
-void TrajectorGeneration::generate_footholds(scalar_t t_now) {
-  footholds = footholdOpt_ptr->optimize(t_now, mode_schedule_buffer.get());
-}
-
-void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
-  const auto &foot_names = pinocchioInterface_ptr_->getContactPoints();
-  auto mode_schedule = mode_schedule_buffer.get();
-  if (xf_start_.empty()) {
-    for (size_t k = 0; k < foot_names.size(); k++) {
-      const auto &foot_name = foot_names[k];
-      vector3_t pos =
-          pinocchioInterface_ptr_->getFramePose(foot_name).translation();
-      std::pair<scalar_t, vector3_t> xs;
-      xs.first = t_now;
-      xs.second = pos;
-      xf_start_[foot_name] = std::move(xs);
-    }
-  }
-  if (xf_end_.empty()) {
-    for (size_t k = 0; k < foot_names.size(); k++) {
-      const auto &foot_name = foot_names[k];
-      vector3_t pos =
-          pinocchioInterface_ptr_->getFramePose(foot_name).translation();
-      std::pair<scalar_t, vector3_t> xe;
-      xe.first = t_now + mode_schedule.get()->duration();
-      xe.second = pos;
-      xf_end_[foot_name] = std::move(xe);
-    }
-  }
-  std::map<std::string, std::shared_ptr<CubicSplineTrajectory>> foot_pos_traj;
-
-  auto contact_flag =
-      quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(0.0));
-  for (size_t k = 0; k < foot_names.size(); k++) {
-    const auto &foot_name = foot_names[k];
-    vector3_t pos =
-        pinocchioInterface_ptr_->getFramePose(foot_name).translation();
-    if (contact_flag_[k] != contact_flag[k]) {
-      std::pair<scalar_t, vector3_t> xs;
-      xs.first = t_now - numeric_traits::limitEpsilon<scalar_t>();
-      xs.second = pos;
-      xf_start_[foot_name] = std::move(xs);
-    }
-    if (contact_flag[k]) {
-      if (contact_flag_[k] != contact_flag[k]) {
-        std::pair<scalar_t, vector3_t> xe;
-        xe.first = t_now + mode_schedule->timeLeftInMode(0.0);
-        xe.second = pos;
-        xf_end_[foot_name] = std::move(xe);
-      }
-    } else {
-      std::pair<scalar_t, vector3_t> xe;
-      xe.first = footholds[foot_name].first;
-      xe.second = footholds[foot_name].second;
-      xf_end_[foot_name] = std::move(xe);
-    }
-    if (xf_start_[foot_name].first <
-        xf_end_[foot_name].first - mode_schedule.get()->duration()) {
-      xf_start_[foot_name].first =
-          xf_end_[foot_name].first - mode_schedule.get()->duration();
-      xf_start_[foot_name].second = pos;
-    }
-
-    auto base_pos =
-        pinocchioInterface_ptr_->getFramePose(base_name).translation();
-    xf_start_[foot_name].second.z() = std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
-    xf_end_[foot_name].second.z() = std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
-
-    std::vector<scalar_t> time;
-    std::vector<vector_t> pos_t;
-    time.push_back(xf_start_[foot_name].first);
-    pos_t.push_back(xf_start_[foot_name].second);
-    time.push_back(0.5 *
-                   (xf_start_[foot_name].first + xf_end_[foot_name].first));
-    vector3_t middle_pos =
-        0.5 * (xf_start_[foot_name].second + xf_end_[foot_name].second);
-    middle_pos.z() += contact_flag[k] ? 0.0 : 0.15;
-    pos_t.push_back(middle_pos);
-    time.push_back(xf_end_[foot_name].first);
-    pos_t.push_back(xf_end_[foot_name].second);
-
-    /* std::cout << "############# " << foot_name << ": " << pos.transpose()
-              << " ##############\n";
-    for (size_t i = 0; i < time.size(); i++) {
-      std::cout << " t: " << time[i] - time.front()
-                << " pos: " << pos_t[i].transpose() << "\n";
-    } */
-
-    auto cubicspline_ = std::make_shared<CubicSplineTrajectory>(
-        3, CubicSplineInterpolation::SplineType::cspline);
-    cubicspline_->set_boundary(
-        CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero(),
-        CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
-    cubicspline_->fit(time, pos_t);
-    /* std::cout << "############# opt " << foot_name << " ##############\n";
-    for (size_t i = 0; i < time.size(); i++) {
-      std::cout
-          << " t: " << time[i] - time.front() << " pos: "
-          << foot_traj_ptr->pos_trajectoryPtr->evaluate(time[i]).transpose()
-          << "\n";
-    } */
-    foot_pos_traj[foot_name] = std::move(cubicspline_);
-  }
-  contact_flag_ = contact_flag;
-  refTrajBuffer_->set_foot_pos_traj(foot_pos_traj);
+  std::cerr << mpc_ptr_->getSolverPtr()->getBenchmarkingInfo();
 }
 
 void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
   vel_cmd = vd;
   yawd_ = yawd;
+}
+
+vector_t TrajectorGeneration::get_rbd_state() {
+  const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
+  vector_t rbdState(2 * info_.generalizedCoordinatesNum);
+
+  const auto qpos = *qpos_ptr_buffer.get();
+  const auto qvel = *qvel_ptr_buffer.get();
+
+  Eigen::Quaternion<scalar_t> quat(qpos[6], qpos[3], qpos[4], qpos[5]);
+  vector_t b_angVel = qvel.segment(3, 3);
+  vector_t w_angVel = quat.toRotationMatrix() * b_angVel;
+
+  rbdState.head(3) = toEulerAnglesZYX(quat);
+  rbdState.segment<3>(3) = qpos.head(3);
+  rbdState.segment(info_.generalizedCoordinatesNum, 3) = w_angVel;
+  rbdState.segment(info_.generalizedCoordinatesNum + 3, 3) =
+      quat.toRotationMatrix() * qvel.head(3);
+  assert(qpos.size() == (info_.actuatedDofNum + 6));
+  rbdState.segment(6, info_.actuatedDofNum) = qpos.tail(info_.actuatedDofNum);
+  rbdState.segment(6 + info_.generalizedCoordinatesNum, info_.actuatedDofNum) =
+      qvel.tail(info_.actuatedDofNum);
+  return rbdState;
+}
+
+std::shared_ptr<ocs2::PrimalSolution> TrajectorGeneration::get_mpc_sol() {
+  return mpc_sol_buffer.get();
+}
+
+std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+TrajectorGeneration::get_robot_interface() {
+  return robot_interface_ptr_;
 }
 
 } // namespace clear
