@@ -43,9 +43,9 @@ void MotionManager::inner_loop() {
   rclcpp::Rate loop_rate(500.0);
   const scalar_t ts = this->now().seconds();
   while (rclcpp::ok() && run_.get()) {
-    if (this->now().seconds() > ts + 4.0) {
-      gaitSchedulePtr_->switch_gait("trot");
-    }
+    // if (this->now().seconds() > ts + 4.0) {
+    //   gaitSchedulePtr_->switch_gait("trot");
+    // }
 
     if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
       trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
