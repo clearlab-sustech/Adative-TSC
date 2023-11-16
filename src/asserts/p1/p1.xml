@@ -53,8 +53,8 @@
       <inertial pos="-0.0211328 0.000345779 0.00299632"
         quat="0.940845 -0.0179433 -0.33836 -0.000433463" mass="5.66937"
         diaginertia="0.0849206 0.0566407 0.0481491" />
-      <joint type="free" damping="1000000000"/>
-      <!-- <joint type="free"/> -->
+      <!-- <joint type="free" damping="1000000000"/> -->
+      <joint type="free"/>
       <geom class="collision" mesh="base_Link" />
       <geom class="visual" mesh="base_Link" />
       <site name="imu" pos="0 0 0" />

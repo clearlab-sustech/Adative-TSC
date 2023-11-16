@@ -101,11 +101,11 @@ void WholeBodyController::formulate() {
   //                    .segment(6, 6)
   //                    .transpose()
   //             << "\n";
-    // std::cout << "sol t="
-    //           << std::to_string(activePrimalSolutionPtr_->timeTrajectory_[i])
-    //           << ", input: "
-    //           << activePrimalSolutionPtr_->inputTrajectory_[i].transpose()
-    //           << "\n";
+  // std::cout << "sol t="
+  //           << std::to_string(activePrimalSolutionPtr_->timeTrajectory_[i])
+  //           << ", input: "
+  //           << activePrimalSolutionPtr_->inputTrajectory_[i].transpose()
+  //           << "\n";
   // }
 
   xDot = robot_interface_ptr_->getOptimalControlProblem()
@@ -324,6 +324,10 @@ MatrixDB WholeBodyController::formulateMomentumTask() {
 
   momentum_task.b = pinocchioInterface_ptr_->total_mass() * xDot.head(6) -
                     pinocchioInterface_ptr_->getMomentumTimeVariation();
+
+  if (momentum_task.b.norm() > 20.0) {
+    momentum_task.b = 20.0 * momentum_task.b.normalized();
+  }
 
   momentum_task.A = weightMomentum_ * momentum_task.A;
   momentum_task.b = weightMomentum_ * momentum_task.b;
