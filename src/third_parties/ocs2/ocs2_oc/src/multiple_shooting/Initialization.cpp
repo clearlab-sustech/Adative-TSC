@@ -28,6 +28,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
 #include "ocs2_oc/multiple_shooting/Initialization.h"
+#include <iostream>
 
 namespace ocs2 {
 namespace multiple_shooting {
@@ -75,6 +76,8 @@ void initializeStateInputTrajectories(const vector_t& initState, const std::vect
       inputTrajectory.push_back(std::move(input));
       stateTrajectory.push_back(std::move(nextState));
     }
+
+    // std::cout << "state " << i << ": " << stateTrajectory[i].transpose() << "\n";
   }
 }
 

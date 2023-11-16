@@ -88,12 +88,16 @@ vector_t LinearController::computeInput(scalar_t t, const vector_t &x) {
   vector_t state_des = LinearInterpolation::interpolate(indexAlpha, stateRef_);
   const matrix_t k = LinearInterpolation::interpolate(indexAlpha, gainArray_);
   uff.noalias() += k * (x - state_des);
+
+  // std::cout << "############################# uff "
+  //              "##########################\n"
+  //           << uff.transpose() << std::endl;
   if (uff.norm() > 1e20) {
     std::cout << "############################# k ##########################\n"
               << k << std::endl;
-    std::cout << "############################# state_des ##########################\n"
+    std::cout << "############################# state_des "
+                 "##########################\n"
               << state_des.transpose() << std::endl;
-    exit(0);
   }
   return uff;
 }

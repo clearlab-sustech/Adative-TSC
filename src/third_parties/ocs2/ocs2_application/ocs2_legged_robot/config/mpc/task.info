@@ -31,7 +31,7 @@ sqp
 {
   nThreads                              8
   dt                                    0.015
-  sqpIteration                          1
+  sqpIteration                          20
   deltaTol                              1e-4
   g_max                                 1e-2
   g_min                                 1e-6
@@ -102,26 +102,26 @@ Q
    scaling 1e+0
 
   ;; Normalized Centroidal Momentum: [linear, angular] ;;
-  (0,0)   100.0     ; vcom_x
-  (1,1)   100.0     ; vcom_y
-  (2,2)   100.0    ; vcom_z
+  (0,0)   10.0     ; vcom_x
+  (1,1)   1.0     ; vcom_y
+  (2,2)   10.0    ; vcom_z
   (3,3)   10.0     ; L_x / robotMass
   (4,4)   30.0     ; L_y / robotMass
   (5,5)   30.0     ; L_z / robotMass
 
   ;; Base Pose: [position, orientation] ;;
-  (6,6)   1000.0   ; p_base_x
-  (7,7)   1000.0   ; p_base_y
-  (8,8)   1500.0   ; p_base_z
+  (6,6)   100.0   ; p_base_x
+  (7,7)   100.0   ; p_base_y
+  (8,8)   100.0   ; p_base_z
   (9,9)   100.0    ; theta_base_z
   (10,10) 300.0    ; theta_base_y
   (11,11) 300.0    ; theta_base_x
 
   ;; Leg Joint Positions: [LF, LH, RF, RH] ;;
-  (12,12) 5.0     ; LF_HAA
+  (12,12) 25.0     ; LF_HAA
   (13,13) 5.0     ; LF_HFE
   (14,14) 2.5     ; LF_KFE
-  (15,15) 5.0     ; RF_HAA
+  (15,15) 25.0     ; RF_HAA
   (16,16) 5.0     ; RF_HFE
   (17,17) 2.5     ; RF_KFE
 }

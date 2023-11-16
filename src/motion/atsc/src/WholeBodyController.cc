@@ -87,10 +87,30 @@ void WholeBodyController::formulate() {
   mpcInput = activePrimalSolutionPtr_->controllerPtr_->computeInput(
       currentTime, currentObservation.state);
 
+  // std::cout << "mpcInput: " << mpcInput.transpose() << "\n";
+
+  // printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
+  //        "$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+  // std::cout << "x0 =" << currentObservation.state.transpose() << "\n";
+  // for (size_t i = 0; i < activePrimalSolutionPtr_->timeTrajectory_.size();
+  //      i++) {
+  //   std::cout << "sol t="
+  //             << std::to_string(activePrimalSolutionPtr_->timeTrajectory_[i])
+  //             << ", state: "
+  //             << activePrimalSolutionPtr_->stateTrajectory_[i]
+  //                    .segment(6, 6)
+  //                    .transpose()
+  //             << "\n";
+    // std::cout << "sol t="
+    //           << std::to_string(activePrimalSolutionPtr_->timeTrajectory_[i])
+    //           << ", input: "
+    //           << activePrimalSolutionPtr_->inputTrajectory_[i].transpose()
+    //           << "\n";
+  // }
+
   xDot = robot_interface_ptr_->getOptimalControlProblem()
              .dynamicsPtr->computeFlowMap(currentTime, currentObservation.state,
                                           mpcInput, ocs2::PreComputation());
-
   contactFlag_ = ocs2::legged_robot::modeNumber2StanceLeg(mode_);
   numContacts_ = std::count(contactFlag_.cbegin(), contactFlag_.cend(), true);
 

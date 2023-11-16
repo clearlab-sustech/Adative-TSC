@@ -22,7 +22,7 @@ initialModeSchedule
   }
   eventTimes
   {
-    [0]  0.5
+    [0]  0.2
   }
 }
 
@@ -30,13 +30,13 @@ defaultModeSequenceTemplate
 {
    modeSequence
    {
-     [0]     STANCE
-     [1]     STANCE
+     [0]     LF
+     [1]     RF
    }
    switchingTimes
    {
      [0]     0.0
-     [1]     0.3
-     [2]     0.6
+     [1]     0.2
+     [2]     0.4
    }
 }

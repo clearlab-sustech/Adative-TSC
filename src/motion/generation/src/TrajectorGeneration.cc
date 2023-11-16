@@ -160,24 +160,6 @@ void TrajectorGeneration::inner_loop() {
                       mpc_ptr_->settings().solutionTimeWindow_;
         mpc_ptr_->getSolverPtr()->getPrimalSolution(finalTime,
                                                     primalSolutionPtr.get());
-        printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
-               "$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-        std::cout << "x0 =" << currentObservation.state.tail(6).transpose()
-                  << "\n";
-        for (size_t i = 0; i < primalSolutionPtr->timeTrajectory_.size(); i++) {
-          std::cout
-              << "sol t="
-              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
-              << ", state: "
-              << primalSolutionPtr->stateTrajectory_[i].tail(6).transpose()
-              << "\n";
-          std::cout
-              << "sol t="
-              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
-              << ", input: "
-              << primalSolutionPtr->inputTrajectory_[i].transpose()
-              << "\n";
-        }
         mpc_sol_buffer.push(std::move(primalSolutionPtr));
       }
     }
