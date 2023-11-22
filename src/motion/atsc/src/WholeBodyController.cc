@@ -8,12 +8,18 @@
 #include <utility>
 #include <yaml-cpp/yaml.h>
 
+// #define DATA_LOG
+
 namespace clear {
 
 WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
                                          const std::string config_yaml)
-    : nodeHandle_(nodeHandle),
-      log_stream("log_stream_wbc.txt", std::ios::ate | std::ios::out) {
+    : nodeHandle_(nodeHandle) {
+#ifdef DATA_LOG
+  log_stream =
+      std::fstream("log_stream_wbc.txt", std::ios::ate | std::ios::out);
+#endif
+
   auto config_ = YAML::LoadFile(config_yaml);
 
   std::string model_package = config_["model"]["package"].as<std::string>();
@@ -41,7 +47,11 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
   this->loadTasksSetting();
 }
 
-WholeBodyController::~WholeBodyController() { log_stream.close(); }
+WholeBodyController::~WholeBodyController() {
+#ifdef DATA_LOG
+  log_stream.close();
+#endif
+}
 
 void WholeBodyController::update_trajectory_reference(
     std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
@@ -279,6 +289,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     if (abs(acc_fb.z()) > 5.0) {
       acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
     }
+#ifdef DATA_LOG
     log_stream
         << (err_pos_traj->evaluate(t) - x0.head(3)).transpose() << " "
         << (err_rpy_traj->evaluate(t) - rpy_err).transpose() << " "
@@ -288,6 +299,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
             (base_twist.angular() - omega_des))
                .transpose()
         << " " << acc_fb.transpose() << "\n";
+#endif
   } else {
     acc_fb.setZero();
   }
