@@ -27,9 +27,6 @@ find_package(ocs2_pinocchio_interface REQUIRED)
 find_package(ocs2_ros_interfaces REQUIRED)
 find_package(ocs2_centroidal_model REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-
 set(TARGET_DEPENDENCIES
   ocs2_ros_interfaces
   ocs2_core
@@ -42,8 +39,6 @@ set(TARGET_DEPENDENCIES
   ocs2_centroidal_model
   pinocchio
 )
-
-include(cmake/pinocchio_config.cmake)
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_library(${PROJECT_NAME} SHARED ${source})

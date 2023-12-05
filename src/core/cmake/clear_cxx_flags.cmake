@@ -1,3 +1,5 @@
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+
 list(APPEND CLEAR_CXX_FLAGS
   "-march=native"
   "-mtune=native"

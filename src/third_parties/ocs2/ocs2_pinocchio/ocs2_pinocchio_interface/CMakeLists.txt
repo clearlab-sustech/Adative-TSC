@@ -19,8 +19,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(ocs2_core REQUIRED)
 find_package(ocs2_robotic_tools REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
+
 # Add pinocchio configurations
 include(cmake/pinocchio_config.cmake)
 
@@ -55,4 +54,4 @@ install(
   INCLUDES DESTINATION include
 )
 
-ament_package()
+ament_package(CONFIG_EXTRAS cmake/pinocchio_config.cmake)

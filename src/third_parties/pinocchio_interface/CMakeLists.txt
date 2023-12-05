@@ -8,8 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(core REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
+
 include(cmake/pinocchio_config.cmake)
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
@@ -43,18 +42,5 @@ install(
   INCLUDES DESTINATION include
 )
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
 
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
-
-ament_package()
+ament_package(CONFIG_EXTRAS cmake/pinocchio_config.cmake)

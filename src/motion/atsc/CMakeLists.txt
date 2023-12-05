@@ -32,12 +32,6 @@ find_package(ocs2_centroidal_model REQUIRED)
 find_package(ocs2_legged_robot REQUIRED)
 find_package(ocs2_mpc REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
-
 find_package(pinocchio_interface REQUIRED)
 find_package(tsc REQUIRED)
 

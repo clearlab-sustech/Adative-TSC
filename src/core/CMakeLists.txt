@@ -17,7 +17,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(rcpputils REQUIRED)
 find_package(proxsuite REQUIRED)
 
@@ -60,4 +59,4 @@ install(
   INCLUDES DESTINATION include
 )
 
-ament_package()
+ament_package(CONFIG_EXTRAS cmake/clear_cxx_flags.cmake)
