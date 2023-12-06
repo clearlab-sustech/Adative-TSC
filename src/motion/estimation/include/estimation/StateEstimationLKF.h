@@ -16,7 +16,7 @@ using namespace std::chrono_literals;
 namespace clear {
 class StateEstimationLKF {
 public:
-  StateEstimationLKF(Node::SharedPtr nodeHandle, std::string config_yaml);
+  StateEstimationLKF(Node::SharedPtr nodeHandle);
 
   ~StateEstimationLKF();
 

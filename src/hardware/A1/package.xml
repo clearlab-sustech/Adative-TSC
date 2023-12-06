@@ -24,6 +24,7 @@
   <depend>yaml-cpp</depend>
   <depend>ament_index_cpp</depend>
   <depend>core</depend>
+  <depend>asserts</depend>
 
   <exec_depend>ros2launch</exec_depend>
 

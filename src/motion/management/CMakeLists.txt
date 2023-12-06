@@ -27,16 +27,10 @@ find_package(yaml-cpp REQUIRED)
 find_package(pinocchio_interface)
 find_package(asserts)
 find_package(estimation)
+find_package(gait)
 find_package(generation)
 find_package(atsc)
 find_package(tf2_ros)
-find_package(hardware)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -48,16 +42,14 @@ set(TARGET_DEPENDENCE
   pinocchio_interface
   nav_msgs
   sensor_msgs
+  asserts
   yaml-cpp
   estimation
+  gait
   generation
   atsc
   tf2_ros
-  hardware
 )
-
-add_library(libunitree_legged_sdk SHARED IMPORTED)
-set_target_properties(libunitree_legged_sdk PROPERTIES IMPORTED_LOCATION ${CMAKE_INSTALL_PREFIX}/lib/libunitree_legged_sdk_amd64.so)
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 

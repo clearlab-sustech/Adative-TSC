@@ -69,7 +69,6 @@ namespace
 
   // message publisher
   std::shared_ptr<clear::ActuatorCmdsBuffer> actuator_cmds_buffer;
-  std::fstream save_actuator_cmds;
 
   using Seconds = std::chrono::duration<double>;
 
@@ -301,7 +300,6 @@ namespace
   void apply_ctrl(mjModel *m, mjData *d)
   {
     const std::lock_guard<std::mutex> lock(actuator_cmds_buffer->mtx);
-    save_actuator_cmds << d->time << " ";
     for (size_t k = 0; k < actuator_cmds_buffer->actuators_name.size(); k++)
     {
       int actuator_id = mj_name2id(
@@ -327,9 +325,7 @@ namespace
           actuator_cmds_buffer->torque[k];
       d->ctrl[actuator_id] =
           std::min(std::max(-100.0, d->ctrl[actuator_id]), 100.0);
-      save_actuator_cmds << d->ctrl[actuator_id] << " ";
     }
-    save_actuator_cmds << "\n";
   }
 
   // simulate in background thread (while rendering in main thread)
@@ -557,8 +553,6 @@ int main(int argc, const char **argv)
 
   rclcpp::init(argc, argv);
 
-  save_actuator_cmds = std::fstream("actuator_cmds_log.txt", std::ios::ate | std::ios::out);
-
   // print version, check compatibility
   std::printf("MuJoCo version %s\n", mj_versionString());
   if (mjVERSION_HEADER != mj_version())
@@ -614,8 +608,6 @@ int main(int argc, const char **argv)
   // start simulation UI loop (blocking call)
   sim->RenderLoop();
   physicsthreadhandle.join();
-
-  save_actuator_cmds.close();
 
   return 0;
 }

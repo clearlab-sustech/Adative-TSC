@@ -27,10 +27,12 @@ find_package(yaml-cpp REQUIRED)
 find_package(asserts REQUIRED)
 find_package(hpipm-cpp REQUIRED)
 find_package(eiquadprog REQUIRED)
-find_package(ocs2_oc REQUIRED)
-find_package(ocs2_centroidal_model REQUIRED)
-find_package(ocs2_legged_robot REQUIRED)
-find_package(ocs2_mpc REQUIRED)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(pinocchio REQUIRED pinocchio)
+link_directories(
+  ${pinocchio_LIBRARY_DIRS}
+)
 
 find_package(pinocchio_interface REQUIRED)
 find_package(tsc REQUIRED)
@@ -50,10 +52,6 @@ set(TARGET_DEPENDENCE
   pinocchio_interface
   tsc
   eiquadprog
-  ocs2_oc
-  ocs2_centroidal_model
-  ocs2_legged_robot
-  ocs2_mpc
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)

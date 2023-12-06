@@ -1,12 +1,12 @@
 #pragma once
+
+#include "generation/FloatingBaseMotion.h"
+#include "generation/FootholdOptimization.h"
+#include "generation/SwingTrajectory.h"
+#include <asserts/trajectory/ReferenceBuffer.h>
 #include <core/misc/Buffer.h>
-#include <core/types.h>
 #include <memory>
-#include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
-#include <ocs2_legged_robot/LeggedRobotInterface.h>
-#include <ocs2_legged_robot/gait/GaitManager.h>
-#include <ocs2_mpc/SystemObservation.h>
-#include <ocs2_sqp/SqpMpc.h>
+#include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 
@@ -17,36 +17,30 @@ namespace clear {
 class TrajectorGeneration {
 
 public:
-  TrajectorGeneration(Node::SharedPtr nodeHandle, string config_yaml);
+  TrajectorGeneration(Node::SharedPtr nodeHandle);
 
   ~TrajectorGeneration();
 
   void update_current_state(std::shared_ptr<vector_t> qpos_ptr,
                             std::shared_ptr<vector_t> qvel_ptr);
 
-  std::shared_ptr<ocs2::PrimalSolution> get_mpc_sol();
+  void update_mode_schedule(std::shared_ptr<ModeSchedule> mode_schedule);
 
-  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-  get_robot_interface();
+  std::shared_ptr<ReferenceBuffer> get_trajectory_reference();
 
   void setVelCmd(vector3_t vd, scalar_t yawd);
 
 private:
   void inner_loop();
 
-  vector_t get_rbd_state();
-
-  void set_reference();
-
 private:
   Node::SharedPtr nodeHandle_;
-  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-      robot_interface_ptr_;
-  std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
-  std::shared_ptr<ocs2::legged_robot::GaitManager> gait_receiver_ptr_;
-  std::shared_ptr<ocs2::SqpMpc> mpc_ptr_;
+  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
+  std::shared_ptr<ReferenceBuffer> refTrajBuffer_;
 
-  Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
+  std::shared_ptr<FloatingBaseMotion> base_planner_ptr;
+  std::shared_ptr<FootholdOptimization> foothold_opt_ptr;
+  std::shared_ptr<SwingTrajectory> swing_traj_ptr;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
   Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;

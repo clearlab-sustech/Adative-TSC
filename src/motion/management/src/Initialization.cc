@@ -3,10 +3,12 @@
 
 namespace clear {
 
-Initialization::Initialization(Node::SharedPtr nodeHandle,
-                               std::string config_yaml)
-    : nodeHandle_(nodeHandle), config_yaml_(config_yaml) {
-  auto config_ = YAML::LoadFile(config_yaml);
+Initialization::Initialization(Node::SharedPtr nodeHandle)
+    : nodeHandle_(nodeHandle) {
+  config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+  auto config_ = YAML::LoadFile(config_file_);
   std::string topic_prefix =
       config_["global"]["topic_prefix"].as<std::string>();
   reset_state_client_ = nodeHandle_->create_client<trans::srv::SimulationReset>(
@@ -16,9 +18,9 @@ Initialization::Initialization(Node::SharedPtr nodeHandle,
 Initialization::~Initialization() {}
 
 void Initialization::reset_simulation() {
-  auto config_ = YAML::LoadFile(config_yaml_);
-  const auto joints_name = config_["model"]["actuated_joints_name"]
-                               .as<std::vector<std::string>>();
+  auto config_ = YAML::LoadFile(config_file_);
+  const auto joints_name =
+      config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
   const auto joint_pos =
       config_["model"]["default"]["joint_pos"].as<std::vector<scalar_t>>();
   const auto base_pos =
@@ -41,12 +43,13 @@ void Initialization::reset_simulation() {
     request->joint_state.position.push_back(joint_pos[i]);
   }
 
-  RCLCPP_INFO(nodeHandle_->get_logger(), "waiting for service %s ...",
+  RCLCPP_INFO(rclcpp::get_logger("Initialization"),
+              "waiting for service %s ...",
               reset_state_client_->get_service_name());
   while (!reset_state_client_->wait_for_service(20ms)) {
     std::this_thread::sleep_for(std::chrono::microseconds(50));
     if (!rclcpp::ok()) {
-      RCLCPP_ERROR(nodeHandle_->get_logger(),
+      RCLCPP_ERROR(rclcpp::get_logger("Initialization"),
                    "Interrupted while waiting for the service. Exiting.");
       return;
     }
@@ -57,13 +60,14 @@ void Initialization::reset_simulation() {
   if (rclcpp::spin_until_future_complete(nodeHandle_, result) ==
       rclcpp::FutureReturnCode::SUCCESS) {
     if (result.get()->is_success) {
-      RCLCPP_INFO(nodeHandle_->get_logger(),
+      RCLCPP_INFO(rclcpp::get_logger("Initialization"),
                   "call service reset_state success");
     } else {
-      RCLCPP_ERROR(nodeHandle_->get_logger(), "Failed to reset state");
+      RCLCPP_ERROR(rclcpp::get_logger("Initialization"),
+                   "Failed to reset state");
     }
   } else {
-    RCLCPP_ERROR(nodeHandle_->get_logger(),
+    RCLCPP_ERROR(rclcpp::get_logger("Initialization"),
                  "Failed to call service reset_state");
   }
 }

@@ -28,10 +28,6 @@ find_package(visualization_msgs REQUIRED)
 find_package(pinocchio_interface REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-include(cmake/pinocchio_config.cmake)
-
 set(TARGET_DEPENDENCE
   ament_cmake
   ament_index_cpp
