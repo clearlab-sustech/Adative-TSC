@@ -48,9 +48,6 @@ private:
   std::thread inner_loop_thread_;
   Buffer<bool> run_;
   scalar_t freq_;
-
-  vector3_t vel_cmd;
-  scalar_t yawd_;
 };
 
 } // namespace clear

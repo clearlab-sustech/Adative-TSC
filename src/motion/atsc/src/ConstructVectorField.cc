@@ -11,8 +11,8 @@ ConstructVectorField::ConstructVectorField(
     : nodeHandle_(nodeHandle), pinocchioInterfacePtr_(pinocchioInterfacePtr) {
 
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
-                          .get_parameter_value()
-                          .get<std::string>();
+                                       .get_parameter_value()
+                                       .get<std::string>();
 
   auto config_ = YAML::LoadFile(config_file_);
   base_name_ = config_["model"]["base_name"].as<std::string>();
@@ -44,7 +44,7 @@ ConstructVectorField::~ConstructVectorField() {}
 
 void ConstructVectorField::update_trajectory_reference(
     std::shared_ptr<ReferenceBuffer> referenceTrajectoriesPtr) {
-  refTrajBuffer_= referenceTrajectoriesPtr;
+  refTrajBuffer_ = referenceTrajectoriesPtr;
 }
 
 void ConstructVectorField::add_linear_system(size_t k) {
@@ -170,7 +170,8 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   }
 }
 
-std::shared_ptr<ConstructVectorField::VectorFieldCoeffs> ConstructVectorField::compute() {
+std::shared_ptr<ConstructVectorField::VectorFieldCoeffs>
+ConstructVectorField::compute() {
   feedback_law_ptr = nullptr;
 
   auto pos_traj = refTrajBuffer_->get_base_pos_traj();
@@ -232,7 +233,7 @@ std::shared_ptr<ConstructVectorField::VectorFieldCoeffs> ConstructVectorField::c
                                    skew(base_twist.angular() - omega_des) *
                                    Ig_ * (base_twist.angular() - omega_des);
 
-    std::vector<scalar_t> time_array;
+    /* std::vector<scalar_t> time_array;
     std::vector<vector_t> base_pos_array;
     std::vector<vector_t> base_rpy_array;
 
@@ -259,23 +260,25 @@ std::shared_ptr<ConstructVectorField::VectorFieldCoeffs> ConstructVectorField::c
     base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
 
     refTrajBuffer_->set_base_pos_traj(base_pos_traj_ptr_);
-    refTrajBuffer_->set_base_rpy_traj(base_rpy_traj_ptr_);
+    refTrajBuffer_->set_base_rpy_traj(base_rpy_traj_ptr_); */
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */
-    // std::cout << "###########################################"
-    //           << "\n";
-    // for (auto &sol : solution_) {
-    //   std::cout << "forward: " << sol.x.transpose() << "\n";
-    // }
+    /* std::cout << "###########################################"
+              << "\n";
+    std::cout << "x0: " << x0.transpose() << "\n";
+    for (auto &sol : solution_) {
+      std::cout << "forward: " << sol.x.transpose() << "\n";
+    } */
   } else {
-    std::cout << "ConstructVectorField: " << res << "\n";
+    RCLCPP_WARN_STREAM(rclcpp::get_logger("ConstructVectorField"), res);
   }
   return feedback_law_ptr;
 }
 
-vector3_t ConstructVectorField::compute_euler_angle_err(const vector3_t &rpy_m,
-                                                const vector3_t &rpy_d) {
+vector3_t
+ConstructVectorField::compute_euler_angle_err(const vector3_t &rpy_m,
+                                              const vector3_t &rpy_d) {
   vector3_t rpy_err = rpy_m - rpy_d;
   if (rpy_err.norm() > 1.5 * M_PI) {
     if (abs(rpy_err(0)) > M_PI) {

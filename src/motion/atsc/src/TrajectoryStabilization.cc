@@ -136,7 +136,7 @@ void TrajectoryStabilization::vector_field_loop() {
     loop_rate.sleep();
   }
   RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"),
-              "Adaptive Gain Computaion: max time %f ms,  average time %f ms",
+              "Vector Field Construction: max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
 }

@@ -59,7 +59,8 @@ void SwingTrajectory::generate() {
     if (contact_flag_last[k] != contact_flag[k]) {
       std::pair<scalar_t, vector3_t> xs;
       xs.first = t_now - numeric_traits::limitEpsilon<scalar_t>();
-      xs.second = pos;
+      // xs.second = pos;
+      xs.second = footholds[foot_name].second;
       xf_start_[foot_name] = std::move(xs);
     }
     if (contact_flag[k]) {

@@ -19,11 +19,22 @@ FloatingBaseMotion::FloatingBaseMotion(
   RCLCPP_INFO(rclcpp::get_logger("FloatingBaseMotion"), "base_name: %s",
               base_name.c_str());
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
+
+  lipm_ptr_ = std::make_shared<LinearInvertedPendulum>(
+      nodeHandle_, pinocchioInterface_ptr_, refTrajBuffer_);
+
+  vel_cmd.setZero();
+  yawd_ = 0.0;
 }
 
 FloatingBaseMotion::~FloatingBaseMotion() {}
 
 void FloatingBaseMotion::generate() {
+  generate_reference();
+  lipm_ptr_->optimize(base_pos_traj_ref_);
+}
+
+void FloatingBaseMotion::generate_reference() {
   const scalar_t t = nodeHandle_->now().seconds();
 
   auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
@@ -58,21 +69,19 @@ void FloatingBaseMotion::generate() {
     if ((rpy_c - rpy_m).norm() > 0.1) {
       rpy_m = 0.1 * (rpy_m - rpy_c).normalized() + rpy_c;
     }
-    pos_m = base_pos_traj->evaluate(t);
-    vector_t pos_c = base_pose_m.translation();
-    if ((pos_c - pos_m).norm() > 0.03) {
-      pos_m = 0.03 * (pos_m - pos_c).normalized() + pos_c;
-    }
+    pos_m = base_pos_traj_ref_->evaluate(t);
+    // vector_t pos_c = base_pose_m.translation();
+    // if ((pos_c - pos_m).norm() > 0.03) {
+    //   pos_m = 0.03 * (pos_m - pos_c).normalized() + pos_c;
+    // }
     vel_m = base_twist.linear();
   }
 
   std::vector<scalar_t> time;
   std::vector<vector_t> rpy_t, pos_t;
   scalar_t horizon_time = mode_schedule->duration();
-  vector3_t vel_cmd = vector3_t::Zero();
-  scalar_t yawd_ = 0.0;
   if (vel_cmd.norm() < 0.05) {
-    scalar_t zd = 0.5;
+    scalar_t zd = 0.636;
     scalar_t mod_z = 0.0;
     time.emplace_back(t);
     time.emplace_back(t + 0.5 * horizon_time);
@@ -90,8 +99,8 @@ void FloatingBaseMotion::generate() {
     vel_des = base_pose_m.rotation() * vel_des;
 
     scalar_t h_des = 0.32;
-    if (0.3 > h_des || h_des > 0.4) {
-      h_des = 0.32;
+    if (0.55 > h_des || h_des > 0.65) {
+      h_des = 0.636;;
     }
     rpy_m.head(2).setZero();
     for (size_t k = 0; k < N; k++) {
@@ -113,12 +122,11 @@ void FloatingBaseMotion::generate() {
               << " rpy: " << rpy_t[i].transpose() << "\n";
   } */
 
-  auto cubicspline_pos = std::make_shared<CubicSplineTrajectory>(3);
-  cubicspline_pos->set_boundary(
+  base_pos_traj_ref_ = std::make_shared<CubicSplineTrajectory>(3);
+  base_pos_traj_ref_->set_boundary(
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
-  cubicspline_pos->fit(time, pos_t);
-  refTrajBuffer_->set_base_pos_traj(cubicspline_pos);
+  base_pos_traj_ref_->fit(time, pos_t);
 
   auto cubicspline_rpy = std::make_shared<CubicSplineTrajectory>(3);
   cubicspline_rpy->set_boundary(
@@ -126,6 +134,11 @@ void FloatingBaseMotion::generate() {
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_rpy->fit(time, rpy_t);
   refTrajBuffer_->set_base_rpy_traj(cubicspline_rpy);
+}
+
+void FloatingBaseMotion::setVelCmd(vector3_t vd, scalar_t yawd) {
+  vel_cmd = vd;
+  yawd_ = yawd;
 }
 
 } // namespace clear

@@ -10,17 +10,19 @@
 
 namespace clear {
 
-WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle, std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr)
+WholeBodyController::WholeBodyController(
+    Node::SharedPtr nodeHandle,
+    std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr)
     : nodeHandle_(nodeHandle), pinocchioInterface_ptr_(pinocchioInterfacePtr) {
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
-                            .get_parameter_value()
-                            .get<std::string>();
+                                       .get_parameter_value()
+                                       .get<std::string>();
   auto config_ = YAML::LoadFile(config_file_);
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   for (const auto &name : foot_names) {
-    RCLCPP_INFO(rclcpp::get_logger("WholeBodyController"),
-                "[WholeBodyController] foot name: %s", name.c_str());
+    RCLCPP_INFO(rclcpp::get_logger("WholeBodyController"), "foot name: %s",
+                name.c_str());
   }
   pinocchioInterface_ptr_->setContactPoints(foot_names);
 
@@ -28,13 +30,17 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle, std::shared
 
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
+  for (const auto &name : actuated_joints_name) {
+    RCLCPP_INFO(rclcpp::get_logger("WholeBodyController"),
+                "actuated joint name: %s", name.c_str());
+  }
 
   numDecisionVars_ = pinocchioInterface_ptr_->nv() + 3 * foot_names.size() +
                      actuated_joints_name.size();
   this->loadTasksSetting();
 }
 
-WholeBodyController::~WholeBodyController() {  }
+WholeBodyController::~WholeBodyController() {}
 
 void WholeBodyController::update_trajectory_reference(
     std::shared_ptr<ReferenceBuffer> referenceTrajectoriesPtr) {
@@ -63,9 +69,9 @@ void WholeBodyController::formulate() {
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
-  if (base_policy_.get().get() == nullptr) {
-    return actuator_commands_;
-  }
+  // if (base_policy_.get().get() == nullptr) {
+  //   return actuator_commands_;
+  // }
 
   formulate();
 
@@ -108,14 +114,15 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
                                                        Cin, cin, optimal_u);
   // printf("solver state: %d\n", solver_state);
   if (solver_state == eiquadprog::solvers::EIQUADPROG_FAST_OPTIMAL) {
-    // actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
-    actuator_commands_->torque = pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+    actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
+    // actuator_commands_->torque =
+    //     pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
     joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
-    // differential_inv_kin();
+    differential_inv_kin();
   } else {
     joint_acc_.setZero(actuated_joints_name.size());
-    std::cerr << "wbc failed ...\n";
+    RCLCPP_ERROR(rclcpp::get_logger("WholeBodyController"), "wbc QP failed");
     actuator_commands_->setZero(actuated_joints_name.size());
     actuator_commands_->Kd.fill(1.0);
   }
@@ -263,7 +270,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   }
 
   base_task.b =
-      0.0 * acc_fb -
+      acc_fb -
       pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
   // std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
 
@@ -321,7 +328,7 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
       swing_task.A.block(3 * j, 0, 3, nv) = Jc.block(3 * i, 0, 3, nv);
       swing_task.b.segment(3 * j, 3) =
           -pinocchioInterface_ptr_->getFrame6dAcc_localWorldAligned(foot_name)
-                .linear() +
+               .linear() +
           accel_fb + acc_des;
       j++;
     }

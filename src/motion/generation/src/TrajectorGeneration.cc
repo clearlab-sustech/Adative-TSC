@@ -37,9 +37,6 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   swing_traj_ptr = std::make_shared<SwingTrajectory>(
       nodeHandle_, pinocchioInterface_ptr_, refTrajBuffer_);
 
-  vel_cmd.setZero();
-  yawd_ = 0.0;
-
   run_.push(true);
   inner_loop_thread_ = std::thread(&TrajectorGeneration::inner_loop, this);
 }
@@ -65,7 +62,6 @@ TrajectorGeneration::get_trajectory_reference() {
   return refTrajBuffer_;
 }
 
-
 void TrajectorGeneration::inner_loop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
@@ -80,7 +76,7 @@ void TrajectorGeneration::inner_loop() {
 
       base_planner_ptr->generate();
 
-      foothold_opt_ptr->optimize();
+      // foothold_opt_ptr->optimize();
 
       swing_traj_ptr->generate();
     }
@@ -89,14 +85,13 @@ void TrajectorGeneration::inner_loop() {
     loop_rate.sleep();
   }
   RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"),
-              "[TrajectorGeneration] max time %f ms,  average time %f ms",
+              "max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
 }
 
 void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
-  vel_cmd = vd;
-  yawd_ = yawd;
+  base_planner_ptr->setVelCmd(vd, yawd);
 }
 
 } // namespace clear

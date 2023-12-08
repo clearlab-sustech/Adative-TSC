@@ -25,8 +25,7 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle)
       config_["model"]["urdf"].as<std::string>();
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
-  foot_names =
-      config_["model"]["foot_names"].as<std::vector<std::string>>();
+  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
 
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
@@ -189,9 +188,10 @@ void DataVisualization::publishFootholds() {
     for (size_t i = 0; i < foot_names.size(); i++) {
       auto &marker = line_strip_footholds_.markers[i];
       marker.header.stamp = nodeHandle_->now();
-      if (marker.points.size() > 50) {
+      /* if (marker.points.size() > 50) {
         marker.points.erase(marker.points.begin());
-      }
+      } */
+      marker.points.clear();
       geometry_msgs::msg::Point point;
       vector3_t pos = footholds[foot_names[i]].second;
       point.x = pos.x();
@@ -214,9 +214,9 @@ void DataVisualization::publishBaseTrajectory() {
   if (line_strip_base.points.size() > 200) {
     line_strip_base.points.erase(line_strip_base.points.begin());
   }
-  if (line_strip_base_ref.points.size() > 200) {
-    line_strip_base_ref.points.erase(line_strip_base_ref.points.begin());
-  }
+  // if (line_strip_base_ref.points.size() > 200) {
+  //   line_strip_base_ref.points.erase(line_strip_base_ref.points.begin());
+  // }
 
   geometry_msgs::msg::Point point;
   vector3_t pos =
@@ -227,11 +227,16 @@ void DataVisualization::publishBaseTrajectory() {
   line_strip_base.points.emplace_back(point);
   base_traj_pub_->publish(line_strip_base);
 
-  pos = base_pos_traj->evaluate(nodeHandle_->now().seconds());
-  point.x = pos.x();
-  point.y = pos.y();
-  point.z = pos.z();
-  line_strip_base_ref.points.emplace_back(point);
+  line_strip_base_ref.points.clear();
+  const scalar_t t_now = nodeHandle_->now().seconds();
+  for (size_t i = 0; i * 0.02 + t_now < base_pos_traj->tf(); i++) {
+    geometry_msgs::msg::Point point_i;
+    pos = base_pos_traj->evaluate(i * 0.02 + t_now);
+    point_i.x = pos.x();
+    point_i.y = pos.y();
+    point_i.z = pos.z();
+    line_strip_base_ref.points.emplace_back(point_i);
+  }
   base_traj_ref_pub_->publish(line_strip_base_ref);
 }
 
