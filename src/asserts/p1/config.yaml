@@ -50,7 +50,7 @@ gait:
 
   walk:
     modeSequence: ["LF", "RF"]
-    switchingTimes: [0.0, 0.5, 1.0]
+    switchingTimes: [0.0, 0.3, 0.6]
 
   topic_prefix: "simulation/"
   topic_names:

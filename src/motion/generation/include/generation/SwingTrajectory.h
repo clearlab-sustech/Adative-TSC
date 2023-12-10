@@ -24,6 +24,8 @@ public:
   void generate();
 
 private:
+  void init();
+
   Node::SharedPtr nodeHandle_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
   std::shared_ptr<ReferenceBuffer> refTrajBuffer_;

@@ -246,6 +246,7 @@ void DataVisualization::publishFootTrajectory() {
     for (size_t i = 0; i < foot_names.size(); i++) {
       auto &marker = line_strip_foot_traj_.markers[i];
       auto &ref_marker = line_strip_foot_traj_ref_.markers[i];
+      auto foot_traj_i = foot_traj[foot_names[i]];
 
       marker.header.stamp = nodeHandle_->now();
       ref_marker.header.stamp = nodeHandle_->now();
@@ -253,8 +254,17 @@ void DataVisualization::publishFootTrajectory() {
       if (marker.points.size() > 200) {
         marker.points.erase(marker.points.begin());
       }
-      if (ref_marker.points.size() > 200) {
-        ref_marker.points.erase(ref_marker.points.begin());
+
+      ref_marker.points.clear();
+      const scalar_t T = foot_traj_i->tf() - foot_traj_i->ts();
+      for (size_t i = 0; i < 200; i++) {
+        geometry_msgs::msg::Point point;
+        vector3_t pos =
+            foot_traj_i->evaluate(foot_traj_i->ts() + i * T / 200.0);
+        point.x = pos.x();
+        point.y = pos.y();
+        point.z = pos.z();
+        ref_marker.points.emplace_back(point);
       }
 
       geometry_msgs::msg::Point point;
@@ -264,12 +274,6 @@ void DataVisualization::publishFootTrajectory() {
       point.y = pos.y();
       point.z = pos.z();
       marker.points.emplace_back(point);
-
-      pos = foot_traj[foot_names[i]]->evaluate(nodeHandle_->now().seconds());
-      point.x = pos.x();
-      point.y = pos.y();
-      point.z = pos.z();
-      ref_marker.points.emplace_back(point);
     }
     foot_traj_msg_publisher_->publish(line_strip_foot_traj_);
     foot_traj_ref_msg_publisher_->publish(line_strip_foot_traj_ref_);

@@ -30,7 +30,7 @@ void MotionManager::init() {
 
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this());
 
-  tsImplPtr_ = std::make_shared<TrajectoryStabilization>(this->shared_from_this());
+  // tsImplPtr_ = std::make_shared<TrajectoryStabilization>(this->shared_from_this());
 
   visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this());
   visPtr_->set_trajectory_reference(trajGenPtr_->get_trajectory_reference());
@@ -65,11 +65,11 @@ void MotionManager::inner_loop() {
 
     trajGenPtr_->update_mode_schedule(mode_schedule_ptr);
 
-    tsImplPtr_->update_current_state(estimatorPtr_->getQpos(),
+    /* tsImplPtr_->update_current_state(estimatorPtr_->getQpos(),
                                        estimatorPtr_->getQvel());
 
     tsImplPtr_->update_trajectory_reference(
-        trajGenPtr_->get_trajectory_reference());
+        trajGenPtr_->get_trajectory_reference()); */
 
     visPtr_->update_current_state(estimatorPtr_->getQpos(),
                                   estimatorPtr_->getQvel());

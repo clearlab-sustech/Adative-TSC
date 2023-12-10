@@ -20,12 +20,9 @@ SwingTrajectory::SwingTrajectory(
 
 SwingTrajectory::~SwingTrajectory() {}
 
-void SwingTrajectory::generate() {
+void SwingTrajectory::init() {
   auto mode_schedule = refTrajBuffer_->get_mode_schedule();
-  auto footholds = refTrajBuffer_->get_footholds();
-
   const scalar_t t_now = nodeHandle_->now().seconds();
-
   if (xf_start_.empty()) {
     for (size_t k = 0; k < foot_names.size(); k++) {
       const auto &foot_name = foot_names[k];
@@ -48,10 +45,21 @@ void SwingTrajectory::generate() {
       xf_end_[foot_name] = std::move(xe);
     }
   }
+}
+
+void SwingTrajectory::generate() {
+  auto mode_schedule = refTrajBuffer_->get_mode_schedule();
+  auto footholds = refTrajBuffer_->get_footholds();
+  const scalar_t t_now = nodeHandle_->now().seconds();
+
+  init();
+
   std::map<std::string, std::shared_ptr<CubicSplineTrajectory>> foot_pos_traj;
 
   auto contact_flag =
       legged_robot::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(0.0));
+
+  
   for (size_t k = 0; k < foot_names.size(); k++) {
     const auto &foot_name = foot_names[k];
     vector3_t pos =
@@ -59,8 +67,8 @@ void SwingTrajectory::generate() {
     if (contact_flag_last[k] != contact_flag[k]) {
       std::pair<scalar_t, vector3_t> xs;
       xs.first = t_now - numeric_traits::limitEpsilon<scalar_t>();
-      // xs.second = pos;
-      xs.second = footholds[foot_name].second;
+      xs.second = pos;
+      // xs.second = footholds[foot_name].second;
       xf_start_[foot_name] = std::move(xs);
     }
     if (contact_flag[k]) {

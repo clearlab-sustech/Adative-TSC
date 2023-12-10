@@ -29,7 +29,11 @@ public:
 
   void optimize();
 
+  void setVelCmd(vector3_t vd, scalar_t yawd);
+
 private:
+  void generate_reference();
+
   void heuristic();
 
 private:
@@ -37,6 +41,8 @@ private:
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
   std::shared_ptr<ReferenceBuffer> refTrajBuffer_;
   std::map<std::string, std::pair<scalar_t, vector3_t>> footholds_;
+  std::shared_ptr<CubicSplineTrajectory> pos_traj_ref_;
+  std::shared_ptr<CubicSplineTrajectory> rpy_traj_ref_;
 
   std::string base_name, robot_name;
   std::vector<std::string> foot_names;
@@ -45,6 +51,9 @@ private:
       footholds_nominal_pos; // nominal footholds relative to nominal com pos
   scalar_t nominal_dz_;
   size_t nf;
+
+  vector3_t vel_cmd;
+  scalar_t yawd_;
 };
 
 } // namespace clear

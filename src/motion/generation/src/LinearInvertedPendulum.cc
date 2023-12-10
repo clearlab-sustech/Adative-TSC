@@ -32,21 +32,6 @@ LinearInvertedPendulum::LinearInvertedPendulum(
   auto config_ = YAML::LoadFile(config_file_);
   base_name = config_["model"]["base_name"].as<std::string>();
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
-
-  vector_t qpos, qvel;
-  qpos.setZero(pinocchioInterface_ptr_->nq());
-  qvel.setZero(pinocchioInterface_ptr_->nv());
-  pinocchioInterface_ptr_->updateRobotState(qpos, qvel);
-  for (const auto &foot : foot_names) {
-    footholds_nominal_pos[foot] =
-        pinocchioInterface_ptr_->getFramePose(foot).translation();
-    footholds_nominal_pos[foot].z() = 0.0;
-    footholds_nominal_pos[foot].y() *= 0.8;
-    footholds_nominal_pos[foot].x() = pinocchioInterface_ptr_->getCoMPos().x();
-    RCLCPP_INFO_STREAM(rclcpp::get_logger("FootholdOptimization"),
-                       foot << " nominal pos: "
-                            << footholds_nominal_pos[foot].transpose());
-  }
 }
 
 LinearInvertedPendulum::~LinearInvertedPendulum() {}
@@ -58,132 +43,115 @@ void LinearInvertedPendulum::get_dynamics(
   auto contact_flag = legged_robot::modeNumber2StanceLeg(
       mode_schedule->getModeFromPhase(phase));
   size_t nc = std::count(contact_flag.cbegin(), contact_flag.cend(), true);
-  size_t nf = foot_names.size();
 
-  ocp_[k].A.setIdentity(4 + 2 * nf, 4 + 2 * nf);
+  ocp_[k].A.setIdentity(4, 4);
   ocp_[k].A.block<2, 2>(0, 2).diagonal().fill(dt_);
-  ocp_[k].B.setZero(4 + 2 * nf, 2 * nf + 2);
+  ocp_[k].B.setZero(4, 2);
   if (nc != 0) {
-    ocp_[k].B.middleRows(2, 2).leftCols(2).diagonal().fill(dt_);
+    ocp_[k].B.bottomRows(2).diagonal().fill(dt_);
   }
-  for (size_t i = 0; i < nf; i++) {
-    if (!contact_flag[i]) {
-      ocp_[k].B.block<2, 2>(4 + 2 * i, 2 + 2 * i).diagonal().fill(dt_);
-    }
-  }
-  ocp_[k].b.setZero(4 + 2 * nf);
+  ocp_[k].b.setZero(4);
 }
 
-void LinearInvertedPendulum::get_inequality_constraints(
-    scalar_t time_cur, size_t k, size_t N,
-    std::shared_ptr<CubicSplineTrajectory> pos_ref,
-    const std::shared_ptr<ModeSchedule> mode_schedule) {
-  size_t nf = foot_names.size();
-  const scalar_t time_k = time_cur + k * dt_;
-  scalar_t h_des =
-      pos_ref->evaluate(time_k).z(); // relative to footholds (todo)
-  scalar_t lmd_inv = h_des / grav_;
-
-  scalar_t phase = k * dt_ / mode_schedule->duration();
-  auto contact_flag = legged_robot::modeNumber2StanceLeg(
-      mode_schedule->getModeFromPhase(phase));
-  size_t nc = std::count(contact_flag.cbegin(), contact_flag.cend(), true);
-
-  auto rpy_traj = referenceBuffer_->get_base_rpy_traj();
-
-  if (k < N) {
-    matrix3_t fRw = toRotationMatrix(rpy_traj->evaluate(time_k)).transpose();
-    matrix_t C = matrix_t::Zero(2, 4 + 2 * nf);
-    matrix_t D = matrix_t::Zero(2, 2 + 2 * nf);
-    if (std::count(contact_flag.cbegin(), contact_flag.cend(), true) != 0) {
-      C.leftCols(2).setIdentity();
-      for (size_t i = 0; i < nf; i++) {
-        if (contact_flag[i]) {
-          C.block<2, 2>(0, 4 + 2 * i)
-              .diagonal()
-              .fill(-1.0 / static_cast<scalar_t>(nc));
-        }
-      }
-      D.leftCols(2).diagonal().fill(-lmd_inv);
-    }
-
-    ocp_[k].C = fRw.topLeftCorner<2, 2>() * C;
-    ocp_[k].D = fRw.topLeftCorner<2, 2>() * D;
-    ocp_[k].lg = vector2_t(-0.01, -0.01);
-    ocp_[k].ug = vector2_t(0.01, 0.01);
-    ocp_[k].lg_mask.setOnes(2);
-    ocp_[k].ug_mask.setOnes(2);
-
-    ocp_[k].idxbu.clear();
-    for (size_t i = 0; i < nf; i++) {
-      ocp_[k].idxbu.emplace_back(i * 2);
-      ocp_[k].idxbu.emplace_back(i * 2 + 1);
-    }
-    ocp_[k].lbu_mask.setOnes(2 * nf);
-    ocp_[k].ubu_mask.setOnes(2 * nf);
-    ocp_[k].lbu = -10.0 * vector_t::Ones(2 * nf);
-    ocp_[k].ubu = 10.0 * vector_t::Ones(2 * nf);
-  }
-  /* std::cout << "\n############### " << k << " constraints ################\n"
-           << cstr_k; */
+void LinearInvertedPendulum::get_inequality_constraints(size_t k) {
+  ocp_[k].idxbu = {0, 1};
+  ocp_[k].lbu_mask.setOnes(2);
+  ocp_[k].ubu_mask.setOnes(2);
+  ocp_[k].lbu = -20.0 * vector_t::Ones(2);
+  ocp_[k].ubu = 20.0 * vector_t::Ones(2);
 }
 
 void LinearInvertedPendulum::get_costs(
     scalar_t time_cur, size_t k, size_t N,
-    std::shared_ptr<CubicSplineTrajectory> pos_ref) {
+    const std::shared_ptr<ModeSchedule> mode_schedule) {
+  auto footholds = referenceBuffer_->get_footholds();
   const scalar_t time_k = time_cur + k * dt_;
-  auto rpy_traj = referenceBuffer_->get_base_rpy_traj();
+  const scalar_t phase = k * dt_ / mode_schedule->duration();
+  auto contact_flag = legged_robot::modeNumber2StanceLeg(
+      mode_schedule->getModeFromPhase(phase));
 
-  vector3_t base_pos_des = pos_ref->evaluate(time_k);
-  vector3_t base_vel_des = pos_ref->derivative(time_k, 1);
-  vector3_t base_rpy_des = rpy_traj->evaluate(time_k);
-  matrix3_t wRb = toRotationMatrix(base_rpy_des);
+  size_t nc = std::count(contact_flag.cbegin(), contact_flag.cend(), true);
 
-  size_t nf = foot_names.size();
+  matrix_t C = matrix_t::Zero(2, 4);
+  C.leftCols(2).setIdentity();
+  const scalar_t lmd_inv = 0.5 / 9.81;
+  matrix_t D = lmd_inv * matrix_t::Identity(2, 2);
 
-  vector_t x_des = vector_t::Zero(4 + 2 * nf);
-  x_des.head(4) << base_pos_des.head(2), base_vel_des.head(2);
-  weight_.setZero(4 + 2 * nf, 4 + 2 * nf);
-  weight_.diagonal().head(4) << 100, 100, 20, 20.0;
-  for (size_t i = 0; i < nf; i++) {
-    vector3_t shift = wRb * footholds_nominal_pos[foot_names[i]];
-    x_des.segment(4 + 2 * i, 2) = shift.head(2) + base_pos_des.head(2);
-    weight_.diagonal().segment(4 + 2 * i, 2) << 5e2, 5e2;
+  vector2_t y_des;
+  if (nc == 1) {
+    if (contact_flag[0]) {
+      if (footholds[foot_names[0]].first < time_k) {
+        y_des = footholds[foot_names[0]].second.head(2);
+      } else {
+        y_des = pinocchioInterface_ptr_->getFramePose(foot_names[0])
+                    .translation()
+                    .head(2);
+      }
+    } else if (contact_flag[1]) {
+      if (footholds[foot_names[1]].first < time_k) {
+        y_des = footholds[foot_names[1]].second.head(2);
+      } else {
+        y_des = pinocchioInterface_ptr_->getFramePose(foot_names[1])
+                    .translation()
+                    .head(2);
+      }
+    }
+  } else {
+    vector2_t p1, p2;
+    if (footholds[foot_names[0]].first < time_k) {
+      p1 = footholds[foot_names[0]].second.head(2);
+    } else {
+      p1 = pinocchioInterface_ptr_->getFramePose(foot_names[0])
+               .translation()
+               .head(2);
+    }
+    if (footholds[foot_names[1]].first < time_k) {
+      p2 = footholds[foot_names[1]].second.head(2);
+    } else {
+      p2 = pinocchioInterface_ptr_->getFramePose(foot_names[1])
+               .translation()
+               .head(2);
+    }
+    y_des = 0.5 * (p1 + p2);
   }
-  // std::cout << "x_des: " << x_des.transpose() << "\n";
+  matrix_t Q = matrix_t::Zero(4, 4);
+  matrix_t R = 1e-4 * matrix_t::Identity(2, 2);
+  Q.diagonal() << 100, 100, 20, 20.0;
 
-  ocp_[k].Q = weight_;
-  ocp_[k].S = matrix_t::Zero(2 * nf + 2, 4 + 2 * nf);
-  ocp_[k].q = -weight_ * x_des;
-  ocp_[k].R = 1e-6 * matrix_t::Identity(2 * nf + 2, 2 * nf + 2);
-  ocp_[k].r.setZero(2 * nf + 2);
+  ocp_[k].Q = C.transpose() * Q * C;
+  ocp_[k].S = D.transpose() * Q * C;
+  ocp_[k].q = -C.transpose() * Q * y_des;
+  ocp_[k].R = D.transpose() * Q * D + R;
+  ocp_[k].r = -D.transpose() * Q * y_des;
 
   if (k == N) {
-    ocp_[k].Q = 1e3 * ocp_[k].Q;
-    ocp_[k].q = 1e3 * ocp_[k].q;
+    ocp_[k].Q.setZero();
+    ocp_[k].S.setZero();
+    ocp_[k].q.setZero();
+    ocp_[k].R.setZero();
+    ocp_[k].r.setZero();
   }
 }
 
-void LinearInvertedPendulum::optimize(
-    std::shared_ptr<CubicSplineTrajectory> pos_ref) {
-  auto rpy_traj = referenceBuffer_->get_base_rpy_traj();
-  if (pos_ref == nullptr || rpy_traj == nullptr) {
+void LinearInvertedPendulum::optimize() {
+  auto footholds = referenceBuffer_->get_footholds();
+  const std::shared_ptr<ModeSchedule> mode_schedule =
+      referenceBuffer_->get_mode_schedule();
+  if (footholds.empty() && mode_schedule != nullptr) {
     return;
   }
 
   const scalar_t time_cur = nodeHandle_->now().seconds();
 
-  size_t N = pos_ref->duration() / dt_;
+  size_t N = mode_schedule->duration() / dt_;
   ocp_.resize(N + 1);
 
-  const std::shared_ptr<ModeSchedule> mode_schedule =
-      referenceBuffer_->get_mode_schedule();
   for (size_t k = 0; k <= N; k++) {
     if (k < N) {
       get_dynamics(k, mode_schedule);
     }
-    get_inequality_constraints(time_cur, k, N, pos_ref, mode_schedule);
-    get_costs(time_cur, k, N, pos_ref);
+    get_inequality_constraints(k);
+    get_costs(time_cur, k, N, mode_schedule);
   }
 
   if (solution_.size() == N + 1) {
@@ -192,30 +160,24 @@ void LinearInvertedPendulum::optimize(
     solver_settings.warm_start = 0;
     solution_.resize(N + 1);
   }
+
   hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
 
   auto pos_m = pinocchioInterface_ptr_->getFramePose(base_name).translation();
   if (referenceBuffer_->get_base_pos_traj()) {
-    pos_m = referenceBuffer_->get_base_pos_traj()->evaluate(time_cur);
+    auto pos_d = referenceBuffer_->get_base_pos_traj()->evaluate(time_cur);
+    if ((pos_d - pos_m).norm() > 0.05) {
+      pos_m = 0.05 * (pos_d - pos_m).normalized() + pos_m;
+    }
   }
-  /* vector3_t pos_d = pos_ref->evaluate(time_cur);
-  if ((pos_d - pos_m).norm() > 0.05) {
-    pos_m = 0.05 * (pos_d - pos_m).normalized() + pos_m;
-  } */
 
-  size_t nf = foot_names.size();
-  vector_t x0(4 + 2 * nf);
+  vector_t x0(4);
   x0.head(4) << pos_m.head(2),
       pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name)
           .linear()
           .head(2);
-  for (size_t i = 0; i < nf; i++) {
-    auto foot_pose = pinocchioInterface_ptr_->getFramePose(foot_names[i]);
-    x0.segment(4 + 2 * i, 2) = foot_pose.translation().head(2);
-  }
 
   const auto res = solver.solve(x0, ocp_, solution_);
-  footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();
 
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
@@ -230,38 +192,21 @@ void LinearInvertedPendulum::optimize(
 
     for (size_t k = 1; k <= N; k++) {
       vector3_t pos;
-      pos << solution_[k].x.head(2), pos_ref->evaluate(time_cur + k * dt_).z();
+      pos << solution_[k].x.head(2), 0.5;
       time_array.emplace_back(time_cur + k * dt_);
       base_pos_array.emplace_back(pos);
     }
     auto base_pos_ref_ptr_ = std::make_shared<CubicSplineTrajectory>(
         3, CubicSplineInterpolation::SplineType::cspline);
     vector3_t acc_s, vel_e;
-    acc_s << solution_[0].u.head(2), pos_ref->derivative(time_cur + dt_, 2).z();
-    vel_e << solution_[N].x.segment(2, 2),
-        pos_ref->derivative(time_cur + N * dt_, 1).z();
+    acc_s << solution_[0].u.head(2), 0.0;
+    vel_e << solution_[N].x.segment(2, 2), 0.0;
     base_pos_ref_ptr_->set_boundary(
         CubicSplineInterpolation::BoundaryType::second_deriv, acc_s,
         CubicSplineInterpolation::BoundaryType::first_deriv, vel_e);
     base_pos_ref_ptr_->fit(time_array, base_pos_array);
     referenceBuffer_->set_base_pos_traj(base_pos_ref_ptr_);
-
-    footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();
-    auto swtr = legged_robot::getTimeOfNextTouchDown(0.0, mode_schedule);
-    for (size_t i = 0; i < nf; i++) {
-      size_t idx = std::min(static_cast<size_t>(swtr[i] / dt_) + 1, N);
-      footholds_[foot_names[i]].first = time_cur + idx * dt_;
-      footholds_[foot_names[i]].second.head(2) =
-          solution_[idx].x.segment(4 + 2 * i, 2);
-      footholds_[foot_names[i]].second.z() = nominal_z_;
-    }
-    referenceBuffer_->set_footholds(footholds_);
   }
-}
-
-std::map<std::string, std::pair<scalar_t, vector3_t>>
-LinearInvertedPendulum::get_footholds() {
-  return footholds_;
 }
 
 } // namespace clear

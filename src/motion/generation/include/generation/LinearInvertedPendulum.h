@@ -19,21 +19,16 @@ public:
 
   ~LinearInvertedPendulum();
 
-  void optimize(std::shared_ptr<CubicSplineTrajectory> pos_ref);
-
-  std::map<std::string, std::pair<scalar_t, vector3_t>> get_footholds();
+  void optimize();
 
 private:
   void get_dynamics(size_t k,
                     const std::shared_ptr<ModeSchedule> mode_schedule);
 
-  void
-  get_inequality_constraints(scalar_t time_cur, size_t k, size_t N,
-                             std::shared_ptr<CubicSplineTrajectory> pos_ref,
-                             const std::shared_ptr<ModeSchedule> mode_schedule);
+  void get_inequality_constraints(size_t k);
 
   void get_costs(scalar_t time_cur, size_t k, size_t N,
-                 std::shared_ptr<CubicSplineTrajectory> pos_ref);
+                 const std::shared_ptr<ModeSchedule> mode_schedule);
 
 private:
   Node::SharedPtr nodeHandle_;
@@ -51,9 +46,6 @@ private:
   bool has_sol_ = false;
   std::string base_name;
   std::vector<string> foot_names;
-  std::map<std::string, std::pair<scalar_t, vector3_t>> footholds_; // footholds
-  std::map<std::string, vector3_t>
-      footholds_nominal_pos; // nominal footholds relative to nominal com pos
 };
 
 } // namespace clear
