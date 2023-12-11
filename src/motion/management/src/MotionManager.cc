@@ -30,7 +30,8 @@ void MotionManager::init() {
 
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this());
 
-  // tsImplPtr_ = std::make_shared<TrajectoryStabilization>(this->shared_from_this());
+  tsImplPtr_ =
+      std::make_shared<TrajectoryStabilization>(this->shared_from_this());
 
   visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this());
   visPtr_->set_trajectory_reference(trajGenPtr_->get_trajectory_reference());
@@ -50,13 +51,13 @@ void MotionManager::inner_loop() {
     }
 
     if (gaitSchedulePtr_->get_current_gait_name() == "walk") {
-      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.0);
+      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
     } else {
       trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
     }
 
     scalar_t horizon_time_ =
-        min(2.0, max(0.5, gaitSchedulePtr_->current_gait_cycle()));
+        min(2.0, max(0.5, 2.0 * gaitSchedulePtr_->current_gait_cycle()));
 
     auto mode_schedule_ptr = gaitSchedulePtr_->eval(horizon_time_);
 
@@ -65,11 +66,11 @@ void MotionManager::inner_loop() {
 
     trajGenPtr_->update_mode_schedule(mode_schedule_ptr);
 
-    /* tsImplPtr_->update_current_state(estimatorPtr_->getQpos(),
-                                       estimatorPtr_->getQvel());
+    tsImplPtr_->update_current_state(estimatorPtr_->getQpos(),
+                                     estimatorPtr_->getQvel());
 
     tsImplPtr_->update_trajectory_reference(
-        trajGenPtr_->get_trajectory_reference()); */
+        trajGenPtr_->get_trajectory_reference());
 
     visPtr_->update_current_state(estimatorPtr_->getQpos(),
                                   estimatorPtr_->getQvel());

@@ -69,9 +69,9 @@ void WholeBodyController::formulate() {
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
-  // if (base_policy_.get().get() == nullptr) {
-  //   return actuator_commands_;
-  // }
+  /* if (base_policy_.get().get() == nullptr) {
+    return actuator_commands_;
+  } */
 
   formulate();
 
@@ -243,28 +243,31 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     scalar_t t = nodeHandle_->now().seconds() + dt_;
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
-    auto base_twist =
-        pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+    auto base_twist = pinocchioInterface_ptr_->getFrame6dVel_local(base_name);
     vector_t rpy = toEulerAngles(base_pose.rotation());
-    vector3_t rpy_err = compute_euler_angle_err(rpy, rpy_traj->evaluate(t));
     vector3_t omega_des =
         getJacobiFromRPYToOmega(rpy) * rpy_traj->derivative(t, 1);
+    vector3_t omega_dot_des = vector3_t::Zero();
 
-    x0 << base_pose.translation() - pos_traj->evaluate(t),
-        base_twist.linear() - pos_traj->derivative(t, 1), rpy_err,
-        pinocchioInterface_ptr_->getData().Ig.inertia() *
-            (base_twist.angular() - omega_des);
-    acc_fb = policy->K * x0 + policy->b;
-    if (acc_fb.norm() > 20) {
-      acc_fb = 20.0 * acc_fb.normalized();
-    }
-    // to local coordinate
-    acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
-    acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
+    pin::SE3 pose_ref;
+    pose_ref.rotation() = toRotationMatrix(rpy_traj->evaluate(t));
+    pose_ref.translation() = pos_traj->evaluate(t);
+    vector6_t _spatialVelRef, _spatialAccRef;
+    _spatialVelRef << base_pose.rotation().transpose() *
+                          pos_traj->derivative(t, 1),
+        base_pose.rotation().transpose() * omega_des;
+    _spatialAccRef << base_pose.rotation().transpose() *
+                          pos_traj->derivative(t, 2),
+        base_pose.rotation().transpose() * omega_dot_des;
+    // _spatialAccRef.setZero();
+    auto pose_err = log6(base_pose.actInv(pose_ref)).toVector();
+    auto vel_err = _spatialVelRef - base_twist.toVector();
 
-    if (abs(acc_fb.z()) > 5.0) {
-      acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
-    }
+    acc_fb = baseKp_ * pose_err + baseKd_ * vel_err + _spatialAccRef;
+
+    // if (abs(acc_fb.z()) > 5.0) {
+    //   acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
+    // }
   } else {
     acc_fb.setZero();
   }
@@ -272,7 +275,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   base_task.b =
       acc_fb -
       pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
-  // std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
+  std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
 
   base_task.A = weightBase_ * base_task.A;
   base_task.b = weightBase_ * base_task.b;
@@ -283,10 +286,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 MatrixDB WholeBodyController::formulateSwingLegTask() {
   const size_t nc = foot_names.size();
   const size_t nv = pinocchioInterface_ptr_->nv();
-  const size_t nj = actuated_joints_name.size();
 
   auto foot_traj = refTrajBuffer_->get_foot_pos_traj();
-  auto jnt_pos_traj = refTrajBuffer_->get_joint_pos_traj();
 
   if (nc - numContacts_ <= 0 || foot_traj.size() != nc) {
     return MatrixDB("swing_task");
@@ -298,7 +299,6 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
       matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
   swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
   swing_task.b.setZero(swing_task.A.rows());
-  auto base_pos_traj = refTrajBuffer_->get_base_pos_traj();
 
   size_t j = 0;
   for (size_t i = 0; i < nc; ++i) {
@@ -306,13 +306,8 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
     if (!contactFlag_[i]) {
       Qw.block<3, 3>(3 * j, 3 * j) = weightSwingLeg_;
       const auto traj = foot_traj[foot_name];
-      vector3_t pos_des =
-          traj->evaluate(t) - base_pos_traj->evaluate(t) +
-          pinocchioInterface_ptr_->getFramePose(base_name).translation();
-      vector3_t vel_des =
-          traj->derivative(t, 1) - base_pos_traj->derivative(t, 1) +
-          pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name)
-              .linear();
+      vector3_t pos_des = traj->evaluate(t);
+      vector3_t vel_des = traj->derivative(t, 1);
       vector3_t acc_des = traj->derivative(t, 2);
       vector3_t pos_m =
           pinocchioInterface_ptr_->getFramePose(foot_name).translation();
@@ -386,14 +381,8 @@ void WholeBodyController::differential_inv_kin() {
                .linear() -
            base_twist.linear());
 
-      if (pos_traj.get() == nullptr) {
-        pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
-        vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
-      } else {
-        pos_des = (foot_traj->evaluate(time_c) - pos_traj->evaluate(time_c));
-        vel_des = (foot_traj->derivative(time_c, 1) -
-                   pos_traj->derivative(time_c, 1));
-      }
+      pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
+      vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
 
       vector3_t pos_err = (pos_des - pos_m);
       if (pos_err.norm() > 0.1) {

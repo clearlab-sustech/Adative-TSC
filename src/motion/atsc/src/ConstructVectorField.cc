@@ -264,12 +264,12 @@ ConstructVectorField::compute() {
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */
-    /* std::cout << "###########################################"
+    std::cout << "###########################################"
               << "\n";
     std::cout << "x0: " << x0.transpose() << "\n";
     for (auto &sol : solution_) {
       std::cout << "forward: " << sol.x.transpose() << "\n";
-    } */
+    }
   } else {
     RCLCPP_WARN_STREAM(rclcpp::get_logger("ConstructVectorField"), res);
   }

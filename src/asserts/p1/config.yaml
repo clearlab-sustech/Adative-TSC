@@ -32,13 +32,13 @@ model:
     joint_pos:
       [
         0.0,
+        -0.0759,
+        0.283,
         0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0
+        -0.0759,
+        -0.283
       ]
-    base_pos: [0, 0, 0.636]
+    base_pos: [0, 0, 0.583]
     base_quat: [1, 0, 0, 0]
 
 gait:
@@ -50,7 +50,7 @@ gait:
 
   walk:
     modeSequence: ["LF", "RF"]
-    switchingTimes: [0.0, 0.3, 0.6]
+    switchingTimes: [0.0, 0.2, 0.4]
 
   topic_prefix: "simulation/"
   topic_names:

@@ -10,15 +10,16 @@ namespace clear {
 TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
-                                  .get_parameter_value()
-                                  .get<std::string>();
+                                       .get_parameter_value()
+                                       .get<std::string>();
   auto config_ = YAML::LoadFile(config_file_);
   std::string topic_prefix =
       config_["global"]["topic_prefix"].as<std::string>();
   std::string actuators_cmds_topic =
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
   freq_ = config_["controller"]["frequency"].as<scalar_t>();
-  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "frequency: %f", freq_);
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "frequency: %f",
+              freq_);
 
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
@@ -36,9 +37,12 @@ TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   run_.push(true);
-  vf_construct_ptr_ = std::make_shared<ConstructVectorField>(nodeHandle_, pinocchioInterface_ptr_);
-  vector_field_thread_ = std::thread(&TrajectoryStabilization::vector_field_loop, this);
-  wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_, pinocchioInterface_ptr_);
+  vf_construct_ptr_ = std::make_shared<ConstructVectorField>(
+      nodeHandle_, pinocchioInterface_ptr_);
+  vector_field_thread_ =
+      std::thread(&TrajectoryStabilization::vector_field_loop, this);
+  wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_,
+                                                  pinocchioInterface_ptr_);
   inner_loop_thread_ = std::thread(&TrajectoryStabilization::inner_loop, this);
 }
 
@@ -50,8 +54,8 @@ TrajectoryStabilization::~TrajectoryStabilization() {
   }
 }
 
-void TrajectoryStabilization::update_current_state(std::shared_ptr<vector_t> qpos_ptr,
-                                    std::shared_ptr<vector_t> qvel_ptr) {
+void TrajectoryStabilization::update_current_state(
+    std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
   qpos_ptr_buffer.push(qpos_ptr);
   qvel_ptr_buffer.push(qvel_ptr);
 }
@@ -111,9 +115,10 @@ void TrajectoryStabilization::inner_loop() {
     timer_.endTimer();
     loop_rate.sleep();
   }
-  RCLCPP_INFO(
-      rclcpp::get_logger("TrajectoryStabilization"), "TSC: max time %f ms,  average time %f ms",
-      timer_.getMaxIntervalInMilliseconds(), timer_.getAverageInMilliseconds());
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"),
+              "TSC: max time %f ms,  average time %f ms",
+              timer_.getMaxIntervalInMilliseconds(),
+              timer_.getAverageInMilliseconds());
 }
 
 void TrajectoryStabilization::vector_field_loop() {
@@ -127,8 +132,8 @@ void TrajectoryStabilization::vector_field_loop() {
         refTrajPtrBuffer_.get().get() == nullptr) {
       continue;
     } else {
-      // RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "Adaptive Gain Computaion:
-      // run");
+      // RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "Adaptive
+      // Gain Computaion: run");
       vf_construct_ptr_->update_trajectory_reference(refTrajPtrBuffer_.get());
       vf_coeffs_buffer_.push(vf_construct_ptr_->compute());
     }

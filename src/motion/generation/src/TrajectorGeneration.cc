@@ -74,9 +74,9 @@ void TrajectorGeneration::inner_loop() {
       std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
       pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 
-      foothold_opt_ptr->optimize();
-
       base_planner_ptr->generate();
+
+      // foothold_opt_ptr->optimize();
 
       swing_traj_ptr->generate();
     }
@@ -91,7 +91,7 @@ void TrajectorGeneration::inner_loop() {
 }
 
 void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
-  foothold_opt_ptr->setVelCmd(vd, yawd);
+  base_planner_ptr->setVelCmd(vd, yawd);
 }
 
 } // namespace clear
