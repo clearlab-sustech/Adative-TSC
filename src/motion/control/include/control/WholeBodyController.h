@@ -1,7 +1,7 @@
 #pragma once
 
-#include "atsc/AdativeGain.h"
-#include "atsc/MatrixDB.h"
+#include "control/ConstructVectorField.h"
+#include "control/MatrixDB.h"
 #include <asserts/gait/ModeSchedule.h>
 #include <asserts/gait/MotionPhaseDefinition.h>
 #include <asserts/trajectory/TrajectoriesArray.h>
@@ -51,10 +51,7 @@ public:
                     const std::shared_ptr<vector_t> qvel_ptr);
 
   void
-  update_base_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
-
-  void
-  update_swing_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
+  update_vector_field(const std::shared_ptr<ConstructVectorField::VectorFieldParam> vf);
 
   std::shared_ptr<ActuatorCommands> optimize();
 
@@ -82,8 +79,7 @@ private:
   Node::SharedPtr nodeHandle_;
   Buffer<std::shared_ptr<TrajectoriesArray>> refTrajBuffer_;
   Buffer<size_t> mode_;
-  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> base_policy_;
-  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> swing_policy_;
+  Buffer<std::shared_ptr<ConstructVectorField::VectorFieldParam>> base_vector_field_;
 
   size_t numDecisionVars_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;

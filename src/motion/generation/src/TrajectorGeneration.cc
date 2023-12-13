@@ -142,7 +142,11 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
           pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
     }
     foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
+    foot_center.setZero();
     scalar_t zd = 0.32;
+    if (pos_m.z() + 0.05 < 0.32) {
+      zd = pos_m.z() + 0.05;
+    }
     scalar_t mod_z = 0.0;
     time.emplace_back(t_now);
     time.emplace_back(t_now + 0.5 * horizon_time);
@@ -272,8 +276,10 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
 
     auto base_pos =
         pinocchioInterface_ptr_->getFramePose(base_name).translation();
-    xf_start_[foot_name].second.z() = std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
-    xf_end_[foot_name].second.z() = std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_start_[foot_name].second.z() =
+        std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_end_[foot_name].second.z() =
+        std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
 
     std::vector<scalar_t> time;
     std::vector<vector_t> pos_t;

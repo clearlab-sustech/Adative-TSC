@@ -27,8 +27,8 @@ void MotionManager::init() {
       std::make_shared<GaitSchedule>(this->shared_from_this(), config_yaml_);
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this(),
                                                       config_yaml_);
-  atscImplPtr_ =
-      std::make_shared<AtscImpl>(this->shared_from_this(), config_yaml_);
+  trajectoryStabilizerPtr_ =
+      std::make_shared<TrajectoryStabilizer>(this->shared_from_this(), config_yaml_);
 
   visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this(),
                                                 config_yaml_);
@@ -48,7 +48,7 @@ void MotionManager::inner_loop() {
     }
 
     if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.0);
+      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
     } else {
       trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
     }
@@ -63,13 +63,13 @@ void MotionManager::inner_loop() {
 
     trajGenPtr_->update_mode_schedule(mode_schedule_ptr);
 
-    atscImplPtr_->update_current_state(estimatorPtr_->getQpos(),
+    trajectoryStabilizerPtr_->update_current_state(estimatorPtr_->getQpos(),
                                        estimatorPtr_->getQvel());
 
-    atscImplPtr_->update_trajectory_reference(
+    trajectoryStabilizerPtr_->update_trajectory_reference(
         trajGenPtr_->get_trajectory_reference());
 
-    atscImplPtr_->update_mode_schedule(mode_schedule_ptr);
+    trajectoryStabilizerPtr_->update_mode_schedule(mode_schedule_ptr);
 
     visPtr_->update_current_state(estimatorPtr_->getQpos(),
                                   estimatorPtr_->getQvel());

@@ -39,11 +39,15 @@ public:
 
   UnitreeHW(const std::string config_yaml);
 
+  ~UnitreeHW();
+
   bool init();
 
   void updateJoystick();
 
 private:
+  void inner_loop();
+
   void imu_callback();
 
   void touch_callback();
@@ -76,6 +80,9 @@ private:
   rclcpp::Publisher<trans::msg::TouchSensor>::SharedPtr touch_publisher_;
   rclcpp::Subscription<trans::msg::ActuatorCmds>::SharedPtr
       actuator_cmd_subscription_;
+
+  std::thread inner_loop_thread_;
+  Buffer<bool> run_;
 
   Buffer<sensor_msgs::msg::Imu::SharedPtr> imu_msg_buffer;
   Buffer<trans::msg::TouchSensor::SharedPtr> touch_msg_buffer;
