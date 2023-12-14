@@ -282,14 +282,14 @@ void SimPublisher::actuator_cmd_callback(
     actuator_cmds_buffer_->actuators_name.resize(msg->names.size());
     actuator_cmds_buffer_->kp.resize(msg->gain_p.size());
     actuator_cmds_buffer_->pos.resize(msg->pos_des.size());
-    actuator_cmds_buffer_->kd.resize(msg->gaid_d.size());
+    actuator_cmds_buffer_->kd.resize(msg->gain_d.size());
     actuator_cmds_buffer_->vel.resize(msg->vel_des.size());
     actuator_cmds_buffer_->torque.resize(msg->feedforward_torque.size());
     for (size_t k = 0; k < msg->names.size(); k++) {
       actuator_cmds_buffer_->actuators_name[k] = msg->names[k];
       actuator_cmds_buffer_->kp[k] = msg->gain_p[k];
       actuator_cmds_buffer_->pos[k] = msg->pos_des[k];
-      actuator_cmds_buffer_->kd[k] = msg->gaid_d[k];
+      actuator_cmds_buffer_->kd[k] = msg->gain_d[k];
       actuator_cmds_buffer_->vel[k] = msg->vel_des[k];
       actuator_cmds_buffer_->torque[k] = msg->feedforward_torque[k];
     }

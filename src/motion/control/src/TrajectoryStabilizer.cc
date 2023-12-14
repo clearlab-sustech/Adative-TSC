@@ -102,7 +102,7 @@ namespace clear
         pin::Index id = model.getJointId(joint_name) - 2;
         msg.gain_p.emplace_back(actuator_commands_->Kp(id));
         msg.pos_des.emplace_back(actuator_commands_->pos(id));
-        msg.gaid_d.emplace_back(actuator_commands_->Kd(id));
+        msg.gain_d.emplace_back(actuator_commands_->Kd(id));
         msg.vel_des.emplace_back(actuator_commands_->vel(id));
         msg.feedforward_torque.emplace_back(actuator_commands_->torque(id));
       }
@@ -130,7 +130,7 @@ namespace clear
         pin::Index id = model.getJointId(joint_name) - 2;
         msg->gain_p.emplace_back(actuator_commands_->Kp(id));
         msg->pos_des.emplace_back(actuator_commands_->pos(id));
-        msg->gaid_d.emplace_back(actuator_commands_->Kd(id));
+        msg->gain_d.emplace_back(actuator_commands_->Kd(id));
         msg->vel_des.emplace_back(actuator_commands_->vel(id));
         msg->feedforward_torque.emplace_back(actuator_commands_->torque(id));
       }

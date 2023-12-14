@@ -69,6 +69,7 @@ mjtNum *ctrlnoise = nullptr;
 
 // message publisher
 std::shared_ptr<clear::ActuatorCmdsBuffer> actuator_cmds_buffer;
+bool stop_flag = false;
 
 #ifdef DATA_LOG
 std::fstream save_actuator_cmds;
@@ -460,6 +461,9 @@ void PhysicsLoop(mj::Simulate &sim) {
         }
       }
     } // release std::lock_guard<std::mutex>
+    if (stop_flag) {
+      sim.exitrequest.store(1);
+    }
   }
 }
 } // namespace
@@ -471,7 +475,7 @@ void PhysicsThread(mj::Simulate *sim) {
 
   PhysicsLoop(*sim);
 
-  rclcpp::shutdown();
+  RCLCPP_INFO(rclcpp::get_logger("Simulation"), "shut down");
 
   // delete everything we allocated
   free(ctrlnoise);
@@ -493,8 +497,13 @@ _mj_rosettaError(const char *msg) {
 }
 #endif
 
+void signalHandler(int signum) { stop_flag = true; }
+
 // run event loop
 int main(int argc, const char **argv) {
+
+  signal(SIGINT, signalHandler);
+
   // display an error if running on macOS under Rosetta 2
 #if defined(__APPLE__) && defined(__AVX__)
   if (rosetta_error_msg) {
@@ -559,7 +568,13 @@ int main(int argc, const char **argv) {
 
   // start simulation UI loop (blocking call)
   sim->RenderLoop();
+
+  spin_thread.join();
+
   physicsthreadhandle.join();
+
+  rclcpp::shutdown();
+
 #ifdef DATA_LOG
   save_actuator_cmds.close();
 #endif

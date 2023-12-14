@@ -16,7 +16,7 @@ def generate_launch_description():
             Node(
                 package="management",
                 executable="management",
-                name="aliengo_management",
+                name="motion_management",
                 output="screen",
                 emulate_tty=True,
                 arguments=[config_file, ("__log_level:=debug")],

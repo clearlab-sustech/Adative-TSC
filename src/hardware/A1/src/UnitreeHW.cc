@@ -197,7 +197,7 @@ void UnitreeHW::write() {
           lowCmd_.motorCmd[idx].Kp =
               static_cast<float>(actuator_cmd_msg->gain_p[i]);
           lowCmd_.motorCmd[idx].Kd =
-              static_cast<float>(actuator_cmd_msg->gaid_d[i]);
+              static_cast<float>(actuator_cmd_msg->gain_d[i]);
           lowCmd_.motorCmd[idx].tau =
               static_cast<float>(actuator_cmd_msg->feedforward_torque[i]);
         }
@@ -253,7 +253,7 @@ void UnitreeHW::drop_old_message() {
       for (size_t k = 0; k < actuator_cmd_msg->names.size(); k++) {
         actuator_cmd_msg->gain_p[k] = 0.0;
         actuator_cmd_msg->pos_des[k] = 0.0;
-        actuator_cmd_msg->gaid_d[k] = 3.0;
+        actuator_cmd_msg->gain_d[k] = 3.0;
         actuator_cmd_msg->vel_des[k] = 0.0;
         actuator_cmd_msg->feedforward_torque[k] = 0.0;
       }
