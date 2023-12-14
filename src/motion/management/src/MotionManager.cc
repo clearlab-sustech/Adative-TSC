@@ -50,7 +50,7 @@ void MotionManager::inner_loop() {
   const scalar_t ts = this->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (this->now().seconds() > ts + 4.0) {
-      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.5);
+      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
     }
     // if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
     //   trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
@@ -72,10 +72,10 @@ void MotionManager::inner_loop() {
 
     atscImplPtr_->update_mpc_solution(trajGenPtr_->get_mpc_sol());
 
-    // if (unitreeHWPtr_ != nullptr) {
-    //   unitreeHWPtr_->set_actuator_cmds(atscImplPtr_->getCmds());
-    //   unitreeHWPtr_->send();
-    // }
+    if (unitreeHWPtr_ != nullptr) {
+      unitreeHWPtr_->set_actuator_cmds(atscImplPtr_->getCmds());
+      unitreeHWPtr_->send();
+    }
 
     // visPtr_->update_current_state(estimatorPtr_->getQpos(),
     //                               estimatorPtr_->getQvel());

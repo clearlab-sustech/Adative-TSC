@@ -27,7 +27,6 @@ find_package(yaml-cpp REQUIRED)
 find_package(pinocchio_interface)
 find_package(asserts)
 find_package(estimation)
-find_package(gait)
 find_package(generation)
 find_package(atsc)
 find_package(tf2_ros)
@@ -52,7 +51,6 @@ set(TARGET_DEPENDENCE
   asserts
   yaml-cpp
   estimation
-  gait
   generation
   atsc
   tf2_ros
