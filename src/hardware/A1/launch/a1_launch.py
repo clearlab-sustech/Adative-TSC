@@ -14,8 +14,8 @@ def generate_launch_description():
         [
             Node(
                 package="hardware",
-                executable="hardware",
-                name="a1_hardware",
+                executable="hardware_node",
+                name="a1_hardware_node",
                 output="screen",
                 emulate_tty=True,
                 arguments=[config_file, ("__log_level:=debug")],

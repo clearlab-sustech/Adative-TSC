@@ -2,7 +2,7 @@
 
 #include "DataVisualization.h"
 #include "Initialization.h"
-#include <control/TrajectoryStabilizer.h>
+#include <atsc/AtscImpl.h>
 #include <estimation/StateEstimationLKF.h>
 #include <gait/GaitSchedule.h>
 #include <generation/TrajectorGeneration.h>
@@ -29,7 +29,7 @@ private:
   std::shared_ptr<StateEstimationLKF> estimatorPtr_;
   std::shared_ptr<GaitSchedule> gaitSchedulePtr_;
   std::shared_ptr<TrajectorGeneration> trajGenPtr_;
-  std::shared_ptr<TrajectoryStabilizer> trajectoryStabilizerPtr_;
+  std::shared_ptr<AtscImpl> atscImplPtr_;
   std::shared_ptr<DataVisualization> visPtr_;
   std::shared_ptr<Initialization> intializationPtr_;
 

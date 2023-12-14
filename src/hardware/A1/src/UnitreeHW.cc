@@ -61,26 +61,11 @@ UnitreeHW::UnitreeHW(const std::string config_yaml) : Node("UnitreeHW") {
             name_prefix + actuators_cmds_topic, qos,
             std::bind(&UnitreeHW::actuator_cmd_callback, this,
                       std::placeholders::_1));
-
-    run_.push(true);
-    inner_loop_thread_ = std::thread(&UnitreeHW::inner_loop, this);
-
-    int threadPriority = 0;
-    sched_param sched{.sched_priority = threadPriority};
-    if (pthread_setschedparam(inner_loop_thread_.native_handle(), SCHED_FIFO,
-                              &sched) != 0) {
-      RCLCPP_WARN(
-          this->get_logger(),
-          "Failed to set threads priority (one possible reason could be "
-          "that the user and the group permissions "
-          "are not set properly.)");
-    }
+    timers_.emplace_back(
+        this->create_wall_timer(2ms, std::bind(&UnitreeHW::read, this)));
+    timers_.emplace_back(
+        this->create_wall_timer(2ms, std::bind(&UnitreeHW::write, this)));
   }
-}
-
-UnitreeHW::~UnitreeHW() {
-  run_.push(false);
-  inner_loop_thread_.join();
 }
 
 bool UnitreeHW::init() {
@@ -103,15 +88,6 @@ bool UnitreeHW::init() {
   return true;
 }
 
-void UnitreeHW::inner_loop() {
-  rclcpp::Rate loop_rate(500.0);
-  while (rclcpp::ok() && run_.get()) {
-    read();
-    write();
-    loop_rate.sleep();
-  }
-}
-
 void UnitreeHW::read() {
   // RCLCPP_FATAL(this->get_logger(), "rec len: %d", udp_->Recv());
   udp_->Recv();
@@ -126,12 +102,9 @@ void UnitreeHW::read() {
   joints_state_ptr->effort.resize(12);
   joints_state_ptr->name.resize(12);
   for (int i = 0; i < 12; ++i) {
-    joints_state_ptr->position[i] =
-        static_cast<double>(lowState_.motorState[i].q);
-    joints_state_ptr->velocity[i] =
-        static_cast<double>(lowState_.motorState[i].dq);
-    joints_state_ptr->effort[i] =
-        static_cast<double>(lowState_.motorState[i].tauEst);
+    joints_state_ptr->position[i] = lowState_.motorState[i].q;
+    joints_state_ptr->velocity[i] = lowState_.motorState[i].dq;
+    joints_state_ptr->effort[i] = lowState_.motorState[i].tauEst;
     joints_state_ptr->name[i] = jointsIndex2NameMap[i];
     // RCLCPP_INFO(this->get_logger(), "low state q[%ld]=%f", i,
     //             lowState_.motorState[i].q);
@@ -142,26 +115,16 @@ void UnitreeHW::read() {
       std::make_shared<sensor_msgs::msg::Imu>();
   imu_data_ptr->header.frame_id = robot_type_;
   imu_data_ptr->header.stamp = this->now();
-  imu_data_ptr->orientation.w =
-      static_cast<double>(lowState_.imu.quaternion[0]);
-  imu_data_ptr->orientation.x =
-      static_cast<double>(lowState_.imu.quaternion[1]);
-  imu_data_ptr->orientation.y =
-      static_cast<double>(lowState_.imu.quaternion[2]);
-  imu_data_ptr->orientation.z =
-      static_cast<double>(lowState_.imu.quaternion[3]);
-  imu_data_ptr->angular_velocity.x =
-      static_cast<double>(lowState_.imu.gyroscope[0]);
-  imu_data_ptr->angular_velocity.y =
-      static_cast<double>(lowState_.imu.gyroscope[1]);
-  imu_data_ptr->angular_velocity.z =
-      static_cast<double>(lowState_.imu.gyroscope[2]);
-  imu_data_ptr->linear_acceleration.x =
-      static_cast<double>(lowState_.imu.accelerometer[0]);
-  imu_data_ptr->linear_acceleration.y =
-      static_cast<double>(lowState_.imu.accelerometer[1]);
-  imu_data_ptr->linear_acceleration.z =
-      static_cast<double>(lowState_.imu.accelerometer[2]);
+  imu_data_ptr->orientation.w = lowState_.imu.quaternion[0];
+  imu_data_ptr->orientation.x = lowState_.imu.quaternion[1];
+  imu_data_ptr->orientation.y = lowState_.imu.quaternion[2];
+  imu_data_ptr->orientation.z = lowState_.imu.quaternion[3];
+  imu_data_ptr->angular_velocity.x = lowState_.imu.gyroscope[0];
+  imu_data_ptr->angular_velocity.y = lowState_.imu.gyroscope[1];
+  imu_data_ptr->angular_velocity.z = lowState_.imu.gyroscope[2];
+  imu_data_ptr->linear_acceleration.x = lowState_.imu.accelerometer[0];
+  imu_data_ptr->linear_acceleration.y = lowState_.imu.accelerometer[1];
+  imu_data_ptr->linear_acceleration.z = lowState_.imu.accelerometer[2];
   imu_msg_buffer.push(imu_data_ptr);
 
   trans::msg::TouchSensor::SharedPtr touch_sensor_ptr =
@@ -197,7 +160,7 @@ void UnitreeHW::write() {
           lowCmd_.motorCmd[idx].Kp =
               static_cast<float>(actuator_cmd_msg->gain_p[i]);
           lowCmd_.motorCmd[idx].Kd =
-              static_cast<float>(actuator_cmd_msg->gain_d[i]);
+              static_cast<float>(actuator_cmd_msg->gaid_d[i]);
           lowCmd_.motorCmd[idx].tau =
               static_cast<float>(actuator_cmd_msg->feedforward_torque[i]);
         }
@@ -253,7 +216,7 @@ void UnitreeHW::drop_old_message() {
       for (size_t k = 0; k < actuator_cmd_msg->names.size(); k++) {
         actuator_cmd_msg->gain_p[k] = 0.0;
         actuator_cmd_msg->pos_des[k] = 0.0;
-        actuator_cmd_msg->gain_d[k] = 3.0;
+        actuator_cmd_msg->gaid_d[k] = -3.0;
         actuator_cmd_msg->vel_des[k] = 0.0;
         actuator_cmd_msg->feedforward_torque[k] = 0.0;
       }
