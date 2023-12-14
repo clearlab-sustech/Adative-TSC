@@ -44,7 +44,7 @@ set_target_properties(libunitree_legged_sdk PROPERTIES IMPORTED_LOCATION ${CMAKE
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 
-add_library(${PROJECT_NAME} SHARED ${source})
+add_executable(${PROJECT_NAME} ${source})
 target_include_directories(${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
@@ -55,7 +55,6 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
-ament_export_targets(${PROJECT_NAME}_Targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(${TARGET_DEPENDENCE})
 
 file(GLOB_RECURSE libs ${CMAKE_CURRENT_SOURCE_DIR}/lib/*)
@@ -63,17 +62,10 @@ file(GLOB_RECURSE libs ${CMAKE_CURRENT_SOURCE_DIR}/lib/*)
 install(FILES ${libs}
         DESTINATION lib)
 
-install(
-        DIRECTORY include/
-        DESTINATION include
-)
+install(TARGETS ${PROJECT_NAME}
+        DESTINATION lib/${PROJECT_NAME})
 
-install(
-        TARGETS ${PROJECT_NAME}
-        EXPORT ${PROJECT_NAME}_Targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include
-)
+install(DIRECTORY launch
+        DESTINATION share/${PROJECT_NAME})
+
 ament_package()
