@@ -33,6 +33,13 @@ void MotionManager::init() {
   visPtr_ = std::make_shared<DataVisualization>(this->shared_from_this(),
                                                 config_yaml_);
 
+  auto config_ = YAML::LoadFile(config_yaml_);
+  bool hardware_ = config_["estimation"]["hardware"].as<bool>();
+  if (hardware_) {
+    unitreeHWPtr_ =
+        std::make_shared<UnitreeHW>(this->shared_from_this(), config_yaml_);
+  }
+
   inner_loop_thread_ = std::thread(&MotionManager::inner_loop, this);
   run_.push(true);
 }
@@ -50,6 +57,13 @@ void MotionManager::inner_loop() {
     // if (gaitSchedulePtr_->get_current_gait_name() == "trot") {
     //   trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
     // }
+
+    if (unitreeHWPtr_ != nullptr) {
+      unitreeHWPtr_->read();
+      estimatorPtr_->set_imu_msg(unitreeHWPtr_->get_imu_msg());
+      estimatorPtr_->set_touch_msg(unitreeHWPtr_->get_touch_msg());
+      estimatorPtr_->set_joint_msg(unitreeHWPtr_->get_joint_msg());
+    }
 
     scalar_t horizon_time_ =
         min(2.0, max(0.5, gaitSchedulePtr_->current_gait_cycle()));
@@ -76,7 +90,16 @@ void MotionManager::inner_loop() {
 
     visPtr_->update_footholds(trajGenPtr_->get_footholds());
 
+    if (unitreeHWPtr_ != nullptr) {
+      unitreeHWPtr_->set_actuator_cmds(atscImplPtr_->getCmds());
+      unitreeHWPtr_->send();
+    }
+
     loop_rate.sleep();
+  }
+
+  if (unitreeHWPtr_ != nullptr) {
+    unitreeHWPtr_->switch_to_damping();
   }
 }
 

@@ -73,16 +73,42 @@ void AtscImpl::update_mode_schedule(
   mode_schedule_buffer.push(mode_schedule);
 }
 
+trans::msg::ActuatorCmds::SharedPtr AtscImpl::getCmds() {
+  if (actuator_commands_buffer.get() == nullptr) {
+    return nullptr;
+  }
+  auto actuator_commands_ = actuator_commands_buffer.get();
+
+  const auto &model = pinocchioInterface_ptr_->getModel();
+  trans::msg::ActuatorCmds::SharedPtr msg =
+      std::make_shared<trans::msg::ActuatorCmds>();
+  msg->header.frame_id = robot_name;
+  msg->header.stamp = nodeHandle_->now();
+  for (const auto &joint_name : actuated_joints_name) {
+    if (model.existJointName(joint_name)) {
+      msg->names.emplace_back(joint_name);
+      pin::Index id = model.getJointId(joint_name) - 2;
+      msg->gain_p.emplace_back(actuator_commands_->Kp(id));
+      msg->pos_des.emplace_back(actuator_commands_->pos(id));
+      msg->gaid_d.emplace_back(actuator_commands_->Kd(id));
+      msg->vel_des.emplace_back(actuator_commands_->vel(id));
+      msg->feedforward_torque.emplace_back(actuator_commands_->torque(id));
+    }
+  }
+  return msg;
+}
+
 void AtscImpl::publishCmds() {
+  if (actuator_commands_buffer.get() == nullptr) {
+    return;
+  }
+  auto actuator_commands_ = actuator_commands_buffer.get();
+
   const auto &model = pinocchioInterface_ptr_->getModel();
 
   trans::msg::ActuatorCmds msg;
   msg.header.frame_id = robot_name;
   msg.header.stamp = nodeHandle_->now();
-
-  if (actuator_commands_.get() == nullptr) {
-    return;
-  }
 
   for (const auto &joint_name : actuated_joints_name) {
     if (model.existJointName(joint_name)) {
@@ -131,7 +157,7 @@ void AtscImpl::inner_loop() {
       wbcPtr_->update_trajectory_reference(refTrajPtrBuffer_.get());
       wbcPtr_->update_mode(mode_schedule_buffer.get()->getModeFromPhase(0.0));
       wbcPtr_->update_base_policy(feedback_gain_buffer_.get());
-      actuator_commands_ = wbcPtr_->optimize();
+      actuator_commands_buffer.push(wbcPtr_->optimize());
 
       publishCmds();
     }

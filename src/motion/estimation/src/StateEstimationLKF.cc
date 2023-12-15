@@ -7,11 +7,9 @@ namespace clear {
 StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
                                        std::string config_yaml)
     : nodeHandle_(nodeHandle) {
-  auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
 
   auto config_ = YAML::LoadFile(config_yaml);
-  std::string topic_prefix =
-      config_["global"]["topic_prefix"].as<std::string>();
+
   robot_name = config_["model"]["name"].as<std::string>();
   RCLCPP_INFO(nodeHandle_->get_logger(), "robot_name: %s", robot_name.c_str());
 
@@ -34,40 +32,46 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
     cflag_.emplace_back(true);
   }
 
-  std::string imu_topic =
-      config_["global"]["topic_names"]["imu"].as<std::string>();
-  imu_subscription_ = nodeHandle_->create_subscription<sensor_msgs::msg::Imu>(
-      topic_prefix + imu_topic, qos,
-      std::bind(&StateEstimationLKF::imu_callback, this,
-                std::placeholders::_1));
+  bool hardware_ = config_["estimation"]["hardware"].as<bool>();
 
-  std::string touch_sensor_topic =
-      config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
-  touch_subscription_ =
-      nodeHandle_->create_subscription<trans::msg::TouchSensor>(
-          topic_prefix + touch_sensor_topic, qos,
-          std::bind(&StateEstimationLKF::touch_callback, this,
-                    std::placeholders::_1));
+  if (!hardware_) {
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
+    std::string topic_prefix =
+        config_["global"]["topic_prefix"].as<std::string>();
+    std::string imu_topic =
+        config_["global"]["topic_names"]["imu"].as<std::string>();
+    imu_subscription_ = nodeHandle_->create_subscription<sensor_msgs::msg::Imu>(
+        topic_prefix + imu_topic, qos,
+        std::bind(&StateEstimationLKF::imu_callback, this,
+                  std::placeholders::_1));
 
-  std::string joints_topic =
-      config_["global"]["topic_names"]["joints_state"].as<std::string>();
-  joints_state_subscription_ =
-      nodeHandle_->create_subscription<sensor_msgs::msg::JointState>(
-          topic_prefix + joints_topic, qos,
-          std::bind(&StateEstimationLKF::joint_callback, this,
-                    std::placeholders::_1));
+    std::string touch_sensor_topic =
+        config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
+    touch_subscription_ =
+        nodeHandle_->create_subscription<trans::msg::TouchSensor>(
+            topic_prefix + touch_sensor_topic, qos,
+            std::bind(&StateEstimationLKF::touch_callback, this,
+                      std::placeholders::_1));
 
-  std::string odom_topic =
-      config_["global"]["topic_names"]["odom"].as<std::string>();
-  odom_subscription_ =
-      nodeHandle_->create_subscription<nav_msgs::msg::Odometry>(
-          topic_prefix + odom_topic, qos,
-          std::bind(&StateEstimationLKF::odom_callback, this,
-                    std::placeholders::_1));
+    std::string joints_topic =
+        config_["global"]["topic_names"]["joints_state"].as<std::string>();
+    joints_state_subscription_ =
+        nodeHandle_->create_subscription<sensor_msgs::msg::JointState>(
+            topic_prefix + joints_topic, qos,
+            std::bind(&StateEstimationLKF::joint_callback, this,
+                      std::placeholders::_1));
+
+    std::string odom_topic =
+        config_["global"]["topic_names"]["odom"].as<std::string>();
+    odom_subscription_ =
+        nodeHandle_->create_subscription<nav_msgs::msg::Odometry>(
+            topic_prefix + odom_topic, qos,
+            std::bind(&StateEstimationLKF::odom_callback, this,
+                      std::placeholders::_1));
+  }
 
   inner_loop_thread_ = std::thread(&StateEstimationLKF::inner_loop, this);
   run_.push(true);
-
   setup();
 }
 
@@ -143,11 +147,11 @@ void StateEstimationLKF::linearMotionEstimate(
   vector3_t g(0, 0, -9.81);
   w_acc = w_acc + g;
 
-  scalar_t noise_pimu = 0.3;
-  scalar_t noise_vimu = 0.3;
-  scalar_t noise_pfoot = 0.01;
+  scalar_t noise_pimu = 0.02;
+  scalar_t noise_vimu = 0.02;
+  scalar_t noise_pfoot = 0.002;
   scalar_t noise_pimu_rel_foot = 0.001;
-  scalar_t noise_vimu_rel_foot = 0.2;
+  scalar_t noise_vimu_rel_foot = 0.02;
   scalar_t noise_zfoot = 0.001;
 
   matrix_t Q = matrix_t::Identity(18, 18);
@@ -182,7 +186,7 @@ void StateEstimationLKF::linearMotionEstimate(
     auto v =
         pinocchioInterface_ptr->getFrame6dVel_localWorldAligned(foot_names[i]);
     vector3_t p_f = pose.translation();
-    p_f.z() -= 0.0335; // the foot radius, be careful
+    p_f.z() -= 0.02; // the foot radius, be careful
     vector3_t v_f = v.linear();
 
     int i1 = 3 * i;
@@ -321,6 +325,25 @@ void StateEstimationLKF::touch_callback(
 
 void StateEstimationLKF::joint_callback(
     const sensor_msgs::msg::JointState::SharedPtr msg) const {
+  if (msg->header.frame_id == robot_name) {
+    joint_state_msg_buffer.push(msg);
+  }
+}
+
+void StateEstimationLKF::set_imu_msg(sensor_msgs::msg::Imu::SharedPtr msg) {
+  if (msg->header.frame_id == robot_name) {
+    imu_msg_buffer.push(msg);
+  }
+}
+
+void StateEstimationLKF::set_touch_msg(trans::msg::TouchSensor::SharedPtr msg) {
+  if (msg->header.frame_id == robot_name) {
+    touch_msg_buffer.push(msg);
+  }
+}
+
+void StateEstimationLKF::set_joint_msg(
+    sensor_msgs::msg::JointState::SharedPtr msg) {
   if (msg->header.frame_id == robot_name) {
     joint_state_msg_buffer.push(msg);
   }

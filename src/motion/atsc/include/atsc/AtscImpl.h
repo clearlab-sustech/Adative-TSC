@@ -30,6 +30,8 @@ public:
 
   void update_mode_schedule(const std::shared_ptr<ModeSchedule> mode_schedule);
 
+  trans::msg::ActuatorCmds::SharedPtr getCmds();
+
 private:
   void publishCmds();
 
@@ -58,7 +60,7 @@ private:
 
   std::string base_name, robot_name;
   std::vector<std::string> actuated_joints_name;
-  std::shared_ptr<ActuatorCommands> actuator_commands_;
+  Buffer<std::shared_ptr<ActuatorCommands>> actuator_commands_buffer;
 };
 
 } // namespace clear

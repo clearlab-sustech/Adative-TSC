@@ -6,7 +6,6 @@
 #include <map>
 #include <mutex>
 #include <rclcpp/rclcpp.hpp>
-#include <rmw/types.h>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <trans/msg/actuator_cmds.hpp>
@@ -19,7 +18,7 @@ using namespace UNITREE_LEGGED_SDK;
 
 namespace clear {
 
-class UnitreeHW : public Node {
+class UnitreeHW {
 public:
   std::map<std::string, size_t> jointsName2IndexMap{
       {"FL_hip_joint", FL_0},   {"FL_thigh_joint", FL_1},
@@ -37,29 +36,34 @@ public:
       {RL_2, "RL_calf_joint"},  {RR_0, "RR_hip_joint"},
       {RR_1, "RR_thigh_joint"}, {RR_2, "RR_calf_joint"}};
 
-  UnitreeHW(const std::string config_yaml);
+  UnitreeHW(Node::SharedPtr node_handle, const std::string config_yaml);
 
-  bool init();
+  ~UnitreeHW();
 
-  void updateJoystick();
+  sensor_msgs::msg::Imu::SharedPtr get_imu_msg();
 
-private:
-  void imu_callback();
+  trans::msg::TouchSensor::SharedPtr get_touch_msg();
 
-  void touch_callback();
+  sensor_msgs::msg::JointState::SharedPtr get_joint_msg();
 
-  void joint_callback();
-
-  void
-  actuator_cmd_callback(const trans::msg::ActuatorCmds::SharedPtr msg) const;
+  void set_actuator_cmds(const trans::msg::ActuatorCmds::SharedPtr msg);
 
   void read();
 
-  void write();
+  void send();
 
-  void drop_old_message();
+  void switch_to_damping();
+
+private:
+  void init();
+
+  Node::SharedPtr node_handle_;
 
   std::string robot_type_;
+
+  sensor_msgs::msg::JointState::SharedPtr joints_state_ptr;
+  sensor_msgs::msg::Imu::SharedPtr imu_data_ptr;
+  trans::msg::TouchSensor::SharedPtr touch_sensor_ptr;
 
   std::shared_ptr<UNITREE_LEGGED_SDK::UDP> udp_;
   std::shared_ptr<UNITREE_LEGGED_SDK::Safety> safety_;
@@ -69,18 +73,7 @@ private:
   int powerLimit_ = 4;
   int contactThreshold_ = 40;
 
-  std::vector<rclcpp::TimerBase::SharedPtr> timers_;
-  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr
-      joint_state_publisher_;
-  rclcpp::Publisher<trans::msg::TouchSensor>::SharedPtr touch_publisher_;
-  rclcpp::Subscription<trans::msg::ActuatorCmds>::SharedPtr
-      actuator_cmd_subscription_;
-
-  Buffer<sensor_msgs::msg::Imu::SharedPtr> imu_msg_buffer;
-  Buffer<trans::msg::TouchSensor::SharedPtr> touch_msg_buffer;
-  Buffer<sensor_msgs::msg::JointState::SharedPtr> joint_state_msg_buffer;
-  mutable Buffer<trans::msg::ActuatorCmds::SharedPtr> actuator_cmd_msg_buffer;
+  Buffer<trans::msg::ActuatorCmds::SharedPtr> actuator_cmd_msg_buffer;
 };
 
 } // namespace clear

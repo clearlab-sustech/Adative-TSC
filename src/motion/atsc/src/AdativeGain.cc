@@ -58,7 +58,7 @@ void AdaptiveGain::add_linear_system(size_t k) {
   rcpputils::assert_true(nf == contact_flag.size());
 
   Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
-  std::cout << "Ig_: \n" << Ig_ << "\n";
+  // std::cout << "Ig_: \n" << Ig_ << "\n";
   auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
   vector3_t force_ff = vector3_t::Zero();

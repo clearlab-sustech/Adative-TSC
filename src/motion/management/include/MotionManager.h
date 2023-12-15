@@ -8,6 +8,7 @@
 #include <generation/TrajectorGeneration.h>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
+#include <unitree_hw/UnitreeHW.h>
 
 using namespace rclcpp;
 
@@ -32,7 +33,8 @@ private:
   std::shared_ptr<AtscImpl> atscImplPtr_;
   std::shared_ptr<DataVisualization> visPtr_;
   std::shared_ptr<Initialization> intializationPtr_;
-
+  std::shared_ptr<UnitreeHW> unitreeHWPtr_;
+  
   std::thread inner_loop_thread_;
   Buffer<bool> run_;
 };
