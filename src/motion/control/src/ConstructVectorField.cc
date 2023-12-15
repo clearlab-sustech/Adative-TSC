@@ -52,8 +52,8 @@ void ConstructVectorField::updateReferenceBuffer(
 void ConstructVectorField::add_linear_system(size_t k) {
   const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
   auto mode_schedule = referenceBuffer_->getModeSchedule();
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
-  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
   auto foot_traj = referenceBuffer_->getFootPosTraj();
 
   scalar_t phase = k * dt_ / mode_schedule->duration();
@@ -138,7 +138,7 @@ void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
 void ConstructVectorField::add_cost(size_t k, size_t N) {
   const size_t nf = foot_names.size();
   const scalar_t time_k = time_now_ + k * dt_;
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
 
   ocp_[k].Q = weight_;
   ocp_[k].S = matrix_t::Zero(3 * nf, 12);
@@ -177,7 +177,7 @@ std::shared_ptr<ConstructVectorField::VectorFieldParam>
 ConstructVectorField::compute() {
   feedback_law_ptr = nullptr;
 
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   if (pos_traj.get() == nullptr || rpy_traj.get() == nullptr ||
       referenceBuffer_->getFootPosTraj().empty()) {
@@ -262,8 +262,6 @@ ConstructVectorField::compute() {
         CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
     base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
 
-    referenceBuffer_->setOptimizedBasePosTraj(base_pos_traj_ptr_);
-    referenceBuffer_->setOptimizedBaseRpyTraj(base_rpy_traj_ptr_);
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */

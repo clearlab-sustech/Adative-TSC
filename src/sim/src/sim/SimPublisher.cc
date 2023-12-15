@@ -15,7 +15,7 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
       config_["model"]["xml"].as<std::string>();
   mju::strcpy_arr(sim_->filename, model_file.c_str());
   sim_->uiloadrequest.fetch_add(1);
-  RCLCPP_INFO(this->get_logger(), "model file: %s", model_file.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "model file: %s", model_file.c_str());
 
   std::string sim_reset_service =
       config_["global"]["service_names"]["sim_reset"].as<std::string>();
@@ -85,11 +85,11 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
 
   actuator_cmds_buffer_ = std::make_shared<ActuatorCmdsBuffer>();
 
-  RCLCPP_INFO(this->get_logger(), "Start SimPublisher ...");
+  RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "Start SimPublisher ...");
 }
 
 SimPublisher::~SimPublisher() {
-  RCLCPP_INFO(this->get_logger(), "close SimPublisher node ...");
+  RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "close SimPublisher node ...");
 }
 
 void SimPublisher::reset_callback(
@@ -100,7 +100,7 @@ void SimPublisher::reset_callback(
   }
   if (sim_->d_ != nullptr) {
     if (request->header.frame_id != std::string(&sim_->m_->names[0])) {
-      RCLCPP_ERROR(this->get_logger(), "reset request is not for %s",
+      RCLCPP_ERROR(rclcpp::get_logger("SimPublisher"), "reset request is not for %s",
                    &sim_->m_->names[0]);
       response->is_success = false;
     } else {
@@ -122,7 +122,7 @@ void SimPublisher::reset_callback(
             sim_->d_->qpos[sim_->m_->jnt_qposadr[joint_id]] =
                 request->joint_state.position[i];
           } else {
-            RCLCPP_WARN(this->get_logger(),
+            RCLCPP_WARN(rclcpp::get_logger("SimPublisher"),
                         "[Reset Request] joint %s does not exist",
                         request->joint_state.name[i].c_str());
           }
@@ -137,7 +137,7 @@ void SimPublisher::reset_callback(
         }
       }
       response->is_success = true;
-      RCLCPP_INFO(this->get_logger(), "reset robot state...");
+      RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "reset robot state...");
     }
   } else {
     response->is_success = false;
@@ -189,13 +189,13 @@ void SimPublisher::imuCallback() {
         }
       }
       if (acc_flag) {
-        RCLCPP_WARN(this->get_logger(), "Required acc sensor does not exist");
+        RCLCPP_WARN(rclcpp::get_logger("SimPublisher"), "Required acc sensor does not exist");
       }
       if (quat_flag) {
-        RCLCPP_WARN(this->get_logger(), "Required quat sensor does not exist");
+        RCLCPP_WARN(rclcpp::get_logger("SimPublisher"), "Required quat sensor does not exist");
       }
       if (gyro_flag) {
-        RCLCPP_WARN(this->get_logger(), "Required gyro sensor does not exist");
+        RCLCPP_WARN(rclcpp::get_logger("SimPublisher"), "Required gyro sensor does not exist");
       }
     }
     imu_publisher_->publish(message);
@@ -293,7 +293,7 @@ void SimPublisher::actuator_cmd_callback(
       actuator_cmds_buffer_->vel[k] = msg->vel_des[k];
       actuator_cmds_buffer_->torque[k] = msg->feedforward_torque[k];
     }
-    // RCLCPP_INFO(this->get_logger(), "subscribe actuator cmds %f",
+    // RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "subscribe actuator cmds %f",
     // actuator_cmds_buffer_->time);
   }
 }

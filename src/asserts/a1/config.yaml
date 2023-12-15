@@ -94,4 +94,4 @@ controller:
   frequency: 500.0
 
 generation:
-  frequency: 100.0
+  frequency: 20.0

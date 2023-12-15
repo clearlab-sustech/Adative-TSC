@@ -28,12 +28,20 @@ ReferenceBuffer::getIntegratedBasePosTraj() const {
 
 std::shared_ptr<CubicSplineTrajectory>
 ReferenceBuffer::getOptimizedBaseRpyTraj() const {
-  return optimized_base_rpy_buffer_.get();
+  if (optimized_base_rpy_buffer_.get() != nullptr) {
+    return optimized_base_rpy_buffer_.get();
+  } else {
+    return integ_base_rpy_buffer_.get();
+  }
 }
 
 std::shared_ptr<CubicSplineTrajectory>
 ReferenceBuffer::getOptimizedBasePosTraj() const {
-  return optimized_base_pos_buffer_.get();
+  if (optimized_base_pos_buffer_.get() != nullptr) {
+    return optimized_base_pos_buffer_.get();
+  } else {
+    return integ_base_pos_buffer_.get();
+  }
 }
 
 std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>

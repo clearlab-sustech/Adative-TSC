@@ -23,7 +23,11 @@ public:
 
   void optimize();
 
+  void setVelCmd(vector3_t vd, scalar_t yawd);
+
 private:
+  void generateTrajRef();
+
   void getDynamics(scalar_t time_cur, size_t k,
                    const std::shared_ptr<ModeSchedule> mode_schedule);
 
@@ -44,6 +48,10 @@ private:
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
   std::shared_ptr<ReferenceBuffer> referenceBuffer_;
 
+  std::string base_name;
+  std::vector<std::string> foot_names;
+
+  const scalar_t h_des = 0.32;
   const scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;
   scalar_t total_mass_;
@@ -55,10 +63,16 @@ private:
   std::vector<hpipm::OcpQp> ocp_;
   std::vector<hpipm::OcpQpSolution> solution_;
   hpipm::OcpQpIpmSolverSettings solver_settings;
-  bool has_sol_ = false;
 
   std::shared_ptr<CubicSplineTrajectory> base_pos_traj_ptr_;
   std::shared_ptr<CubicSplineTrajectory> base_rpy_traj_ptr_;
+
+  vector3_t vel_cmd;
+  scalar_t yawd_;
+
+  vector3_t rpy_start;
+  vector3_t pos_start;
+  bool first_run = true;
 };
 
 } // namespace clear

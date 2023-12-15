@@ -44,12 +44,12 @@ void Initialization::reset_simulation() {
     request->joint_state.position.push_back(joint_pos[i]);
   }
 
-  RCLCPP_INFO(nodeHandle_->get_logger(), "waiting for service %s ...",
+  RCLCPP_INFO(rclcpp::get_logger("Initialization"), "waiting for service %s ...",
               reset_state_client_->get_service_name());
   while (!reset_state_client_->wait_for_service(20ms)) {
     std::this_thread::sleep_for(std::chrono::microseconds(50));
     if (!rclcpp::ok()) {
-      RCLCPP_ERROR(nodeHandle_->get_logger(),
+      RCLCPP_ERROR(rclcpp::get_logger("Initialization"),
                    "Interrupted while waiting for the service. Exiting.");
       return;
     }
@@ -60,13 +60,13 @@ void Initialization::reset_simulation() {
   if (rclcpp::spin_until_future_complete(nodeHandle_, result) ==
       rclcpp::FutureReturnCode::SUCCESS) {
     if (result.get()->is_success) {
-      RCLCPP_INFO(nodeHandle_->get_logger(),
+      RCLCPP_INFO(rclcpp::get_logger("Initialization"),
                   "call service reset_state success");
     } else {
-      RCLCPP_ERROR(nodeHandle_->get_logger(), "Failed to reset state");
+      RCLCPP_ERROR(rclcpp::get_logger("Initialization"), "Failed to reset state");
     }
   } else {
-    RCLCPP_ERROR(nodeHandle_->get_logger(),
+    RCLCPP_ERROR(rclcpp::get_logger("Initialization"),
                  "Failed to call service reset_state");
   }
 }

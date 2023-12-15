@@ -14,24 +14,24 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
   auto config_ = YAML::LoadFile(config_file_);
 
   robot_name = config_["model"]["name"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "robot_name: %s", robot_name.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "robot_name: %s", robot_name.c_str());
 
   std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "model file: %s", urdf.c_str());
 
   pinocchioInterface_ptr = std::make_unique<PinocchioInterface>(urdf.c_str());
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   dt_ = config_["estimation"]["dt"].as<scalar_t>();
   use_odom_ = config_["estimation"]["use_odom"].as<bool>();
 
-  RCLCPP_INFO(nodeHandle_->get_logger(), "dt: %f", dt_);
-  RCLCPP_INFO(nodeHandle_->get_logger(), "use odom: %s",
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "dt: %f", dt_);
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "use odom: %s",
               use_odom_ ? "true" : "false");
   for (const auto &name : foot_names) {
-    RCLCPP_INFO(nodeHandle_->get_logger(), "foot name: %s", name.c_str());
+    RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "foot name: %s", name.c_str());
     cflag_.emplace_back(true);
   }
 
@@ -285,7 +285,7 @@ void StateEstimationLKF::innerLoop() {
     } else {
       // const auto touch_sensor_data = touch_msg_buffer.get()->value;
       // for (auto &data : touch_sensor_data) {
-      //   RCLCPP_INFO(nodeHandle_->get_logger(), "touch_sensor_data: %f",
+      //   RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "touch_sensor_data: %f",
       //   data);
       // }
       angularMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
@@ -295,9 +295,9 @@ void StateEstimationLKF::innerLoop() {
     qpos_ptr_buffer.push(qpos_ptr_);
     qvel_ptr_buffer.push(qvel_ptr_);
 
-    /* RCLCPP_INFO_STREAM(nodeHandle_->get_logger(),
+    /* RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
                        "qpos: " << (*qpos_ptr_).transpose() << "\n");
-    RCLCPP_INFO_STREAM(nodeHandle_->get_logger(),
+    RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
                        "qvel: " << (*qvel_ptr_).transpose() << "\n"); */
 
     loop_rate.sleep();

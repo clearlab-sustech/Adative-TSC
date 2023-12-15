@@ -20,7 +20,8 @@ TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
   std::string actuators_cmds_topic =
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
   freq_ = config_["controller"]["frequency"].as<scalar_t>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "frequency: %f", freq_);
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "frequency: %f",
+              freq_);
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
   robot_name = config_["model"]["name"].as<std::string>();
@@ -34,14 +35,15 @@ TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "model file: %s",
+              urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   base_name = config_["model"]["base_name"].as<std::string>();
 
   run_.push(true);
-  vf_ptr_ = std::make_shared<ConstructVectorField>(
-      nodeHandle_, pinocchioInterface_ptr_);
+  vf_ptr_ = std::make_shared<ConstructVectorField>(nodeHandle_,
+                                                   pinocchioInterface_ptr_);
   vector_field_thread_ =
       std::thread(&TrajectoryStabilization::adapative_gain_loop, this);
   wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_);
@@ -143,9 +145,10 @@ void TrajectoryStabilization::innerLoop() {
     timer_.endTimer();
     loop_rate.sleep();
   }
-  RCLCPP_INFO(
-      nodeHandle_->get_logger(), "TSC: max time %f ms,  average time %f ms",
-      timer_.getMaxIntervalInMilliseconds(), timer_.getAverageInMilliseconds());
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"),
+              "max time %f ms,  average time %f ms",
+              timer_.getMaxIntervalInMilliseconds(),
+              timer_.getAverageInMilliseconds());
 }
 
 void TrajectoryStabilization::adapative_gain_loop() {
@@ -159,7 +162,7 @@ void TrajectoryStabilization::adapative_gain_loop() {
         referenceBuffer_.get() == nullptr) {
       continue;
     } else {
-      // RCLCPP_INFO(nodeHandle_->get_logger(), "Adaptive Gain Computaion:
+      // RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "Adaptive Gain Computaion:
       // run");
       vf_ptr_->updateReferenceBuffer(referenceBuffer_);
       vf_param_buffer_.push(vf_ptr_->compute());
@@ -185,8 +188,8 @@ void TrajectoryStabilization::adapative_gain_loop() {
     timer_.endTimer();
     loop_rate.sleep();
   }
-  RCLCPP_INFO(nodeHandle_->get_logger(),
-              "Adaptive Gain Computaion: max time %f ms,  average time %f ms",
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"),
+              "Vector Field Construction: max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
   save_state.close();

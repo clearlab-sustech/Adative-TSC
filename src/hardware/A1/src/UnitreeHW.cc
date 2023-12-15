@@ -31,7 +31,7 @@ void UnitreeHW::init() {
 }
 
 void UnitreeHW::read() {
-  // RCLCPP_FATAL(nodeHandle_->get_logger(), "rec len: %d", udp_->Recv());
+  // RCLCPP_FATAL(rclcpp::get_logger("UnitreeHW"), "rec len: %d", udp_->Recv());
   udp_->Recv();
   udp_->GetRecv(lowState_);
 
@@ -47,7 +47,7 @@ void UnitreeHW::read() {
     joints_state_ptr->velocity[i] = lowState_.motorState[i].dq;
     joints_state_ptr->effort[i] = lowState_.motorState[i].tauEst;
     joints_state_ptr->name[i] = jointsIndex2NameMap[i];
-    // RCLCPP_INFO(nodeHandle_->get_logger(), "low state q[%ld]=%f", i,
+    // RCLCPP_INFO(rclcpp::get_logger("UnitreeHW"), "low state q[%ld]=%f", i,
     //             lowState_.motorState[i].q);
   }
 
@@ -120,7 +120,7 @@ void UnitreeHW::send() {
       udp_->Send();
     }
 
-    // RCLCPP_FATAL(nodeHandle_->get_logger(), "send cmd msg");
+    // RCLCPP_FATAL(rclcpp::get_logger("UnitreeHW"), "send cmd msg");
   }
   // for (size_t i = 0; i < 12; ++i) {
   //   lowCmd_.motorCmd[i].q = 0.0;

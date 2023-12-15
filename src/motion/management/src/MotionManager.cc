@@ -19,13 +19,13 @@ void MotionManager::init() {
   intializationPtr_ =
       std::make_shared<Initialization>(this->shared_from_this());
 
-  // intializationPtr_->reset_simulation();
-  // rclcpp::spin_some(this->shared_from_this());
-
   estimatorPtr_ =
       std::make_shared<StateEstimationLKF>(this->shared_from_this());
+
   gaitSchedulePtr_ = std::make_shared<GaitSchedule>(this->shared_from_this());
+
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this());
+
   trajectoryStabilizationPtr_ =
       std::make_shared<TrajectoryStabilization>(this->shared_from_this());
 
@@ -39,6 +39,9 @@ void MotionManager::init() {
   bool hardware_ = config_["estimation"]["hardware"].as<bool>();
   if (hardware_) {
     unitreeHWPtr_ = std::make_shared<UnitreeHW>(this->shared_from_this());
+  } else {
+    intializationPtr_->reset_simulation();
+    rclcpp::spin_some(this->shared_from_this());
   }
 
   inner_loop_thread_ = std::thread(&MotionManager::innerLoop, this);
@@ -55,9 +58,9 @@ void MotionManager::innerLoop() {
       gaitSchedulePtr_->switchGait("trot");
     }
 
-    // if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
-    //   trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
-    // }
+    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
+      trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.1);
+    }
 
     if (unitreeHWPtr_ != nullptr) {
       unitreeHWPtr_->read();

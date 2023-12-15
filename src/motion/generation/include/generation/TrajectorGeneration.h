@@ -1,5 +1,6 @@
 #pragma once
 
+#include "generation/ConvexMPC.h"
 #include "generation/FootholdOptimization.h"
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
@@ -22,7 +23,7 @@ public:
   ~TrajectorGeneration();
 
   void updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
-                            std::shared_ptr<vector_t> qvel_ptr);
+                          std::shared_ptr<vector_t> qvel_ptr);
 
   void updateModeSchedule(std::shared_ptr<ModeSchedule> mode_schedule);
 
@@ -45,6 +46,7 @@ private:
   std::shared_ptr<ReferenceBuffer> referenceBuffer_;
 
   std::shared_ptr<FootholdOptimization> footholdOpt_ptr;
+  std::shared_ptr<ConvexMPC> baseOpt_ptr;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
   Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;
@@ -58,9 +60,6 @@ private:
   std::map<std::string, std::pair<scalar_t, vector3_t>> xf_start_;
   std::map<std::string, std::pair<scalar_t, vector3_t>> xf_end_;
   quadruped::contact_flag_t contact_flag_;
-
-  vector3_t vel_cmd;
-  scalar_t yawd_;
 };
 
 } // namespace clear

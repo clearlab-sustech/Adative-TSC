@@ -29,7 +29,16 @@ public:
   void optimize();
 
 private:
-  void heuristic();
+  void add_dynamics(size_t k,
+                    const std::shared_ptr<ModeSchedule> mode_schedule);
+
+  void add_constraints(size_t k);
+
+  void add_costs(scalar_t t, size_t k);
+
+  void heuristic1();
+  
+  void heuristic2();
 
 private:
   Node::SharedPtr nodeHandle_;
@@ -44,6 +53,11 @@ private:
       footholds_nominal_pos; // nominal footholds relative to nominal com pos
   scalar_t nominal_dz_;
   size_t nf;
+
+  std::vector<hpipm::OcpQp> ocp_;
+  std::vector<hpipm::OcpQpSolution> solution_;
+  hpipm::OcpQpIpmSolverSettings solver_settings;
+  scalar_t dt = 0.02;
 };
 
 } // namespace clear

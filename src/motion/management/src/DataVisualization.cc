@@ -23,7 +23,7 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle)
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("DataVisualization"), "model file: %s", urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
@@ -202,7 +202,7 @@ void DataVisualization::publishFootholds() {
 }
 
 void DataVisualization::publishBaseTrajectory() {
-  auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
   if (base_pos_traj == nullptr)
     return;
 

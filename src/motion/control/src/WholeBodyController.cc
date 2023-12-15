@@ -12,7 +12,7 @@ namespace clear {
 WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle),
       log_stream("log_stream_wbc.txt", std::ios::ate | std::ios::out) {
-        
+
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
                                        .get_parameter_value()
                                        .get<std::string>();
@@ -23,14 +23,14 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle)
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "[WholeBodyController] model file: %s",
+  RCLCPP_INFO(rclcpp::get_logger("WholeBodyController"), "model file: %s",
               urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   for (const auto &name : foot_names) {
-    RCLCPP_INFO(nodeHandle_->get_logger(),
-                "[WholeBodyController] foot name: %s", name.c_str());
+    RCLCPP_INFO(rclcpp::get_logger("WholeBodyController"), "foot name: %s",
+                name.c_str());
   }
 
   base_name = config_["model"]["base_name"].as<std::string>();
@@ -40,7 +40,7 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle)
 
   numDecisionVars_ = pinocchioInterface_ptr_->nv() + 3 * foot_names.size() +
                      actuated_joints_name.size();
-  this->loadTasksSetting();
+  this->loadTasksSetting(false);
 }
 
 WholeBodyController::~WholeBodyController() { log_stream.close(); }
@@ -219,8 +219,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   base_task.A.leftCols(nv) = J;
 
   vector6_t acc_fb;
-  auto pos_traj = referenceBuffer_.get()->getIntegratedBasePosTraj();
-  auto rpy_traj = referenceBuffer_.get()->getIntegratedBaseRpyTraj();
+  auto pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
+  auto rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
 
   auto err_pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
   auto err_rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
@@ -289,7 +289,6 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
       matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
   swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
   swing_task.b.setZero(swing_task.A.rows());
-  auto base_pos_traj = referenceBuffer_.get()->getIntegratedBasePosTraj();
 
   size_t j = 0;
   for (size_t i = 0; i < nc; ++i) {
@@ -297,13 +296,8 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
     if (!contactFlag_[i]) {
       Qw.block<3, 3>(3 * j, 3 * j) = weightSwingLeg_;
       const auto traj = foot_traj[foot_name];
-      vector3_t pos_des =
-          traj->evaluate(t) - base_pos_traj->evaluate(t) +
-          pinocchioInterface_ptr_->getFramePose(base_name).translation();
-      vector3_t vel_des =
-          traj->derivative(t, 1) - base_pos_traj->derivative(t, 1) +
-          pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name)
-              .linear();
+      vector3_t pos_des = traj->evaluate(t);
+      vector3_t vel_des = traj->derivative(t, 1);
       vector3_t acc_des = traj->derivative(t, 2);
       vector3_t pos_m =
           pinocchioInterface_ptr_->getFramePose(foot_name).translation();
@@ -312,7 +306,7 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
               .linear();
       vector3_t pos_err = pos_des - pos_m;
       vector3_t vel_err = vel_des - vel_m;
-      vector3_t accel_fb = swingKp_ * pos_err + swingKd_ * vel_err;
+      vector3_t accel_fb = swingKp_ * pos_err + swingKd_ * vel_err + acc_des;
       /* if (accel_fb.norm() > 10.0) {
         accel_fb = 10.0 * accel_fb.normalized();
       } */
@@ -320,7 +314,7 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
       swing_task.b.segment(3 * j, 3) =
           -pinocchioInterface_ptr_->getFrame6dAcc_localWorldAligned(foot_name)
                .linear() +
-          accel_fb + acc_des;
+          accel_fb;
       j++;
     }
   }
@@ -331,7 +325,6 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
 
 void WholeBodyController::differential_inv_kin() {
   auto foot_traj_array = referenceBuffer_.get()->getFootPosTraj();
-  auto pos_traj = referenceBuffer_.get()->getIntegratedBasePosTraj();
 
   if (foot_traj_array.empty()) {
     return;
@@ -377,14 +370,8 @@ void WholeBodyController::differential_inv_kin() {
                .linear() -
            base_twist.linear());
 
-      if (pos_traj.get() == nullptr) {
-        pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
-        vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
-      } else {
-        pos_des = (foot_traj->evaluate(time_c) - pos_traj->evaluate(time_c));
-        vel_des = (foot_traj->derivative(time_c, 1) -
-                   pos_traj->derivative(time_c, 1));
-      }
+      pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
+      vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
 
       vector3_t pos_err = (pos_des - pos_m);
       if (pos_err.norm() > 0.1) {

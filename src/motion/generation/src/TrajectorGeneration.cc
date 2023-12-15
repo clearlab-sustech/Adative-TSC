@@ -20,18 +20,19 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"), "model file: %s",
+              urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
 
   base_name = config_["model"]["base_name"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "[TrajectorGeneration]  base name: %s",
-              base_name.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"),
+              "[TrajectorGeneration]  base name: %s", base_name.c_str());
 
   freq_ = config_["generation"]["frequency"].as<scalar_t>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "[TrajectorGeneration] frequency: %f",
-              freq_);
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"),
+              "[TrajectorGeneration] frequency: %f", freq_);
 
   contact_flag_ = {true, true, true, true};
 
@@ -40,8 +41,8 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   footholdOpt_ptr = std::make_shared<FootholdOptimization>(
       nodeHandle_, pinocchioInterface_ptr_, referenceBuffer_);
 
-  vel_cmd.setZero();
-  yawd_ = 0.0;
+  baseOpt_ptr = std::make_shared<ConvexMPC>(
+      nodeHandle_, pinocchioInterface_ptr_, referenceBuffer_);
 
   run_.push(true);
   inner_loop_thread_ = std::thread(&TrajectorGeneration::innerLoop, this);
@@ -70,6 +71,10 @@ std::shared_ptr<ReferenceBuffer> TrajectorGeneration::getReferenceBuffer() {
 void TrajectorGeneration::innerLoop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
+
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"),
+              "start generation loop");
+
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
     if (qpos_ptr_buffer.get().get() == nullptr ||
@@ -90,117 +95,14 @@ void TrajectorGeneration::innerLoop() {
     timer_.endTimer();
     loop_rate.sleep();
   }
-  RCLCPP_INFO(nodeHandle_->get_logger(),
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"),
               "[TrajectorGeneration] max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
 }
 
 void TrajectorGeneration::TrajectorGeneration::generateBaseTraj() {
-  const scalar_t t_now = nodeHandle_->now().seconds();
-  vector_t rpy_m, rpy_dot_m;
-  vector_t pos_m, vel_m;
-  auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
-  auto base_twist =
-      pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
-
-  if (referenceBuffer_->getIntegratedBasePosTraj().get() == nullptr ||
-      referenceBuffer_->getIntegratedBaseRpyTraj().get() == nullptr) {
-    rpy_m = toEulerAngles(base_pose_m.rotation());
-    rpy_dot_m = getJacobiFromOmegaToRPY(rpy_m) * base_twist.angular();
-    pos_m = base_pose_m.translation();
-    vel_m = base_twist.linear();
-  } else {
-    auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
-    auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
-
-    rpy_m = base_rpy_traj->evaluate(t_now);
-    rpy_dot_m = getJacobiFromOmegaToRPY(rpy_m) * base_twist.angular();
-    vector_t rpy_c = toEulerAngles(base_pose_m.rotation());
-    if ((rpy_c - rpy_m).norm() > 0.1) {
-      rpy_m = 0.1 * (rpy_m - rpy_c).normalized() + rpy_c;
-    }
-    pos_m = base_pos_traj->evaluate(t_now);
-    vector_t pos_c = base_pose_m.translation();
-    if ((pos_c - pos_m).norm() > 0.03) {
-      pos_m = 0.03 * (pos_m - pos_c).normalized() + pos_c;
-    }
-    vel_m = base_twist.linear();
-  }
-
-  std::vector<scalar_t> time;
-  std::vector<vector_t> rpy_t, pos_t;
-  scalar_t horizon_time = referenceBuffer_->getModeSchedule()->duration();
-  if (vel_cmd.norm() < 0.05) {
-    vector3_t foot_center = vector3_t::Zero();
-    for (size_t k = 0; k < foot_names.size(); k++) {
-      foot_center +=
-          pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
-    }
-    foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
-
-    scalar_t zd = 0.32;
-    scalar_t mod_z = 0.0;
-    time.emplace_back(t_now);
-    time.emplace_back(t_now + 0.5 * horizon_time);
-    time.emplace_back(t_now + horizon_time);
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(),
-                                 zd - mod_z * (0.05 * sin(6 * t_now))));
-    pos_t.emplace_back(
-        vector3_t(foot_center.x(), foot_center.y(),
-                  zd - mod_z * (0.05 * sin(6 * (t_now + 0.5 * horizon_time)))));
-    pos_t.emplace_back(
-        vector3_t(foot_center.x(), foot_center.y(),
-                  zd - mod_z * (0.05 * sin(6 * (t_now + horizon_time)))));
-  } else {
-    size_t N = horizon_time / 0.05;
-    vector3_t vel_des;
-    vel_des << vel_cmd.x(), vel_cmd.y(), vel_cmd.z();
-    vel_des = base_pose_m.rotation() * vel_des;
-
-    scalar_t h_des = 0.32;
-    if (0.3 > h_des || h_des > 0.4) {
-      h_des = 0.32;
-    }
-    rpy_m.head(2).setZero();
-    for (size_t k = 0; k < N; k++) {
-      time.push_back(t_now + 0.05 * k);
-      rpy_m.z() += 0.05 * yawd_;
-      rpy_t.emplace_back(rpy_m);
-      pos_m += 0.05 * vel_des;
-      pos_m.z() = h_des;
-      pos_t.emplace_back(pos_m);
-    }
-  }
-
-  /* std::cout << "############# "
-            << "base traj des"
-            << " ##############\n";
-  for (size_t i = 0; i < time.size(); i++) {
-    std::cout << " t: " << time[i] - time.front()
-              << " pos: " << pos_t[i].transpose() << "\n";
-  } */
-
-  auto cubicspline_pos = std::make_shared<CubicSplineTrajectory>(3);
-  cubicspline_pos->set_boundary(
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
-  cubicspline_pos->fit(time, pos_t);
-  referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
-
-  /* if (referenceBuffer_->get_base_pos_traj().get() == nullptr) {
-    referenceBuffer_->set_base_pos_traj(cubicspline_pos);
-  } */
-
-  auto cubicspline_rpy = std::make_shared<CubicSplineTrajectory>(3);
-  cubicspline_rpy->set_boundary(
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
-  cubicspline_rpy->fit(time, rpy_t);
-  referenceBuffer_->setIntegratedBaseRpyTraj(cubicspline_rpy);
+  baseOpt_ptr->optimize();
 }
 
 void TrajectorGeneration::generateFootholds() { footholdOpt_ptr->optimize(); }
@@ -312,8 +214,7 @@ void TrajectorGeneration::generateFootTraj() {
 }
 
 void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
-  vel_cmd = vd;
-  yawd_ = yawd;
+  baseOpt_ptr->setVelCmd(vd, yawd);
 }
 
 } // namespace clear
