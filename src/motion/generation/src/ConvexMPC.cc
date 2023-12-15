@@ -1,9 +1,9 @@
-#include "generation/AmazeModel.h"
+#include "generation/ConvexMPC.h"
 #include <rcpputils/asserts.hpp>
 
 namespace clear {
 
-AmazeModel::AmazeModel(
+ConvexMPC::ConvexMPC(
     PinocchioInterface &pinocchioInterface,
     std::shared_ptr<TrajectoriesArray> referenceTrajectoriesBuffer)
     : pinocchioInterface_(pinocchioInterface),
@@ -27,9 +27,9 @@ AmazeModel::AmazeModel(
   solver_settings.split_step = 1;
 }
 
-AmazeModel::~AmazeModel() {}
+ConvexMPC::~ConvexMPC() {}
 
-void AmazeModel::get_dynamics(
+void ConvexMPC::get_dynamics(
     scalar_t time_cur, size_t k,
     const std::shared_ptr<ModeSchedule> mode_schedule) {
   const scalar_t time_k = time_cur + k * dt_;
@@ -87,7 +87,7 @@ void AmazeModel::get_dynamics(
       skew(dt_ * force_ff) * xc;
 }
 
-void AmazeModel::get_inequality_constraints(
+void ConvexMPC::get_inequality_constraints(
     size_t k, size_t N, const std::shared_ptr<ModeSchedule> mode_schedule) {
   auto foot_names = pinocchioInterface_.getContactPoints();
   const size_t nf = foot_names.size();
@@ -116,7 +116,7 @@ void AmazeModel::get_inequality_constraints(
            << cstr_k; */
 }
 
-void AmazeModel::get_costs(scalar_t time_cur, size_t k, size_t N,
+void ConvexMPC::get_costs(scalar_t time_cur, size_t k, size_t N,
                            const std::shared_ptr<ModeSchedule> mode_schedule) {
   auto foot_names = pinocchioInterface_.getContactPoints();
   const size_t nf = foot_names.size();
@@ -165,7 +165,7 @@ void AmazeModel::get_costs(scalar_t time_cur, size_t k, size_t N,
   }
 }
 
-void AmazeModel::optimize(scalar_t time_cur,
+void ConvexMPC::optimize(scalar_t time_cur,
                           const std::shared_ptr<ModeSchedule> mode_schedule) {
   auto pos_traj = referenceTrajectoriesBuffer_->get_base_pos_ref_traj();
   auto rpy_traj = referenceTrajectoriesBuffer_->get_base_rpy_traj();
@@ -210,12 +210,12 @@ void AmazeModel::optimize(scalar_t time_cur,
     has_sol_ = true;
     fit_traj(time_cur, N);
   } else {
-    std::cout << "AmazeModel: " << res << "\n";
+    std::cout << "ConvexMPC: " << res << "\n";
     exit(0);
   }
 }
 
-void AmazeModel::fit_traj(scalar_t time_cur, size_t N) {
+void ConvexMPC::fit_traj(scalar_t time_cur, size_t N) {
   std::vector<scalar_t> time_array;
   std::vector<vector_t> base_pos_array;
   std::vector<vector_t> base_rpy_array;
@@ -242,15 +242,15 @@ void AmazeModel::fit_traj(scalar_t time_cur, size_t N) {
   base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
 }
 
-std::shared_ptr<CubicSplineTrajectory> AmazeModel::get_base_pos_trajectory() {
+std::shared_ptr<CubicSplineTrajectory> ConvexMPC::get_base_pos_trajectory() {
   return base_pos_traj_ptr_;
 }
 
-std::shared_ptr<CubicSplineTrajectory> AmazeModel::get_base_rpy_trajectory() {
+std::shared_ptr<CubicSplineTrajectory> ConvexMPC::get_base_rpy_trajectory() {
   return base_rpy_traj_ptr_;
 }
 
-vector3_t AmazeModel::compute_euler_angle_err(const vector3_t &rpy_m,
+vector3_t ConvexMPC::compute_euler_angle_err(const vector3_t &rpy_m,
                                               const vector3_t &rpy_d) {
   vector3_t rpy_err = rpy_m - rpy_d;
   if (rpy_err.norm() > 1.5 * M_PI) {

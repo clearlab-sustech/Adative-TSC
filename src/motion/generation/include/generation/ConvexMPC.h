@@ -9,12 +9,12 @@
 #include <pinocchio/PinocchioInterface.h>
 
 namespace clear {
-class AmazeModel {
+class ConvexMPC {
 public:
-  AmazeModel(PinocchioInterface &pinocchioInterface,
-             std::shared_ptr<TrajectoriesArray> referenceTrajectoriesBuffer);
+  ConvexMPC(PinocchioInterface &pinocchioInterface,
+            std::shared_ptr<TrajectoriesArray> referenceTrajectoriesBuffer);
 
-  ~AmazeModel();
+  ~ConvexMPC();
 
   void optimize(scalar_t time_cur,
                 const std::shared_ptr<ModeSchedule> mode_schedule);

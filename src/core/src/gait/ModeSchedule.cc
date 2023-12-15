@@ -1,7 +1,7 @@
-#include "gait/ModeSchedule.h"
+#include "core/gait/ModeSchedule.h"
+#include "core/misc/NumericTraits.h"
 #include <algorithm>
 #include <cmath>
-#include <core/misc/NumericTraits.h>
 #include <core/misc/Numerics.h>
 #include <iostream>
 #include <rcpputils/asserts.hpp>
