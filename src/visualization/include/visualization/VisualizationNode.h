@@ -1,7 +1,7 @@
 #pragma once
 
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
+#include <core/gait/ModeSchedule.h>
+#include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -32,7 +32,7 @@ private:
   void
   trajectories_callback(const trans::msg::TrajectoryArray::SharedPtr msg) const;
 
-  void inner_loop();
+  void innerLoop();
 
   void publishCurrentState();
 

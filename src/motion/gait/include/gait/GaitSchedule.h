@@ -1,8 +1,8 @@
 #pragma once
 
 #include "gait/CycleTimer.h"
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
+#include <core/gait/ModeSchedule.h>
+#include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
 #include <core/misc/Lookup.h>
 #include <map>
@@ -18,29 +18,29 @@ namespace clear {
 
 class GaitSchedule {
 public:
-  GaitSchedule(Node::SharedPtr nodeHandle, std::string config_yaml);
+  GaitSchedule(Node::SharedPtr nodeHandle);
 
   ~GaitSchedule();
 
-  void switch_gait(std::string gait_name);
+  void switchGait(std::string gait_name);
 
   std::shared_ptr<ModeSchedule> eval(scalar_t time_period);
 
-  size_t current_mode();
+  size_t currentMode();
 
-  scalar_t current_gait_cycle();
+  scalar_t currentGaitCycle();
 
-  std::string get_current_gait_name();
+  std::string getCurrentGaitName();
 
 private:
   std::shared_ptr<ModeSchedule> loadGait(const YAML::Node node,
                                          const std::string &gait_name);
 
   void
-  gait_switch(const std::shared_ptr<trans::srv::GaitSwitch::Request> request,
-              std::shared_ptr<trans::srv::GaitSwitch::Response> response);
+  gaitSwitch(const std::shared_ptr<trans::srv::GaitSwitch::Request> request,
+             std::shared_ptr<trans::srv::GaitSwitch::Response> response);
 
-  void check_gait_transition();
+  void checkGaitTransition();
 
 private:
   Node::SharedPtr nodeHandle_;

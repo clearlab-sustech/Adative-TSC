@@ -1,7 +1,7 @@
 #pragma once
 
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
+#include <core/gait/ModeSchedule.h>
+#include <core/gait/MotionPhaseDefinition.h>
 
 #include <memory>
 #include <vector>

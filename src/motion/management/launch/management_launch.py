@@ -19,7 +19,9 @@ def generate_launch_description():
                 name="aliengo_management",
                 output="screen",
                 emulate_tty=True,
-                arguments=[config_file, ("__log_level:=debug")],
+                parameters=[
+                    {"/config_file": config_file},
+                ],
             ),
         ]
     )

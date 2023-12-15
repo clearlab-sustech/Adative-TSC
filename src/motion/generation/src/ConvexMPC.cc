@@ -3,12 +3,12 @@
 
 namespace clear {
 
-ConvexMPC::ConvexMPC(
-    PinocchioInterface &pinocchioInterface,
-    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesBuffer)
-    : pinocchioInterface_(pinocchioInterface),
-      referenceTrajectoriesBuffer_(referenceTrajectoriesBuffer) {
-  total_mass_ = pinocchioInterface_.total_mass();
+ConvexMPC::ConvexMPC(Node::SharedPtr nodeHandle,
+                     std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr,
+                     std::shared_ptr<ReferenceBuffer> referenceBuffer)
+    : nodeHandle_(nodeHandle), pinocchioInterface_ptr_(pinocchioInterface_ptr),
+      referenceBuffer_(referenceBuffer) {
+  total_mass_ = pinocchioInterface_ptr_->total_mass();
   weight_.setZero(12, 12);
   weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 40.0,
       40.0, 40.0;
@@ -29,22 +29,21 @@ ConvexMPC::ConvexMPC(
 
 ConvexMPC::~ConvexMPC() {}
 
-void ConvexMPC::get_dynamics(
-    scalar_t time_cur, size_t k,
-    const std::shared_ptr<ModeSchedule> mode_schedule) {
+void ConvexMPC::getDynamics(scalar_t time_cur, size_t k,
+                            const std::shared_ptr<ModeSchedule> mode_schedule) {
   const scalar_t time_k = time_cur + k * dt_;
-  auto pos_traj = referenceTrajectoriesBuffer_->get_base_pos_ref_traj();
-  auto rpy_traj = referenceTrajectoriesBuffer_->get_base_rpy_traj();
-  auto foot_traj = referenceTrajectoriesBuffer_->get_foot_pos_traj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto foot_traj = referenceBuffer_->getFootPosTraj();
 
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
       quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
-  auto foot_names = pinocchioInterface_.getContactPoints();
+  auto foot_names = pinocchioInterface_ptr_->getContactPoints();
   const size_t nf = foot_names.size();
   rcpputils::assert_true(nf == contact_flag.size());
 
-  auto base_pose = pinocchioInterface_.getFramePose("trunk");
+  auto base_pose = pinocchioInterface_ptr_->getFramePose("trunk");
   vector3_t rpy = toEulerAngles(base_pose.rotation());
   vector3_t force_ff = vector3_t::Zero();
   if (has_sol_ &&
@@ -87,9 +86,9 @@ void ConvexMPC::get_dynamics(
       skew(dt_ * force_ff) * xc;
 }
 
-void ConvexMPC::get_inequality_constraints(
+void ConvexMPC::getInequalityConstraints(
     size_t k, size_t N, const std::shared_ptr<ModeSchedule> mode_schedule) {
-  auto foot_names = pinocchioInterface_.getContactPoints();
+  auto foot_names = pinocchioInterface_ptr_->getContactPoints();
   const size_t nf = foot_names.size();
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
@@ -116,13 +115,13 @@ void ConvexMPC::get_inequality_constraints(
            << cstr_k; */
 }
 
-void ConvexMPC::get_costs(scalar_t time_cur, size_t k, size_t N,
-                           const std::shared_ptr<ModeSchedule> mode_schedule) {
-  auto foot_names = pinocchioInterface_.getContactPoints();
+void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
+                         const std::shared_ptr<ModeSchedule> mode_schedule) {
+  auto foot_names = pinocchioInterface_ptr_->getContactPoints();
   const size_t nf = foot_names.size();
   const scalar_t time_k = time_cur + k * dt_;
-  auto pos_traj = referenceTrajectoriesBuffer_->get_base_pos_ref_traj();
-  auto rpy_traj = referenceTrajectoriesBuffer_->get_base_rpy_traj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
 
   vector3_t rpy_des =
       rpy_traj->evaluate(time_k) - rpy_traj->evaluate(time_cur) + rpy_des_start;
@@ -165,31 +164,32 @@ void ConvexMPC::get_costs(scalar_t time_cur, size_t k, size_t N,
   }
 }
 
-void ConvexMPC::optimize(scalar_t time_cur,
-                          const std::shared_ptr<ModeSchedule> mode_schedule) {
-  auto pos_traj = referenceTrajectoriesBuffer_->get_base_pos_ref_traj();
-  auto rpy_traj = referenceTrajectoriesBuffer_->get_base_rpy_traj();
+void ConvexMPC::optimize() {
+  const scalar_t time_cur = nodeHandle_->now().seconds();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
   if (pos_traj.get() == nullptr || rpy_traj.get() == nullptr ||
-      referenceTrajectoriesBuffer_->get_foot_pos_traj().empty()) {
+      referenceBuffer_->getFootPosTraj().empty()) {
     return;
   }
 
   size_t N = pos_traj->duration() / dt_;
   ocp_.resize(N + 1);
-  Ig_ = pinocchioInterface_.getData().Ig.inertia();
-  auto base_pose = pinocchioInterface_.getFramePose("trunk");
+  Ig_ = pinocchioInterface_ptr_->getData().Ig.inertia();
+  auto base_pose = pinocchioInterface_ptr_->getFramePose("trunk");
   auto base_twist =
-      pinocchioInterface_.getFrame6dVel_localWorldAligned("trunk");
+      pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned("trunk");
   auto rpy_m = toEulerAngles(base_pose.rotation());
   rpy_des_start =
-      rpy_m - compute_euler_angle_err(rpy_m, rpy_traj->evaluate(time_cur));
+      rpy_m - computeEulerAngleErr(rpy_m, rpy_traj->evaluate(time_cur));
 
   for (size_t k = 0; k <= N; k++) {
     if (k < N) {
-      get_dynamics(time_cur, k, mode_schedule);
+      getDynamics(time_cur, k, mode_schedule);
     }
-    get_inequality_constraints(k, N, mode_schedule);
-    get_costs(time_cur, k, N, mode_schedule);
+    getInequalityConstraints(k, N, mode_schedule);
+    getCosts(time_cur, k, N, mode_schedule);
   }
 
   if (solution_.size() == N + 1) {
@@ -208,14 +208,14 @@ void ConvexMPC::optimize(scalar_t time_cur,
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
     has_sol_ = true;
-    fit_traj(time_cur, N);
+    fitTraj(time_cur, N);
   } else {
     std::cout << "ConvexMPC: " << res << "\n";
     exit(0);
   }
 }
 
-void ConvexMPC::fit_traj(scalar_t time_cur, size_t N) {
+void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
   std::vector<scalar_t> time_array;
   std::vector<vector_t> base_pos_array;
   std::vector<vector_t> base_rpy_array;
@@ -233,6 +233,7 @@ void ConvexMPC::fit_traj(scalar_t time_cur, size_t N) {
       CubicSplineInterpolation::BoundaryType::first_deriv,
       solution_.back().x.segment(3, 3));
   base_pos_traj_ptr_->fit(time_array, base_pos_array);
+  referenceBuffer_->setOptimizedBasePosTraj(base_pos_traj_ptr_);
 
   base_rpy_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline_hermite);
@@ -240,18 +241,11 @@ void ConvexMPC::fit_traj(scalar_t time_cur, size_t N) {
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
       CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
   base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
+  referenceBuffer_->setOptimizedBaseRpyTraj(base_rpy_traj_ptr_);
 }
 
-std::shared_ptr<CubicSplineTrajectory> ConvexMPC::get_base_pos_trajectory() {
-  return base_pos_traj_ptr_;
-}
-
-std::shared_ptr<CubicSplineTrajectory> ConvexMPC::get_base_rpy_trajectory() {
-  return base_rpy_traj_ptr_;
-}
-
-vector3_t ConvexMPC::compute_euler_angle_err(const vector3_t &rpy_m,
-                                              const vector3_t &rpy_d) {
+vector3_t ConvexMPC::computeEulerAngleErr(const vector3_t &rpy_m,
+                                          const vector3_t &rpy_d) {
   vector3_t rpy_err = rpy_m - rpy_d;
   if (rpy_err.norm() > 1.5 * M_PI) {
     if (abs(rpy_err(0)) > M_PI) {

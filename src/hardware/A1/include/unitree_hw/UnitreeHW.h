@@ -36,7 +36,7 @@ public:
       {RL_2, "RL_calf_joint"},  {RR_0, "RR_hip_joint"},
       {RR_1, "RR_thigh_joint"}, {RR_2, "RR_calf_joint"}};
 
-  UnitreeHW(Node::SharedPtr node_handle, const std::string config_yaml);
+  UnitreeHW(Node::SharedPtr node_handle);
 
   ~UnitreeHW();
 
@@ -57,7 +57,7 @@ public:
 private:
   void init();
 
-  Node::SharedPtr node_handle_;
+  Node::SharedPtr nodeHandle_;
 
   std::string robot_type_;
 

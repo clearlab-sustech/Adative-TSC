@@ -5,13 +5,17 @@
 namespace clear {
 
 FootholdOptimization::FootholdOptimization(
-    std::string config_yaml,
+    Node::SharedPtr nodeHandle,
     std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr,
-    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesBuffer)
-    : pinocchioInterface_ptr_(pinocchioInterface_ptr),
-      referenceTrajectoriesBuffer_(referenceTrajectoriesBuffer) {
+    std::shared_ptr<ReferenceBuffer> referenceBuffer)
+    : nodeHandle_(nodeHandle), pinocchioInterface_ptr_(pinocchioInterface_ptr),
+      referenceBuffer_(referenceBuffer) {
 
-  auto config_ = YAML::LoadFile(config_yaml);
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   base_name = config_["model"]["base_name"].as<std::string>();
@@ -32,27 +36,26 @@ FootholdOptimization::FootholdOptimization(
 
 FootholdOptimization::~FootholdOptimization() {}
 
-std::map<std::string, std::pair<scalar_t, vector3_t>>
-FootholdOptimization::optimize(
-    scalar_t t, const std::shared_ptr<ModeSchedule> mode_schedule) {
+void FootholdOptimization::optimize() {
   footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();
-  auto base_pos_ref_traj =
-      referenceTrajectoriesBuffer_.get()->get_base_pos_ref_traj();
-  auto base_rpy_traj = referenceTrajectoriesBuffer_.get()->get_base_rpy_traj();
+  auto base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
   if (mode_schedule.get() == nullptr || base_pos_ref_traj.get() == nullptr ||
       base_rpy_traj.get() == nullptr) {
-    return footholds_;
+    referenceBuffer_->setFootholds(footholds_);
   }
-  heuristic(t, mode_schedule);
-  return footholds_;
+  heuristic();
+  referenceBuffer_->setFootholds(footholds_);
 }
 
-void FootholdOptimization::heuristic(
-    scalar_t t, const std::shared_ptr<ModeSchedule> mode_schedule) {
+void FootholdOptimization::heuristic() {
 
-  auto base_pos_ref_traj =
-      referenceTrajectoriesBuffer_.get()->get_base_pos_ref_traj();
-  auto base_rpy_traj = referenceTrajectoriesBuffer_.get()->get_base_rpy_traj();
+  const scalar_t t = nodeHandle_->now().seconds();
+
+  auto base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
 
   vector3_t v_des = base_pos_ref_traj->derivative(t, 1);
 

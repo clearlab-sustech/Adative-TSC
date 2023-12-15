@@ -50,13 +50,13 @@ private:
       const std::shared_ptr<trans::srv::SimulationReset::Request> request,
       std::shared_ptr<trans::srv::SimulationReset::Response> response);
 
-  void imu_callback();
+  void imuCallback();
 
-  void odom_callback();
+  void odomCallback();
 
-  void touch_callback();
+  void touchCallback();
 
-  void joint_callback();
+  void jointCallback();
 
   void
   actuator_cmd_callback(const trans::msg::ActuatorCmds::SharedPtr msg) const;

@@ -1,47 +1,48 @@
 #pragma once
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
-#include <asserts/trajectory/TrajectoriesArray.h>
+#include <core/gait/ModeSchedule.h>
+#include <core/gait/MotionPhaseDefinition.h>
+#include <core/trajectory/ReferenceBuffer.h>
 
 #include <core/misc/Buffer.h>
 #include <hpipm-cpp/hpipm-cpp.hpp>
 #include <pinocchio/Orientation.h>
 #include <pinocchio/PinocchioInterface.h>
+#include <rclcpp/rclcpp.hpp>
+#include <string>
+
+using namespace rclcpp;
 
 namespace clear {
 class ConvexMPC {
 public:
-  ConvexMPC(PinocchioInterface &pinocchioInterface,
-            std::shared_ptr<TrajectoriesArray> referenceTrajectoriesBuffer);
+  ConvexMPC(Node::SharedPtr nodeHandle,
+            std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr,
+            std::shared_ptr<ReferenceBuffer> referenceBuffer);
 
   ~ConvexMPC();
 
-  void optimize(scalar_t time_cur,
-                const std::shared_ptr<ModeSchedule> mode_schedule);
-
-  std::shared_ptr<CubicSplineTrajectory> get_base_pos_trajectory();
-
-  std::shared_ptr<CubicSplineTrajectory> get_base_rpy_trajectory();
+  void optimize();
 
 private:
-  void get_dynamics(scalar_t time_cur, size_t k,
-                    const std::shared_ptr<ModeSchedule> mode_schedule);
+  void getDynamics(scalar_t time_cur, size_t k,
+                   const std::shared_ptr<ModeSchedule> mode_schedule);
 
   void
-  get_inequality_constraints(size_t k, size_t N,
-                             const std::shared_ptr<ModeSchedule> mode_schedule);
+  getInequalityConstraints(size_t k, size_t N,
+                           const std::shared_ptr<ModeSchedule> mode_schedule);
 
-  void get_costs(scalar_t time_cur, size_t k, size_t N,
-                 const std::shared_ptr<ModeSchedule> mode_schedule);
+  void getCosts(scalar_t time_cur, size_t k, size_t N,
+                const std::shared_ptr<ModeSchedule> mode_schedule);
 
-  void fit_traj(scalar_t time_cur, size_t N);
+  void fitTraj(scalar_t time_cur, size_t N);
 
-  vector3_t compute_euler_angle_err(const vector3_t &rpy_m,
-                                    const vector3_t &rpy_d);
+  vector3_t computeEulerAngleErr(const vector3_t &rpy_m,
+                                 const vector3_t &rpy_d);
 
 private:
-  PinocchioInterface &pinocchioInterface_;
-  std::shared_ptr<TrajectoriesArray> referenceTrajectoriesBuffer_;
+  Node::SharedPtr nodeHandle_;
+  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
+  std::shared_ptr<ReferenceBuffer> referenceBuffer_;
 
   const scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;

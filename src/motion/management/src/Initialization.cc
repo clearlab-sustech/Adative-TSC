@@ -3,22 +3,25 @@
 
 namespace clear {
 
-Initialization::Initialization(Node::SharedPtr nodeHandle,
-                               std::string config_yaml)
-    : nodeHandle_(nodeHandle), config_yaml_(config_yaml) {
-  auto config_ = YAML::LoadFile(config_yaml);
-  std::string topic_prefix =
-      config_["global"]["topic_prefix"].as<std::string>();
-  reset_state_client_ = nodeHandle_->create_client<trans::srv::SimulationReset>(
-      topic_prefix + "sim_reset");
-}
+Initialization::Initialization(Node::SharedPtr nodeHandle)
+    : nodeHandle_(nodeHandle) {}
 
 Initialization::~Initialization() {}
 
 void Initialization::reset_simulation() {
-  auto config_ = YAML::LoadFile(config_yaml_);
-  const auto joints_name = config_["model"]["actuated_joints_name"]
-                               .as<std::vector<std::string>>();
+
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
+  std::string topic_prefix =
+      config_["global"]["topic_prefix"].as<std::string>();
+  auto reset_state_client_ =
+      nodeHandle_->create_client<trans::srv::SimulationReset>(topic_prefix +
+                                                              "sim_reset");
+  const auto joints_name =
+      config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
   const auto joint_pos =
       config_["model"]["default"]["joint_pos"].as<std::vector<scalar_t>>();
   const auto base_pos =

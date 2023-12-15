@@ -4,9 +4,11 @@
 
 namespace clear {
 
-UnitreeHW::UnitreeHW(Node::SharedPtr node_handle, const std::string config_yaml)
-    : node_handle_(node_handle) {
-  auto config_ = YAML::LoadFile(config_yaml);
+UnitreeHW::UnitreeHW(Node::SharedPtr nodeHandle) : nodeHandle_(nodeHandle) {
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+  auto config_ = YAML::LoadFile(config_file_);
   robot_type_ = config_["model"]["name"].as<std::string>();
   init();
 }
@@ -29,13 +31,13 @@ void UnitreeHW::init() {
 }
 
 void UnitreeHW::read() {
-  // RCLCPP_FATAL(node_handle_->get_logger(), "rec len: %d", udp_->Recv());
+  // RCLCPP_FATAL(nodeHandle_->get_logger(), "rec len: %d", udp_->Recv());
   udp_->Recv();
   udp_->GetRecv(lowState_);
 
   joints_state_ptr = std::make_shared<sensor_msgs::msg::JointState>();
   joints_state_ptr->header.frame_id = robot_type_;
-  joints_state_ptr->header.stamp = node_handle_->now();
+  joints_state_ptr->header.stamp = nodeHandle_->now();
   joints_state_ptr->position.resize(12);
   joints_state_ptr->velocity.resize(12);
   joints_state_ptr->effort.resize(12);
@@ -45,13 +47,13 @@ void UnitreeHW::read() {
     joints_state_ptr->velocity[i] = lowState_.motorState[i].dq;
     joints_state_ptr->effort[i] = lowState_.motorState[i].tauEst;
     joints_state_ptr->name[i] = jointsIndex2NameMap[i];
-    // RCLCPP_INFO(node_handle_->get_logger(), "low state q[%ld]=%f", i,
+    // RCLCPP_INFO(nodeHandle_->get_logger(), "low state q[%ld]=%f", i,
     //             lowState_.motorState[i].q);
   }
 
   imu_data_ptr = std::make_shared<sensor_msgs::msg::Imu>();
   imu_data_ptr->header.frame_id = robot_type_;
-  imu_data_ptr->header.stamp = node_handle_->now();
+  imu_data_ptr->header.stamp = nodeHandle_->now();
   imu_data_ptr->orientation.w = lowState_.imu.quaternion[0];
   imu_data_ptr->orientation.x = lowState_.imu.quaternion[1];
   imu_data_ptr->orientation.y = lowState_.imu.quaternion[2];
@@ -65,7 +67,7 @@ void UnitreeHW::read() {
 
   touch_sensor_ptr = std::make_shared<trans::msg::TouchSensor>();
   touch_sensor_ptr->header.frame_id = robot_type_;
-  touch_sensor_ptr->header.stamp = node_handle_->now();
+  touch_sensor_ptr->header.stamp = nodeHandle_->now();
   std::vector<int> foot_array = {FL_, FR_, RL_, RR_};
   std::vector<string> touch_name_array = {"FL_touch", "FR_touch", "RL_touch",
                                           "RR_touch"};
@@ -82,7 +84,7 @@ void UnitreeHW::send() {
     const auto time_stamp =
         rclcpp::Time(actuator_cmd_msg->header.stamp).seconds();
     if (actuator_cmd_msg->header.frame_id == robot_type_ &&
-        abs(time_stamp - node_handle_->now().seconds()) < 0.2) {
+        abs(time_stamp - nodeHandle_->now().seconds()) < 0.2) {
       for (size_t i = 0; i < actuator_cmd_msg->names.size(); ++i) {
         const auto name = actuator_cmd_msg->names[i];
         if (jointsName2IndexMap.find(name) != jointsName2IndexMap.end()) {
@@ -104,7 +106,7 @@ void UnitreeHW::send() {
       udp_->SetSend(lowCmd_);
       udp_->Send();
     } else if (actuator_cmd_msg->header.frame_id == robot_type_ &&
-               abs(time_stamp - node_handle_->now().seconds()) >= 0.2) {
+               abs(time_stamp - nodeHandle_->now().seconds()) >= 0.2) {
       for (size_t i = 0; i < 12; ++i) {
         lowCmd_.motorCmd[i].q = 0.0;
         lowCmd_.motorCmd[i].dq = 0.0;
@@ -118,7 +120,7 @@ void UnitreeHW::send() {
       udp_->Send();
     }
 
-    // RCLCPP_FATAL(node_handle_->get_logger(), "send cmd msg");
+    // RCLCPP_FATAL(nodeHandle_->get_logger(), "send cmd msg");
   }
   // for (size_t i = 0; i < 12; ++i) {
   //   lowCmd_.motorCmd[i].q = 0.0;

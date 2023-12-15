@@ -9,7 +9,7 @@ CycleTimer::CycleTimer(Node::SharedPtr nodeHandle, scalar_t cycle_duration)
   }
   cycle_start_point_.push(nodeHandle_->now().seconds());
   current_cycle_time_.push(0.0);
-  inner_loop_thread_ = std::thread(&CycleTimer::inner_loop, this);
+  inner_loop_thread_ = std::thread(&CycleTimer::innerLoop, this);
   run_.push(true);
 }
 
@@ -18,7 +18,7 @@ CycleTimer::~CycleTimer() {
   inner_loop_thread_.join();
 }
 
-void CycleTimer::inner_loop() {
+void CycleTimer::innerLoop() {
   rclcpp::Rate loop_rate(10000.0);
   while (rclcpp::ok() && run_.get()) {
     while (cycle_start_point_.get() <
@@ -34,10 +34,10 @@ void CycleTimer::inner_loop() {
   }
 }
 
-void CycleTimer::timer_reset() {
+void CycleTimer::timerReset() {
   cycle_start_point_.push(nodeHandle_->now().seconds());
 }
 
-scalar_t CycleTimer::get_cycle_time() { return current_cycle_time_.get(); }
+scalar_t CycleTimer::getCycleTime() { return current_cycle_time_.get(); }
 
 } // namespace clear

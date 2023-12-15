@@ -4,12 +4,17 @@
 <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
 <!-- =================================================================================== -->
 <robot name="a1">
+  <material name="gray">
+    <color rgba="0.6 0.6 0.6 1.0"/>
+  </material>
+
   <link name="trunk">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="package://asserts/a1/meshes/trunk.stl" scale="1 1 1"/>
       </geometry>
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -39,6 +44,7 @@
       <geometry>
         <box size="0.001 0.001 0.001"/>
       </geometry>
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -60,7 +66,9 @@
       <origin rpy="3.14159265359 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="package://asserts/a1/meshes/hip.stl" scale="1 1 1"/>
+      <material name="gray"/>
       </geometry>
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -102,6 +110,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/thigh_mirror.stl" scale="1 1 1"/>
       </geometry>
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -129,6 +138,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/calf.stl" scale="1 1 1"/>
       </geometry>
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -153,7 +163,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -181,7 +191,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -223,7 +233,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/thigh.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -251,7 +261,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/calf.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -276,7 +286,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -304,7 +314,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -346,7 +356,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/thigh_mirror.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -374,7 +384,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/calf.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -399,7 +409,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -427,7 +437,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/hip.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -469,7 +479,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/thigh.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -497,7 +507,7 @@
       <geometry>
         <mesh filename="package://asserts/a1/meshes/calf.stl" scale="1 1 1"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1"/>
@@ -522,7 +532,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      
+      <material name="gray"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>

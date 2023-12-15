@@ -1,4 +1,4 @@
-#include "atsc/WholeBodyController.h"
+#include "control/WholeBodyController.h"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <core/optimization/MathematicalProgram.h>
@@ -9,11 +9,15 @@
 
 namespace clear {
 
-WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
-                                         const std::string config_yaml)
+WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle),
       log_stream("log_stream_wbc.txt", std::ios::ate | std::ios::out) {
-  auto config_ = YAML::LoadFile(config_yaml);
+        
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
 
   std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
@@ -28,7 +32,6 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
     RCLCPP_INFO(nodeHandle_->get_logger(),
                 "[WholeBodyController] foot name: %s", name.c_str());
   }
-  pinocchioInterface_ptr_->setContactPoints(foot_names);
 
   base_name = config_["model"]["base_name"].as<std::string>();
 
@@ -42,30 +45,24 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle,
 
 WholeBodyController::~WholeBodyController() { log_stream.close(); }
 
-void WholeBodyController::update_trajectory_reference(
-    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
-  refTrajBuffer_.push(referenceTrajectoriesPtr);
+void WholeBodyController::updateReferenceBuffer(
+    std::shared_ptr<ReferenceBuffer> referenceBuffer) {
+  referenceBuffer_ = referenceBuffer;
 }
 
-void WholeBodyController::update_mode(size_t mode) { mode_.push(mode); }
-
-void WholeBodyController::update_state(
+void WholeBodyController::updateState(
     const std::shared_ptr<vector_t> qpos_ptr,
     const std::shared_ptr<vector_t> qvel_ptr) {
   pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 }
 
-void WholeBodyController::update_base_policy(
-    const std::shared_ptr<AdaptiveGain::FeedbackGain> policy) {
-  base_policy_.push(policy);
-}
-
-void WholeBodyController::update_swing_policy(
-    const std::shared_ptr<AdaptiveGain::FeedbackGain> policy) {
-  swing_policy_.push(policy);
+void WholeBodyController::updateBaseVectorField(
+    const std::shared_ptr<ConstructVectorField::VectorFieldParam> vf) {
+  base_vf_.push(vf);
 }
 
 void WholeBodyController::formulate() {
+  mode_.push(referenceBuffer_->getModeSchedule()->getModeFromPhase(0.0));
   contactFlag_ = modeNumber2StanceLeg(mode_.get());
   numContacts_ = std::count(contactFlag_.cbegin(), contactFlag_.cend(), true);
 
@@ -81,7 +78,7 @@ void WholeBodyController::formulate() {
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
-  if (base_policy_.get().get() == nullptr) {
+  if (base_vf_.get() == nullptr) {
     return actuator_commands_;
   }
 
@@ -214,7 +211,7 @@ MatrixDB WholeBodyController::formulateFrictionConeTask() {
 MatrixDB WholeBodyController::formulateBaseTask() {
   MatrixDB base_task("base_task");
   size_t nv = pinocchioInterface_ptr_->nv();
-  const auto policy = base_policy_.get();
+  const auto policy = base_vf_.get();
 
   base_task.A.setZero(6, numDecisionVars_);
   matrix6x_t J = matrix6x_t::Zero(6, nv);
@@ -222,21 +219,20 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   base_task.A.leftCols(nv) = J;
 
   vector6_t acc_fb;
-  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
-  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
+  auto pos_traj = referenceBuffer_.get()->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_.get()->getIntegratedBaseRpyTraj();
 
-  auto err_pos_traj = refTrajBuffer_.get()->get_optimized_base_pos_traj();
-  auto err_rpy_traj = refTrajBuffer_.get()->get_optimized_base_rpy_traj();
+  auto err_pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
+  auto err_rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
 
-  if (policy.get() != nullptr && pos_traj.get() != nullptr &&
-      rpy_traj.get() != nullptr) {
+  if (policy != nullptr && pos_traj != nullptr && rpy_traj != nullptr) {
     scalar_t t = nodeHandle_->now().seconds() + dt_;
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
     auto base_twist =
         pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
     vector_t rpy = toEulerAngles(base_pose.rotation());
-    vector3_t rpy_err = compute_euler_angle_err(rpy, rpy_traj->evaluate(t));
+    vector3_t rpy_err = computeEulerAngleErr(rpy, rpy_traj->evaluate(t));
     vector3_t omega_des =
         getJacobiFromRPYToOmega(rpy) * rpy_traj->derivative(t, 1);
 
@@ -280,8 +276,8 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   const size_t nv = pinocchioInterface_ptr_->nv();
   const size_t nj = actuated_joints_name.size();
 
-  auto foot_traj = refTrajBuffer_.get()->get_foot_pos_traj();
-  auto jnt_pos_traj = refTrajBuffer_.get()->get_joint_pos_traj();
+  auto foot_traj = referenceBuffer_.get()->getFootPosTraj();
+  auto jnt_pos_traj = referenceBuffer_.get()->getJointsPosTraj();
 
   if (nc - numContacts_ <= 0 || foot_traj.size() != nc) {
     return MatrixDB("swing_task");
@@ -289,74 +285,53 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   MatrixDB swing_task("swing_task");
   scalar_t t = nodeHandle_->now().seconds() + dt_;
 
-  if (false) {
-    auto policy = swing_policy_.get();
-    vector_t err_jnt(2 * nj);
-    err_jnt << pinocchioInterface_ptr_->qpos().tail(nj) -
-                   jnt_pos_traj->evaluate(t),
-        pinocchioInterface_ptr_->qvel().tail(nj) -
-            jnt_pos_traj->derivative(t, 1);
-    vector_t tau_des = policy->K * err_jnt + policy->b;
-    swing_task.A.setZero(nj, numDecisionVars_);
-    swing_task.A.rightCols(nj).setIdentity();
-    swing_task.b = tau_des;
+  matrix_t Qw =
+      matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
+  swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
+  swing_task.b.setZero(swing_task.A.rows());
+  auto base_pos_traj = referenceBuffer_.get()->getIntegratedBasePosTraj();
 
-    /* swing_task.A = 1e2 * swing_task.A;
-    swing_task.b = 1e2 * swing_task.b; */
-
-    /* std::cout << "des jnt_acc: " << jnt_pos_traj->derivative(t,
-    2).transpose()
-              << "\n";
-    std::cout << "fb jnt_acc: " << jnt_acc_des.transpose() << "\n"; */
-  } else {
-    matrix_t Qw =
-        matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
-    swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
-    swing_task.b.setZero(swing_task.A.rows());
-    auto base_pos_traj = refTrajBuffer_.get()->get_base_pos_ref_traj();
-
-    size_t j = 0;
-    for (size_t i = 0; i < nc; ++i) {
-      const auto &foot_name = foot_names[i];
-      if (!contactFlag_[i]) {
-        Qw.block<3, 3>(3 * j, 3 * j) = weightSwingLeg_;
-        const auto traj = foot_traj[foot_name];
-        vector3_t pos_des =
-            traj->evaluate(t) - base_pos_traj->evaluate(t) +
-            pinocchioInterface_ptr_->getFramePose(base_name).translation();
-        vector3_t vel_des =
-            traj->derivative(t, 1) - base_pos_traj->derivative(t, 1) +
-            pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name)
-                .linear();
-        vector3_t acc_des = traj->derivative(t, 2);
-        vector3_t pos_m =
-            pinocchioInterface_ptr_->getFramePose(foot_name).translation();
-        vector3_t vel_m =
-            pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(foot_name)
-                .linear();
-        vector3_t pos_err = pos_des - pos_m;
-        vector3_t vel_err = vel_des - vel_m;
-        vector3_t accel_fb = swingKp_ * pos_err + swingKd_ * vel_err;
-        /* if (accel_fb.norm() > 10.0) {
-          accel_fb = 10.0 * accel_fb.normalized();
-        } */
-        swing_task.A.block(3 * j, 0, 3, nv) = Jc.block(3 * i, 0, 3, nv);
-        swing_task.b.segment(3 * j, 3) =
-            -pinocchioInterface_ptr_->getFrame6dAcc_localWorldAligned(foot_name)
-                 .linear() +
-            accel_fb + acc_des;
-        j++;
-      }
+  size_t j = 0;
+  for (size_t i = 0; i < nc; ++i) {
+    const auto &foot_name = foot_names[i];
+    if (!contactFlag_[i]) {
+      Qw.block<3, 3>(3 * j, 3 * j) = weightSwingLeg_;
+      const auto traj = foot_traj[foot_name];
+      vector3_t pos_des =
+          traj->evaluate(t) - base_pos_traj->evaluate(t) +
+          pinocchioInterface_ptr_->getFramePose(base_name).translation();
+      vector3_t vel_des =
+          traj->derivative(t, 1) - base_pos_traj->derivative(t, 1) +
+          pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name)
+              .linear();
+      vector3_t acc_des = traj->derivative(t, 2);
+      vector3_t pos_m =
+          pinocchioInterface_ptr_->getFramePose(foot_name).translation();
+      vector3_t vel_m =
+          pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(foot_name)
+              .linear();
+      vector3_t pos_err = pos_des - pos_m;
+      vector3_t vel_err = vel_des - vel_m;
+      vector3_t accel_fb = swingKp_ * pos_err + swingKd_ * vel_err;
+      /* if (accel_fb.norm() > 10.0) {
+        accel_fb = 10.0 * accel_fb.normalized();
+      } */
+      swing_task.A.block(3 * j, 0, 3, nv) = Jc.block(3 * i, 0, 3, nv);
+      swing_task.b.segment(3 * j, 3) =
+          -pinocchioInterface_ptr_->getFrame6dAcc_localWorldAligned(foot_name)
+               .linear() +
+          accel_fb + acc_des;
+      j++;
     }
-    swing_task.A = Qw * swing_task.A;
-    swing_task.b = Qw * swing_task.b;
   }
+  swing_task.A = Qw * swing_task.A;
+  swing_task.b = Qw * swing_task.b;
   return swing_task;
 }
 
 void WholeBodyController::differential_inv_kin() {
-  auto foot_traj_array = refTrajBuffer_.get()->get_foot_pos_traj();
-  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
+  auto foot_traj_array = referenceBuffer_.get()->getFootPosTraj();
+  auto pos_traj = referenceBuffer_.get()->getIntegratedBasePosTraj();
 
   if (foot_traj_array.empty()) {
     return;
@@ -536,8 +511,8 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   }
 }
 
-vector3_t WholeBodyController::compute_euler_angle_err(const vector3_t &rpy_m,
-                                                       const vector3_t &rpy_d) {
+vector3_t WholeBodyController::computeEulerAngleErr(const vector3_t &rpy_m,
+                                                    const vector3_t &rpy_d) {
   vector3_t rpy_err = rpy_m - rpy_d;
   if (rpy_err.norm() > 1.5 * M_PI) {
     if (abs(rpy_err(0)) > M_PI) {

@@ -1,14 +1,14 @@
 #pragma once
 
-#include "atsc/AdativeGain.h"
-#include "atsc/MatrixDB.h"
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
-#include <asserts/trajectory/TrajectoriesArray.h>
+#include "control/ConstructVectorField.h"
+#include "control/MatrixDB.h"
+#include <core/gait/ModeSchedule.h>
+#include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
+#include <core/trajectory/ReferenceBuffer.h>
+#include <fstream>
 #include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
-#include <fstream>
 
 using namespace rclcpp;
 
@@ -35,26 +35,20 @@ struct ActuatorCommands {
 // Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
 class WholeBodyController {
 public:
-  WholeBodyController(Node::SharedPtr nodeHandle,
-                      const std::string config_yaml);
+  WholeBodyController(Node::SharedPtr nodeHandle);
 
   ~WholeBodyController();
 
   void loadTasksSetting(bool verbose = true);
 
-  void update_trajectory_reference(
-      std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr);
+  void updateReferenceBuffer(
+      std::shared_ptr<ReferenceBuffer> referenceBuffer);
 
-  void update_mode(size_t mode);
-
-  void update_state(const std::shared_ptr<vector_t> qpos_ptr,
+  void updateState(const std::shared_ptr<vector_t> qpos_ptr,
                     const std::shared_ptr<vector_t> qvel_ptr);
 
-  void
-  update_base_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
-
-  void
-  update_swing_policy(const std::shared_ptr<AdaptiveGain::FeedbackGain> policy);
+  void updateBaseVectorField(
+      const std::shared_ptr<ConstructVectorField::VectorFieldParam> vf);
 
   std::shared_ptr<ActuatorCommands> optimize();
 
@@ -73,17 +67,16 @@ private:
   MatrixDB formulateSwingLegTask();
   MatrixDB formulateContactForceTask();
 
-  vector3_t compute_euler_angle_err(const vector3_t &rpy_m,
-                                    const vector3_t &rpy_d);
+  vector3_t computeEulerAngleErr(const vector3_t &rpy_m,
+                                 const vector3_t &rpy_d);
 
   void differential_inv_kin();
 
 private:
   Node::SharedPtr nodeHandle_;
-  Buffer<std::shared_ptr<TrajectoriesArray>> refTrajBuffer_;
+  std::shared_ptr<ReferenceBuffer> referenceBuffer_;
   Buffer<size_t> mode_;
-  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> base_policy_;
-  Buffer<std::shared_ptr<AdaptiveGain::FeedbackGain>> swing_policy_;
+  Buffer<std::shared_ptr<ConstructVectorField::VectorFieldParam>> base_vf_;
 
   size_t numDecisionVars_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;

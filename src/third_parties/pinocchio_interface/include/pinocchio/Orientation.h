@@ -26,7 +26,7 @@ toRotationMatrix(const vector3_t &rpy); // roll (x), pitch (Y), yaw (z)
 
 matrix3_t skew(const vector3_t &vec);
 
-vector3_t compute_euler_angle_err(const vector3_t &rpy_m,
+vector3_t computeEulerAngleErr(const vector3_t &rpy_m,
                                   const vector3_t &rpy_d);
 
 } // namespace clear

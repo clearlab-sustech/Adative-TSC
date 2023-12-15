@@ -12,8 +12,8 @@ int main(int argc, char **argv) {
     filename = argv[1];
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("VisualizationNode"),
-                 "config file for atsc is required.");
-    throw std::runtime_error("no config file for atsc");
+                 "config file for control is required.");
+    throw std::runtime_error("no config file for control");
   }
 
   auto node = std::make_shared<clear::VisualizationNode>(filename);

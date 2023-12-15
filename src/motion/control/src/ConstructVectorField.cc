@@ -1,15 +1,25 @@
-#include "atsc/AdativeGain.h"
+#include "control/ConstructVectorField.h"
 #include <pinocchio/Orientation.h>
 #include <rcpputils/asserts.hpp>
+#include <yaml-cpp/yaml.h>
 
 namespace clear {
 
-AdaptiveGain::AdaptiveGain(
+ConstructVectorField::ConstructVectorField(
     Node::SharedPtr nodeHandle,
-    std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr,
-    std::string base_name)
-    : nodeHandle_(nodeHandle), pinocchioInterfacePtr_(pinocchioInterfacePtr),
-      base_name_(base_name) {
+    std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr)
+    : nodeHandle_(nodeHandle), pinocchioInterfacePtr_(pinocchioInterfacePtr) {
+
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
+
+  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
+
+  base_name = config_["model"]["base_name"].as<std::string>();
+
   total_mass_ = pinocchioInterfacePtr_->total_mass();
   weight_.setZero(12, 12);
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
@@ -32,34 +42,29 @@ AdaptiveGain::AdaptiveGain(
   solver_settings.split_step = 1;
 }
 
-AdaptiveGain::~AdaptiveGain() {}
+ConstructVectorField::~ConstructVectorField() {}
 
-void AdaptiveGain::update_trajectory_reference(
-    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
-  refTrajBuffer_.push(referenceTrajectoriesPtr);
+void ConstructVectorField::updateReferenceBuffer(
+    std::shared_ptr<ReferenceBuffer> referenceBuffer) {
+  referenceBuffer_ = referenceBuffer;
 }
 
-void AdaptiveGain::update_mode_schedule(
-    const std::shared_ptr<ModeSchedule> mode_schedule) {
-  mode_schedule_buffer.push(mode_schedule);
-}
-
-void AdaptiveGain::add_linear_system(size_t k) {
+void ConstructVectorField::add_linear_system(size_t k) {
   const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
-  auto mode_schedule = mode_schedule_buffer.get();
-  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
-  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
-  auto foot_traj = refTrajBuffer_.get()->get_foot_pos_traj();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto foot_traj = referenceBuffer_->getFootPosTraj();
 
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
       quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
-  const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
+  const size_t nf = foot_names.size();
   rcpputils::assert_true(nf == contact_flag.size());
 
   Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
   // std::cout << "Ig_: \n" << Ig_ << "\n";
-  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
+  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
   vector3_t force_ff = vector3_t::Zero();
   if (has_sol_ &&
@@ -83,7 +88,6 @@ void AdaptiveGain::add_linear_system(size_t k) {
   ocp_[k].B.setZero(12, nf * 3);
   vector3_t xc = pos_traj->evaluate(time_k);
   // vector3_t xc = pinocchioInterfacePtr_->getCoMPos();
-  const auto &foot_names = pinocchioInterfacePtr_->getContactPoints();
   for (size_t i = 0; i < nf; i++) {
     if (contact_flag[i]) {
       vector3_t pf_i = foot_traj[foot_names[i]]->evaluate(time_k);
@@ -103,9 +107,9 @@ void AdaptiveGain::add_linear_system(size_t k) {
        skew(rpy_dot_des) * Ig_ * rpy_dot_des);
 }
 
-void AdaptiveGain::add_state_input_constraints(size_t k, size_t N) {
-  const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
-  auto mode_schedule = mode_schedule_buffer.get();
+void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
+  const size_t nf = foot_names.size();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
       quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -131,10 +135,10 @@ void AdaptiveGain::add_state_input_constraints(size_t k, size_t N) {
            << cstr_k; */
 }
 
-void AdaptiveGain::add_cost(size_t k, size_t N) {
-  const size_t nf = pinocchioInterfacePtr_->getContactPoints().size();
+void ConstructVectorField::add_cost(size_t k, size_t N) {
+  const size_t nf = foot_names.size();
   const scalar_t time_k = time_now_ + k * dt_;
-  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
 
   ocp_[k].Q = weight_;
   ocp_[k].S = matrix_t::Zero(3 * nf, 12);
@@ -142,7 +146,7 @@ void AdaptiveGain::add_cost(size_t k, size_t N) {
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
     ocp_[k].R = 1e-4 * matrix_t::Identity(3 * nf, 3 * nf);
-    auto mode_schedule = mode_schedule_buffer.get();
+    auto mode_schedule = referenceBuffer_->getModeSchedule();
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -169,13 +173,14 @@ void AdaptiveGain::add_cost(size_t k, size_t N) {
   }
 }
 
-std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
+std::shared_ptr<ConstructVectorField::VectorFieldParam>
+ConstructVectorField::compute() {
   feedback_law_ptr = nullptr;
 
-  auto pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
-  auto rpy_traj = refTrajBuffer_.get()->get_base_rpy_traj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   if (pos_traj.get() == nullptr || rpy_traj.get() == nullptr ||
-      refTrajBuffer_.get()->get_foot_pos_traj().empty()) {
+      referenceBuffer_->getFootPosTraj().empty()) {
     return feedback_law_ptr;
   }
   time_now_ = nodeHandle_->now().seconds();
@@ -199,13 +204,13 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
   hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
 
   vector_t x0(12);
-  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name_);
+  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name);
   auto base_twist =
-      pinocchioInterfacePtr_->getFrame6dVel_localWorldAligned(base_name_);
+      pinocchioInterfacePtr_->getFrame6dVel_localWorldAligned(base_name);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
   vector3_t rpy_des = rpy_traj->evaluate(time_now_);
   vector3_t rpy_dot_des = rpy_traj->derivative(time_now_, 1);
-  auto rpy_err = compute_euler_angle_err(rpy, rpy_des);
+  auto rpy_err = computeEulerAngleErr(rpy, rpy_des);
 
   x0 << base_pose.translation() - pos_traj->evaluate(time_now_),
       base_twist.linear() - pos_traj->derivative(time_now_, 1), rpy_err,
@@ -215,7 +220,7 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
     has_sol_ = true;
-    feedback_law_ptr = std::make_shared<FeedbackGain>();
+    feedback_law_ptr = std::make_shared<VectorFieldParam>();
     matrix_t P(6, 12);
     P.setZero();
     P.topRows(3).middleCols(3, 3).setIdentity();
@@ -257,8 +262,8 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
         CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
     base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
 
-    refTrajBuffer_.get()->set_optimized_base_pos_traj(base_pos_traj_ptr_);
-    refTrajBuffer_.get()->set_optimized_base_rpy_traj(base_rpy_traj_ptr_);
+    referenceBuffer_->setOptimizedBasePosTraj(base_pos_traj_ptr_);
+    referenceBuffer_->setOptimizedBaseRpyTraj(base_rpy_traj_ptr_);
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */
@@ -268,13 +273,13 @@ std::shared_ptr<AdaptiveGain::FeedbackGain> AdaptiveGain::compute() {
     //   std::cout << "forward: " << sol.x.transpose() << "\n";
     // }
   } else {
-    std::cout << "AdaptiveGain: " << res << "\n";
+    std::cout << "ConstructVectorField: " << res << "\n";
   }
   return feedback_law_ptr;
 }
 
-vector3_t AdaptiveGain::compute_euler_angle_err(const vector3_t &rpy_m,
-                                                const vector3_t &rpy_d) {
+vector3_t ConstructVectorField::computeEulerAngleErr(const vector3_t &rpy_m,
+                                                     const vector3_t &rpy_d) {
   vector3_t rpy_err = rpy_m - rpy_d;
   if (rpy_err.norm() > 1.5 * M_PI) {
     if (abs(rpy_err(0)) > M_PI) {

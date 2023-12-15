@@ -29,7 +29,7 @@ find_package(asserts)
 find_package(estimation)
 find_package(gait)
 find_package(generation)
-find_package(atsc)
+find_package(control)
 find_package(tf2_ros)
 find_package(hardware)
 
@@ -54,7 +54,7 @@ set(TARGET_DEPENDENCE
   estimation
   gait
   generation
-  atsc
+  control
   tf2_ros
   hardware
 )

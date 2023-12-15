@@ -48,24 +48,24 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
   mjtNum freq_imu = config_["simulation"]["frequency"]["imu"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_imu},
-      std::bind(&SimPublisher::imu_callback, this)));
+      std::bind(&SimPublisher::imuCallback, this)));
 
   mjtNum freq_joints_state =
       config_["simulation"]["frequency"]["joints_state"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_joints_state},
-      std::bind(&SimPublisher::joint_callback, this)));
+      std::bind(&SimPublisher::jointCallback, this)));
 
   mjtNum freq_odom = config_["simulation"]["frequency"]["odom"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_odom},
-      std::bind(&SimPublisher::odom_callback, this)));
+      std::bind(&SimPublisher::odomCallback, this)));
 
   mjtNum freq_touch_sensor =
       config_["simulation"]["frequency"]["touch_sensor"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_touch_sensor},
-      std::bind(&SimPublisher::touch_callback, this)));
+      std::bind(&SimPublisher::touchCallback, this)));
 
   mjtNum freq_drop_old_message =
       config_["simulation"]["frequency"]["drop_old_message"].as<mjtNum>();
@@ -144,7 +144,7 @@ void SimPublisher::reset_callback(
   }
 }
 
-void SimPublisher::imu_callback() {
+void SimPublisher::imuCallback() {
   if (sim_->d_ != nullptr) {
     auto message = sensor_msgs::msg::Imu();
     message.header.frame_id = &sim_->m_->names[0];
@@ -202,7 +202,7 @@ void SimPublisher::imu_callback() {
   }
 }
 
-void SimPublisher::touch_callback() {
+void SimPublisher::touchCallback() {
   if (sim_->d_ != nullptr) {
     auto message = trans::msg::TouchSensor();
     message.header.frame_id = &sim_->m_->names[0];
@@ -222,7 +222,7 @@ void SimPublisher::touch_callback() {
   }
 }
 
-void SimPublisher::odom_callback() {
+void SimPublisher::odomCallback() {
   if (sim_->d_ != nullptr) {
     auto message = nav_msgs::msg::Odometry();
     {
@@ -247,7 +247,7 @@ void SimPublisher::odom_callback() {
   }
 }
 
-void SimPublisher::joint_callback() {
+void SimPublisher::jointCallback() {
   if (sim_->d_ != nullptr) {
     sensor_msgs::msg::JointState jointState;
     jointState.header.frame_id = &sim_->m_->names[0];

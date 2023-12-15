@@ -7,10 +7,14 @@
 
 namespace clear {
 
-TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
-                                         string config_yaml)
+TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
-  auto config_ = YAML::LoadFile(config_yaml);
+
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
 
   std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
@@ -21,7 +25,6 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
 
-  pinocchioInterface_ptr_->setContactPoints(foot_names);
   base_name = config_["model"]["base_name"].as<std::string>();
   RCLCPP_INFO(nodeHandle_->get_logger(), "[TrajectorGeneration]  base name: %s",
               base_name.c_str());
@@ -32,16 +35,16 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
 
   contact_flag_ = {true, true, true, true};
 
-  refTrajBuffer_ = std::make_shared<TrajectoriesArray>();
+  referenceBuffer_ = std::make_shared<ReferenceBuffer>();
 
   footholdOpt_ptr = std::make_shared<FootholdOptimization>(
-      config_yaml, pinocchioInterface_ptr_, refTrajBuffer_);
+      nodeHandle_, pinocchioInterface_ptr_, referenceBuffer_);
 
   vel_cmd.setZero();
   yawd_ = 0.0;
 
   run_.push(true);
-  inner_loop_thread_ = std::thread(&TrajectorGeneration::inner_loop, this);
+  inner_loop_thread_ = std::thread(&TrajectorGeneration::innerLoop, this);
 }
 
 TrajectorGeneration::~TrajectorGeneration() {
@@ -49,47 +52,40 @@ TrajectorGeneration::~TrajectorGeneration() {
   inner_loop_thread_.join();
 }
 
-void TrajectorGeneration::update_current_state(
+void TrajectorGeneration::updateCurrentState(
     std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
   qpos_ptr_buffer.push(qpos_ptr);
   qvel_ptr_buffer.push(qvel_ptr);
 }
 
-void TrajectorGeneration::update_mode_schedule(
+void TrajectorGeneration::updateModeSchedule(
     std::shared_ptr<ModeSchedule> mode_schedule) {
-  mode_schedule_buffer.push(mode_schedule);
+  referenceBuffer_->setModeSchedule(mode_schedule);
 }
 
-std::shared_ptr<TrajectoriesArray>
-TrajectorGeneration::get_trajectory_reference() {
-  return refTrajBuffer_;
-}
-std::map<std::string, std::pair<scalar_t, vector3_t>>
-TrajectorGeneration::get_footholds() {
-  return footholds;
+std::shared_ptr<ReferenceBuffer> TrajectorGeneration::getReferenceBuffer() {
+  return referenceBuffer_;
 }
 
-void TrajectorGeneration::inner_loop() {
+void TrajectorGeneration::innerLoop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
     if (qpos_ptr_buffer.get().get() == nullptr ||
         qvel_ptr_buffer.get().get() == nullptr ||
-        mode_schedule_buffer.get().get() == nullptr) {
+        referenceBuffer_->getModeSchedule() == nullptr) {
       continue;
     } else {
       std::shared_ptr<vector_t> qpos_ptr = qpos_ptr_buffer.get();
       std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
       pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 
-      scalar_t t = nodeHandle_->now().seconds();
+      generateBaseTraj();
 
-      generate_base_traj(t);
+      generateFootholds();
 
-      generate_footholds(t);
-
-      generate_foot_traj(t);
+      generateFootTraj();
     }
     timer_.endTimer();
     loop_rate.sleep();
@@ -100,23 +96,23 @@ void TrajectorGeneration::inner_loop() {
               timer_.getAverageInMilliseconds());
 }
 
-void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
-    scalar_t t_now) {
+void TrajectorGeneration::TrajectorGeneration::generateBaseTraj() {
+  const scalar_t t_now = nodeHandle_->now().seconds();
   vector_t rpy_m, rpy_dot_m;
   vector_t pos_m, vel_m;
   auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
   auto base_twist =
       pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
 
-  if (refTrajBuffer_->get_base_pos_ref_traj().get() == nullptr ||
-      refTrajBuffer_->get_base_rpy_traj().get() == nullptr) {
+  if (referenceBuffer_->getIntegratedBasePosTraj().get() == nullptr ||
+      referenceBuffer_->getIntegratedBaseRpyTraj().get() == nullptr) {
     rpy_m = toEulerAngles(base_pose_m.rotation());
     rpy_dot_m = getJacobiFromOmegaToRPY(rpy_m) * base_twist.angular();
     pos_m = base_pose_m.translation();
     vel_m = base_twist.linear();
   } else {
-    auto base_pos_traj = refTrajBuffer_->get_base_pos_ref_traj();
-    auto base_rpy_traj = refTrajBuffer_->get_base_rpy_traj();
+    auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+    auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
 
     rpy_m = base_rpy_traj->evaluate(t_now);
     rpy_dot_m = getJacobiFromOmegaToRPY(rpy_m) * base_twist.angular();
@@ -134,7 +130,7 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
 
   std::vector<scalar_t> time;
   std::vector<vector_t> rpy_t, pos_t;
-  scalar_t horizon_time = mode_schedule_buffer.get()->duration();
+  scalar_t horizon_time = referenceBuffer_->getModeSchedule()->duration();
   if (vel_cmd.norm() < 0.05) {
     vector3_t foot_center = vector3_t::Zero();
     for (size_t k = 0; k < foot_names.size(); k++) {
@@ -193,11 +189,10 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_pos->fit(time, pos_t);
-  refTrajBuffer_->set_base_pos_ref_traj(cubicspline_pos);
-  refTrajBuffer_->set_base_pos_traj(cubicspline_pos);
+  referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
 
-  /* if (refTrajBuffer_->get_base_pos_traj().get() == nullptr) {
-    refTrajBuffer_->set_base_pos_traj(cubicspline_pos);
+  /* if (referenceBuffer_->get_base_pos_traj().get() == nullptr) {
+    referenceBuffer_->set_base_pos_traj(cubicspline_pos);
   } */
 
   auto cubicspline_rpy = std::make_shared<CubicSplineTrajectory>(3);
@@ -205,23 +200,22 @@ void TrajectorGeneration::TrajectorGeneration::generate_base_traj(
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_rpy->fit(time, rpy_t);
-  refTrajBuffer_->set_base_rpy_traj(cubicspline_rpy);
+  referenceBuffer_->setIntegratedBaseRpyTraj(cubicspline_rpy);
 }
 
-void TrajectorGeneration::generate_footholds(scalar_t t_now) {
-  footholds = footholdOpt_ptr->optimize(t_now, mode_schedule_buffer.get());
-}
+void TrajectorGeneration::generateFootholds() { footholdOpt_ptr->optimize(); }
 
-void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
-  const auto &foot_names = pinocchioInterface_ptr_->getContactPoints();
-  auto mode_schedule = mode_schedule_buffer.get();
+void TrajectorGeneration::generateFootTraj() {
+  auto footholds = referenceBuffer_->getFootholds();
+  const scalar_t t_now = nodeHandle_->now().seconds();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
   if (xf_start_.empty()) {
     for (size_t k = 0; k < foot_names.size(); k++) {
       const auto &foot_name = foot_names[k];
       vector3_t pos =
           pinocchioInterface_ptr_->getFramePose(foot_name).translation();
       std::pair<scalar_t, vector3_t> xs;
-      xs.first = t_now;
+      xs.first = nodeHandle_->now().seconds();
       xs.second = pos;
       xf_start_[foot_name] = std::move(xs);
     }
@@ -273,8 +267,10 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
 
     auto base_pos =
         pinocchioInterface_ptr_->getFramePose(base_name).translation();
-    xf_start_[foot_name].second.z() = std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
-    xf_end_[foot_name].second.z() = std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_start_[foot_name].second.z() =
+        std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);
+    xf_end_[foot_name].second.z() =
+        std::min(xf_end_[foot_name].second.z(), base_pos.z() - 0.2);
 
     std::vector<scalar_t> time;
     std::vector<vector_t> pos_t;
@@ -312,7 +308,7 @@ void TrajectorGeneration::generate_foot_traj(scalar_t t_now) {
     foot_pos_traj[foot_name] = std::move(cubicspline_);
   }
   contact_flag_ = contact_flag;
-  refTrajBuffer_->set_foot_pos_traj(foot_pos_traj);
+  referenceBuffer_->setFootPosTraj(foot_pos_traj);
 }
 
 void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {

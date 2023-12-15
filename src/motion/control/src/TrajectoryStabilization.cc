@@ -1,4 +1,4 @@
-#include "atsc/AtscImpl.h"
+#include "control/TrajectoryStabilization.h"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <core/misc/Benchmark.h>
 #include <fstream>
@@ -7,9 +7,14 @@
 
 namespace clear {
 
-AtscImpl::AtscImpl(Node::SharedPtr nodeHandle, const std::string config_yaml)
+TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
-  auto config_ = YAML::LoadFile(config_yaml);
+
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
   std::string topic_prefix =
       config_["global"]["topic_prefix"].as<std::string>();
   std::string actuators_cmds_topic =
@@ -32,48 +37,37 @@ AtscImpl::AtscImpl(Node::SharedPtr nodeHandle, const std::string config_yaml)
   RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
-  auto foot_names =
-      config_["model"]["foot_names"].as<std::vector<std::string>>();
-  for (const auto &name : foot_names) {
-    RCLCPP_INFO(nodeHandle_->get_logger(), "foot name: %s", name.c_str());
-  }
-  pinocchioInterface_ptr_->setContactPoints(foot_names);
-
   base_name = config_["model"]["base_name"].as<std::string>();
 
   run_.push(true);
-  adaptiveGain_ptr_ = std::make_shared<AdaptiveGain>(
-      nodeHandle_, pinocchioInterface_ptr_, base_name);
-  adapative_gain_thread_ = std::thread(&AtscImpl::adapative_gain_loop, this);
-  wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_, config_yaml);
-  inner_loop_thread_ = std::thread(&AtscImpl::inner_loop, this);
+  vf_ptr_ = std::make_shared<ConstructVectorField>(
+      nodeHandle_, pinocchioInterface_ptr_);
+  vector_field_thread_ =
+      std::thread(&TrajectoryStabilization::adapative_gain_loop, this);
+  wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_);
+  inner_loop_thread_ = std::thread(&TrajectoryStabilization::innerLoop, this);
 }
 
-AtscImpl::~AtscImpl() {
+TrajectoryStabilization::~TrajectoryStabilization() {
   run_.push(false);
   inner_loop_thread_.join();
-  if (adapative_gain_thread_.joinable()) {
-    adapative_gain_thread_.join();
+  if (vector_field_thread_.joinable()) {
+    vector_field_thread_.join();
   }
 }
 
-void AtscImpl::update_current_state(std::shared_ptr<vector_t> qpos_ptr,
-                                    std::shared_ptr<vector_t> qvel_ptr) {
+void TrajectoryStabilization::updateCurrentState(
+    std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
   qpos_ptr_buffer.push(qpos_ptr);
   qvel_ptr_buffer.push(qvel_ptr);
 }
 
-void AtscImpl::update_trajectory_reference(
-    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
-  refTrajPtrBuffer_.push(referenceTrajectoriesPtr);
+void TrajectoryStabilization::updateReferenceBuffer(
+    std::shared_ptr<ReferenceBuffer> referenceBuffer) {
+  referenceBuffer_ = referenceBuffer;
 }
 
-void AtscImpl::update_mode_schedule(
-    const std::shared_ptr<ModeSchedule> mode_schedule) {
-  mode_schedule_buffer.push(mode_schedule);
-}
-
-trans::msg::ActuatorCmds::SharedPtr AtscImpl::getCmds() {
+trans::msg::ActuatorCmds::SharedPtr TrajectoryStabilization::getCmds() {
   if (actuator_commands_buffer.get() == nullptr) {
     return nullptr;
   }
@@ -98,7 +92,7 @@ trans::msg::ActuatorCmds::SharedPtr AtscImpl::getCmds() {
   return msg;
 }
 
-void AtscImpl::publishCmds() {
+void TrajectoryStabilization::publishCmds() {
   if (actuator_commands_buffer.get() == nullptr) {
     return;
   }
@@ -124,16 +118,14 @@ void AtscImpl::publishCmds() {
   actuators_cmds_pub_ptr_->publish(msg);
 }
 
-void AtscImpl::inner_loop() {
+void TrajectoryStabilization::innerLoop() {
 
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
-    if (qpos_ptr_buffer.get().get() == nullptr ||
-        qvel_ptr_buffer.get().get() == nullptr ||
-        mode_schedule_buffer.get().get() == nullptr ||
-        refTrajPtrBuffer_.get().get() == nullptr) {
+    if (qpos_ptr_buffer.get() == nullptr || qvel_ptr_buffer.get() == nullptr ||
+        referenceBuffer_ == nullptr) {
       std::this_thread::sleep_for(
           std::chrono::milliseconds(int64_t(1000 / freq_)));
     } else {
@@ -141,22 +133,9 @@ void AtscImpl::inner_loop() {
       std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
       pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 
-      auto stance_leg = quadruped::modeNumber2StanceLeg(
-          mode_schedule_buffer.get()->getModeFromPhase(0.0));
-      std::vector<bool> mask;
-      for (auto &flag : stance_leg) {
-        mask.push_back(flag);
-      }
-      if (mask.size() != pinocchioInterface_ptr_->nc()) {
-        throw std::runtime_error("mask size is not equal to the "
-                                 "number of contact points");
-      }
-      pinocchioInterface_ptr_->setContactMask(mask);
-
-      wbcPtr_->update_state(qpos_ptr, qvel_ptr);
-      wbcPtr_->update_trajectory_reference(refTrajPtrBuffer_.get());
-      wbcPtr_->update_mode(mode_schedule_buffer.get()->getModeFromPhase(0.0));
-      wbcPtr_->update_base_policy(feedback_gain_buffer_.get());
+      wbcPtr_->updateState(qpos_ptr, qvel_ptr);
+      wbcPtr_->updateReferenceBuffer(referenceBuffer_);
+      wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
       actuator_commands_buffer.push(wbcPtr_->optimize());
 
       publishCmds();
@@ -169,27 +148,24 @@ void AtscImpl::inner_loop() {
       timer_.getMaxIntervalInMilliseconds(), timer_.getAverageInMilliseconds());
 }
 
-void AtscImpl::adapative_gain_loop() {
+void TrajectoryStabilization::adapative_gain_loop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(50.0);
   std::fstream save_state("data_log.txt", std::ios::ate | std::ios::out);
 
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
-    if (qpos_ptr_buffer.get().get() == nullptr ||
-        qvel_ptr_buffer.get().get() == nullptr ||
-        mode_schedule_buffer.get().get() == nullptr ||
-        refTrajPtrBuffer_.get().get() == nullptr) {
+    if (qpos_ptr_buffer.get() == nullptr || qvel_ptr_buffer.get() == nullptr ||
+        referenceBuffer_.get() == nullptr) {
       continue;
     } else {
       // RCLCPP_INFO(nodeHandle_->get_logger(), "Adaptive Gain Computaion:
       // run");
-      adaptiveGain_ptr_->update_mode_schedule(mode_schedule_buffer.get());
-      adaptiveGain_ptr_->update_trajectory_reference(refTrajPtrBuffer_.get());
-      feedback_gain_buffer_.push(adaptiveGain_ptr_->compute());
+      vf_ptr_->updateReferenceBuffer(referenceBuffer_);
+      vf_param_buffer_.push(vf_ptr_->compute());
 
-      auto base_pos = refTrajPtrBuffer_.get()->get_base_pos_ref_traj();
-      auto base_rpy = refTrajPtrBuffer_.get()->get_base_rpy_traj();
+      auto base_pos = referenceBuffer_->getIntegratedBasePosTraj();
+      auto base_rpy = referenceBuffer_->getIntegratedBaseRpyTraj();
       if (base_pos.get() != nullptr && base_rpy.get() != nullptr) {
         const scalar_t t = nodeHandle_->now().seconds();
         auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);

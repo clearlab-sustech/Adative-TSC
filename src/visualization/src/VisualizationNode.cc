@@ -75,7 +75,7 @@ VisualizationNode::VisualizationNode(std::string config_yaml)
     line_strip_foot_traj_ref_.markers[i].ns = foot_names[i];
   }
 
-  inner_loop_thread_ = std::thread(&VisualizationNode::inner_loop, this);
+  inner_loop_thread_ = std::thread(&VisualizationNode::innerLoop, this);
   run_.push(true);
 }
 
@@ -111,7 +111,7 @@ void VisualizationNode::trajectories_callback(
   trajectories_msg_buffer_.push(msg);
 }
 
-void VisualizationNode::inner_loop() {
+void VisualizationNode::innerLoop() {
   rclcpp::Rate loop_rate(500);
   size_t iter = 0;
   while (rclcpp::ok() && run_.get()) {
