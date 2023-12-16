@@ -62,7 +62,7 @@ gait:
 
   trot:
     modeSequence: ["LF_RH", "RF_LH"]
-    switchingTimes: [0.0, 0.3, 0.6]
+    switchingTimes: [0.0, 0.4, 0.8]
 
   static_walk:
     modeSequence: ["LF_RF_RH", "RF_LH_RH", "LF_RF_LH", "LF_LH_RH"]

@@ -58,9 +58,9 @@ void MotionManager::innerLoop() {
       gaitSchedulePtr_->switchGait("trot");
     }
 
-    /* if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
-    } */
+    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
+      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.0);
+    }
 
     if (unitreeHWPtr_ != nullptr) {
       unitreeHWPtr_->read();

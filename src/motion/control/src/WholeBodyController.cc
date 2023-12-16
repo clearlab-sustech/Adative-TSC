@@ -78,9 +78,9 @@ void WholeBodyController::formulate() {
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
-  if (base_vf_.get() == nullptr) {
-    return actuator_commands_;
-  }
+  // if (base_vf_.get() == nullptr) {
+  //   return actuator_commands_;
+  // }
 
   formulate();
 
@@ -222,9 +222,6 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   auto pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
   auto rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
 
-  auto err_pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
-  auto err_rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
-
   if (policy != nullptr && pos_traj != nullptr && rpy_traj != nullptr) {
     scalar_t t = nodeHandle_->now().seconds() + dt_;
     vector_t x0(12);
@@ -232,9 +229,6 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     auto base_twist =
         pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
     vector_t rpy = toEulerAngles(base_pose.rotation());
-    vector3_t rpy_err = computeEulerAngleErr(rpy, rpy_traj->evaluate(t));
-    vector3_t omega_des =
-        getJacobiFromRPYToOmega(rpy) * rpy_traj->derivative(t, 1);
 
     x0 << base_pose.translation(), base_twist.linear(), rpy,
         base_twist.angular();
@@ -245,17 +239,35 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
-    log_stream
-        << (err_pos_traj->evaluate(t) - x0.head(3)).transpose() << " "
-        << (err_rpy_traj->evaluate(t) - rpy_err).transpose() << " "
-        << (err_pos_traj->derivative(t, 1) - x0.segment(3, 3)).transpose()
-        << " "
-        << (getJacobiFromRPYToOmega(rpy) * err_rpy_traj->derivative(t, 1) -
-            (base_twist.angular() - omega_des))
-               .transpose()
-        << " " << acc_fb.transpose() << "\n";
+
   } else {
-    acc_fb.setZero();
+    const scalar_t time_now_ = nodeHandle_->now().seconds();
+    vector_t x0(12);
+    auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
+    auto base_twist = pinocchioInterface_ptr_->getFrame6dVel_local(base_name);
+    vector_t rpy = toEulerAngles(base_pose.rotation());
+    vector3_t omega_des =
+        getJacobiFromRPYToOmega(rpy) * rpy_traj->derivative(time_now_, 1);
+
+    pin::SE3 pose_ref;
+    pose_ref.rotation() = toRotationMatrix(rpy_traj->evaluate(time_now_));
+    pose_ref.translation() = pos_traj->evaluate(time_now_);
+    vector6_t _spatialVelRef, _spatialAccRef;
+    _spatialVelRef << base_pose.rotation().transpose() *
+                          pos_traj->derivative(time_now_, 1),
+        base_pose.rotation().transpose() * omega_des;
+    _spatialAccRef << base_pose.rotation().transpose() *
+                          pos_traj->derivative(time_now_, 2),
+        vector3_t::Zero();
+    // _spatialAccRef.setZero();
+    auto pose_err = log6(base_pose.actInv(pose_ref)).toVector();
+    auto vel_err = _spatialVelRef - base_twist.toVector();
+
+    acc_fb = baseKp_ * pose_err + baseKd_ * vel_err + _spatialAccRef;
+
+    if (abs(acc_fb.z()) > 5.0) {
+      acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
+    }
   }
 
   base_task.b =

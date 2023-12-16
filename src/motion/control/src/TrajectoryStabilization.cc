@@ -137,7 +137,7 @@ void TrajectoryStabilization::innerLoop() {
 
       wbcPtr_->updateState(qpos_ptr, qvel_ptr);
       wbcPtr_->updateReferenceBuffer(referenceBuffer_);
-      wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
+      // wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
       actuator_commands_buffer.push(wbcPtr_->optimize());
 
       publishCmds();
