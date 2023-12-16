@@ -50,11 +50,11 @@ void ConstructVectorField::updateReferenceBuffer(
 }
 
 void ConstructVectorField::add_linear_system(size_t k) {
-  const scalar_t time_k = nodeHandle_->now().seconds() + k * dt_;
-  auto mode_schedule = referenceBuffer_->getModeSchedule();
+  const scalar_t time_k = time_now_ + k * dt_;
   auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
   auto rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
   auto foot_traj = referenceBuffer_->getFootPosTraj();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
 
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
@@ -62,54 +62,33 @@ void ConstructVectorField::add_linear_system(size_t k) {
   const size_t nf = foot_names.size();
   rcpputils::assert_true(nf == contact_flag.size());
 
-  Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia();
-  // std::cout << "Ig_: \n" << Ig_ << "\n";
   auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name);
   vector3_t rpy = toEulerAngles(base_pose.rotation());
-  vector3_t force_ff = vector3_t::Zero();
-  if (has_sol_ &&
-      k < solution_.size() - 1) { // the last one solution has no data of u
-    for (size_t i = 0; i < nf; i++) {
-      force_ff += solution_[k].u.segment(3 * i, 3);
-    }
-  } else {
-    force_ff = total_mass_ *
-               (pos_traj->derivative(time_k, 2) + vector3_t(0, 0, grav_));
-  }
-
-  vector3_t rpy_dot_des = rpy_traj->derivative(time_k, 1);
-  vector3_t rpy_ddot_des = rpy_traj->derivative(time_k, 2);
 
   ocp_[k].A.setIdentity(12, 12);
   ocp_[k].A.block<3, 3>(0, 3).diagonal().fill(dt_);
-  ocp_[k].A.block<3, 3>(6, 9) =
-      dt_ * getJacobiFromOmegaToRPY(rpy) * Ig_.inverse();
-  ocp_[k].A.block<3, 3>(9, 0) = skew(dt_ * force_ff);
+  ocp_[k].A.block<3, 3>(6, 9) = dt_ * getJacobiFromOmegaToRPY(rpy);
   ocp_[k].B.setZero(12, nf * 3);
   vector3_t xc = pos_traj->evaluate(time_k);
-  // vector3_t xc = pinocchioInterfacePtr_->getCoMPos();
   for (size_t i = 0; i < nf; i++) {
+    const auto &foot_name = foot_names[i];
     if (contact_flag[i]) {
-      vector3_t pf_i = foot_traj[foot_names[i]]->evaluate(time_k);
+      vector3_t pf_i = foot_traj[foot_name]->evaluate(time_k);
       ocp_[k].B.middleRows(3, 3).middleCols(3 * i, 3).diagonal().fill(
           dt_ / total_mass_);
-      ocp_[k].B.bottomRows(3).middleCols(3 * i, 3) = skew(dt_ * (pf_i - xc));
+      ocp_[k].B.bottomRows(3).middleCols(3 * i, 3) =
+          Ig_.inverse() * skew(dt_ * (pf_i - xc));
     }
   }
 
   ocp_[k].b.setZero(12);
-  ocp_[k].b.segment(3, 3) = -dt_ * pos_traj->derivative(time_k, 2);
   ocp_[k].b(5) += -dt_ * grav_;
-  ocp_[k].b.tail(3) =
-      -dt_ *
-      (Ig_ * (getJacobiFromRPYToOmega(rpy) * rpy_ddot_des +
-              getJacobiDotFromRPYToOmega(rpy, rpy_dot_des) * rpy_dot_des) +
-       skew(rpy_dot_des) * Ig_ * rpy_dot_des);
 }
 
 void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
   const size_t nf = foot_names.size();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
+
   scalar_t phase = k * dt_ / mode_schedule->duration();
   auto contact_flag =
       quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -138,15 +117,25 @@ void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
 void ConstructVectorField::add_cost(size_t k, size_t N) {
   const size_t nf = foot_names.size();
   const scalar_t time_k = time_now_ + k * dt_;
-  auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto mode_schedule = referenceBuffer_->getModeSchedule();
+
+  vector3_t rpy_des = rpy_traj->evaluate(time_k) -
+                      rpy_traj->evaluate(time_now_) + rpy_des_start;
+  vector3_t omega_des =
+      getJacobiFromRPYToOmega(rpy_des) * rpy_traj->derivative(time_k, 1);
+
+  vector_t x_des(12);
+  x_des << pos_traj->evaluate(time_k), pos_traj->derivative(time_k, 1), rpy_des,
+      omega_des;
 
   ocp_[k].Q = weight_;
   ocp_[k].S = matrix_t::Zero(3 * nf, 12);
-  ocp_[k].q.setZero(12);
+  ocp_[k].q = -weight_ * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 1e-4 * matrix_t::Identity(3 * nf, 3 * nf);
-    auto mode_schedule = referenceBuffer_->getModeSchedule();
+    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -168,8 +157,8 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
     }
     ocp_[k].r = -ocp_[k].R * force_des;
   } else {
-    ocp_[k].Q = 1e2 * ocp_[k].Q;
-    ocp_[k].q = 1e2 * ocp_[k].q;
+    // ocp_[k].Q = 1e2 * ocp_[k].Q;
+    // ocp_[k].q = 1e2 * ocp_[k].q;
   }
 }
 
@@ -188,6 +177,15 @@ ConstructVectorField::compute() {
   size_t N = pos_traj->duration() / dt_;
   ocp_.resize(N + 1);
 
+  Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia().matrix();
+
+  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name);
+  auto base_twist =
+      pinocchioInterfacePtr_->getFrame6dVel_localWorldAligned(base_name);
+  auto rpy_m = toEulerAngles(base_pose.rotation());
+  rpy_des_start =
+      rpy_m - computeEulerAngleErr(rpy_m, rpy_traj->evaluate(time_now_));
+
   for (size_t k = 0; k <= N; k++) {
     if (k < N) {
       add_linear_system(k);
@@ -204,19 +202,11 @@ ConstructVectorField::compute() {
   hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
 
   vector_t x0(12);
-  auto base_pose = pinocchioInterfacePtr_->getFramePose(base_name);
-  auto base_twist =
-      pinocchioInterfacePtr_->getFrame6dVel_localWorldAligned(base_name);
-  vector3_t rpy = toEulerAngles(base_pose.rotation());
-  vector3_t rpy_des = rpy_traj->evaluate(time_now_);
-  vector3_t rpy_dot_des = rpy_traj->derivative(time_now_, 1);
-  auto rpy_err = computeEulerAngleErr(rpy, rpy_des);
+  x0 << base_pose.translation(), base_twist.linear(), rpy_m,
+      base_twist.angular();
 
-  x0 << base_pose.translation() - pos_traj->evaluate(time_now_),
-      base_twist.linear() - pos_traj->derivative(time_now_, 1), rpy_err,
-      Ig_ * base_twist.angular() -
-          Ig_ * getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
   const auto res = solver.solve(x0, ocp_, solution_);
+
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
     has_sol_ = true;
@@ -231,10 +221,6 @@ ConstructVectorField::compute() {
     vector_t drift = 1.0 / dt_ * ocp_[0].b;
     feedback_law_ptr->K = P * (A + B * solution_[0].K);
     feedback_law_ptr->b = P * (B * solution_[0].k + drift);
-    vector3_t omega_des = getJacobiFromRPYToOmega(rpy) * rpy_dot_des;
-    feedback_law_ptr->b.tail(3) -= Ig_.inverse() *
-                                   skew(base_twist.angular() - omega_des) *
-                                   Ig_ * (base_twist.angular() - omega_des);
 
     std::vector<scalar_t> time_array;
     std::vector<vector_t> base_pos_array;
@@ -245,23 +231,6 @@ ConstructVectorField::compute() {
       base_pos_array.emplace_back(solution_[k].x.head(3));
       base_rpy_array.emplace_back(solution_[k].x.segment(6, 3));
     }
-    auto base_pos_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
-        3, CubicSplineInterpolation::SplineType::cspline);
-    base_pos_traj_ptr_->set_boundary(
-        CubicSplineInterpolation::BoundaryType::first_deriv,
-        solution_[0].x.segment(3, 3),
-        CubicSplineInterpolation::BoundaryType::first_deriv,
-        solution_.back().x.segment(3, 3));
-    base_pos_traj_ptr_->fit(time_array, base_pos_array);
-
-    auto base_rpy_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
-        3, CubicSplineInterpolation::SplineType::cspline_hermite);
-    base_rpy_traj_ptr_->set_boundary(
-        CubicSplineInterpolation::BoundaryType::first_deriv,
-        getJacobiFromRPYToOmega(rpy) * Ig_.inverse() * solution_[0].x.tail(3),
-        CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
-    base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
-
     /* std::cout << "#####################acc opt1######################\n"
               << (A * x0 + B * solution_[0].u).transpose()
               << "\n"; */

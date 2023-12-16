@@ -40,8 +40,8 @@ void MotionManager::init() {
   if (hardware_) {
     unitreeHWPtr_ = std::make_shared<UnitreeHW>(this->shared_from_this());
   } else {
-    intializationPtr_->reset_simulation();
-    rclcpp::spin_some(this->shared_from_this());
+    // intializationPtr_->reset_simulation();
+    // rclcpp::spin_some(this->shared_from_this());
   }
 
   inner_loop_thread_ = std::thread(&MotionManager::innerLoop, this);
@@ -58,9 +58,9 @@ void MotionManager::innerLoop() {
       gaitSchedulePtr_->switchGait("trot");
     }
 
-    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.1);
-    }
+    /* if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
+      trajGenPtr_->setVelCmd(vector3_t(0.3, 0.0, 0.0), 0.0);
+    } */
 
     if (unitreeHWPtr_ != nullptr) {
       unitreeHWPtr_->read();

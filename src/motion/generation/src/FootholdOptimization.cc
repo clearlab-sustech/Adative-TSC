@@ -73,8 +73,8 @@ void FootholdOptimization::add_constraints(size_t k) {
   }
   ocp_[k].lbu_mask.setOnes(3 * nf);
   ocp_[k].ubu_mask.setOnes(3 * nf);
-  ocp_[k].lbu = -2.0 * dt * vector_t::Ones(3 * nf);
-  ocp_[k].ubu = 2.0 * dt * vector_t::Ones(3 * nf);
+  ocp_[k].lbu = -5.0 * dt * vector_t::Ones(3 * nf);
+  ocp_[k].ubu = 5.0 * dt * vector_t::Ones(3 * nf);
 }
 
 void FootholdOptimization::add_costs(scalar_t t, size_t k) {
@@ -91,20 +91,12 @@ void FootholdOptimization::add_costs(scalar_t t, size_t k) {
 
   vector3_t pos_des = base_pos_ref_traj->evaluate(tk);
   vector3_t rpy_des = base_rpy_traj->evaluate(tk);
-  vector3_t vel_des = toRotationMatrix(rpy_des).transpose() *
-                      base_pos_ref_traj->derivative(tk, 1);
 
   vector_t x_des(3 * nf);
   for (size_t i = 0; i < nf; i++) {
-    vector3_t expansion_y =
-        (i % 2 == 0 ? 1.0 : -1.0) *
-        (std::min(0.2, 0.2 * (1.0 - exp(-2.0 * abs(vel_des.y())))) +
-         0.05 * (abs(vel_des.x()) > 0.2 ? -0.6 : 1.0)) *
-        vector3_t::UnitY();
     x_des.segment(3 * i, 3) =
         pos_des +
-        toRotationMatrix(rpy_des) *
-            (footholds_nominal_pos[foot_names[i]] + 0.0 * expansion_y);
+        toRotationMatrix(rpy_des) * footholds_nominal_pos[foot_names[i]];
     x_des(3 * i + 2) = 0.02;
   }
 
@@ -114,7 +106,7 @@ void FootholdOptimization::add_costs(scalar_t t, size_t k) {
   ocp_[k].Q = Q;
   ocp_[k].q = -Q * x_des;
   ocp_[k].S.setZero(3 * nf, 3 * nf);
-  ocp_[k].R = 1e-2 * matrix_t::Identity(3 * nf, 3 * nf);
+  ocp_[k].R = 1e-3 * matrix_t::Identity(3 * nf, 3 * nf);
   ocp_[k].r.setZero(3 * nf);
 }
 
@@ -180,8 +172,8 @@ void FootholdOptimization::heuristic1() {
 
   const scalar_t t = nodeHandle_->now().seconds();
 
-  auto base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
-  auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto base_pos_ref_traj = referenceBuffer_->getOptimizedBasePosTraj();
+  auto base_rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
 
   vector3_t v_des = base_pos_ref_traj->derivative(t, 1);
@@ -203,20 +195,19 @@ void FootholdOptimization::heuristic1() {
   for (size_t i = 0; i < nf; i++) {
     const auto &foot_name = foot_names[i];
     scalar_t pfx_rel, pfy_rel;
-    scalar_t x_fb = abs(base_twist.linear().x() - v_des.x()) > 0.05
+    scalar_t x_fb = abs(base_twist.linear().x() - v_des.x()) > 0.1
                         ? base_twist.linear().x() - v_des.x()
                         : 0.0;
-    scalar_t y_fb = abs(base_twist.linear().y() - v_des.y()) > 0.05
+    scalar_t y_fb = abs(base_twist.linear().y() - v_des.y()) > 0.1
                         ? base_twist.linear().y() - v_des.y()
                         : 0.0;
-    pfx_rel = 0.1 * x_fb + (0.5 * base_pose.translation().z() / 9.81) *
-                               (base_twist.linear().y() * rpy_dot.z());
-    pfy_rel = 0.1 * y_fb + (0.5 * base_pose.translation().z() / 9.81) *
-                               (-base_twist.linear().x() * rpy_dot.z());
+    pfx_rel = 0.1 * x_fb;
+    pfy_rel = 0.1 * y_fb;
     pfx_rel = std::min(std::max(pfx_rel, -p_rel_max), p_rel_max);
     pfy_rel = std::min(std::max(pfy_rel, -p_rel_y_max), p_rel_y_max);
     footholds_[foot_name].second.x() += pfx_rel;
     footholds_[foot_name].second.y() += pfy_rel;
+    footholds_[foot_name].second.z() = 0.02;
   }
 }
 

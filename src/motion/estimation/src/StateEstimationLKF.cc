@@ -14,13 +14,15 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
   auto config_ = YAML::LoadFile(config_file_);
 
   robot_name = config_["model"]["name"].as<std::string>();
-  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "robot_name: %s", robot_name.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "robot_name: %s",
+              robot_name.c_str());
 
   std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "model file: %s",
+              urdf.c_str());
 
   pinocchioInterface_ptr = std::make_unique<PinocchioInterface>(urdf.c_str());
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
@@ -31,7 +33,8 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
   RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "use odom: %s",
               use_odom_ ? "true" : "false");
   for (const auto &name : foot_names) {
-    RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "foot name: %s", name.c_str());
+    RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "foot name: %s",
+                name.c_str());
     cflag_.emplace_back(true);
   }
 
@@ -238,6 +241,8 @@ void StateEstimationLKF::linearMotionEstimate(
 
 void StateEstimationLKF::innerLoop() {
   rclcpp::Rate loop_rate(1.0 / dt_);
+
+  const scalar_t t0 = nodeHandle_->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (imu_msg_buffer.get().get() == nullptr ||
         touch_msg_buffer.get().get() == nullptr ||
@@ -285,15 +290,17 @@ void StateEstimationLKF::innerLoop() {
     } else {
       // const auto touch_sensor_data = touch_msg_buffer.get()->value;
       // for (auto &data : touch_sensor_data) {
-      //   RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "touch_sensor_data: %f",
-      //   data);
+      //   RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"),
+      //   "touch_sensor_data: %f", data);
       // }
       angularMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
       linearMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
     }
 
-    qpos_ptr_buffer.push(qpos_ptr_);
-    qvel_ptr_buffer.push(qvel_ptr_);
+    if (nodeHandle_->now().seconds() - t0 > 0.3) {
+      qpos_ptr_buffer.push(qpos_ptr_);
+      qvel_ptr_buffer.push(qvel_ptr_);
+    }
 
     /* RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
                        "qpos: " << (*qpos_ptr_).transpose() << "\n");

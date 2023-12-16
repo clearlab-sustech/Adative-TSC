@@ -23,7 +23,8 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle)
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(rclcpp::get_logger("DataVisualization"), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("DataVisualization"), "model file: %s",
+              urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
@@ -202,30 +203,32 @@ void DataVisualization::publishFootholds() {
 }
 
 void DataVisualization::publishBaseTrajectory() {
+  auto base_pos_traj_int = referenceBuffer_->getIntegratedBasePosTraj();
   auto base_pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
-  if (base_pos_traj == nullptr)
+  if (base_pos_traj_int == nullptr || base_pos_traj == nullptr)
     return;
 
   line_strip_base.header.stamp = nodeHandle_->now();
   line_strip_base_ref.header.stamp = nodeHandle_->now();
 
-  if (line_strip_base.points.size() > 200) {
-    line_strip_base.points.erase(line_strip_base.points.begin());
+  line_strip_base.points.clear();
+  const scalar_t time_dur1 = base_pos_traj_int->duration();
+  for (size_t i = 0; i * 0.02 < time_dur1; i++) {
+    vector3_t pos =
+        base_pos_traj_int->evaluate(i * 0.02 + base_pos_traj_int->ts());
+    geometry_msgs::msg::Point point;
+    point.x = pos.x();
+    point.y = pos.y();
+    point.z = pos.z();
+    line_strip_base.points.emplace_back(point);
   }
-
-  geometry_msgs::msg::Point point;
-  vector3_t pos =
-      pinocchioInterface_ptr_->getFramePose(base_name).translation();
-  point.x = pos.x();
-  point.y = pos.y();
-  point.z = pos.z();
-  line_strip_base.points.emplace_back(point);
   base_traj_pub_->publish(line_strip_base);
 
   line_strip_base_ref.points.clear();
-  const scalar_t time_dur = base_pos_traj->duration();
-  for (size_t i = 0; i * 0.02 < time_dur; i++) {
-    pos = base_pos_traj->evaluate(i * 0.02 + base_pos_traj->ts());
+  const scalar_t time_dur2 = base_pos_traj->duration();
+  for (size_t i = 0; i * 0.02 < time_dur2; i++) {
+    vector3_t pos = base_pos_traj->evaluate(i * 0.02 + base_pos_traj->ts());
+    geometry_msgs::msg::Point point;
     point.x = pos.x();
     point.y = pos.y();
     point.z = pos.z();

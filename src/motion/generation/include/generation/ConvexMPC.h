@@ -59,6 +59,7 @@ private:
   const scalar_t mu_ = 0.5;
   matrix_t weight_;
   vector3_t rpy_des_start;
+  bool first_run_ = true;
 
   std::vector<hpipm::OcpQp> ocp_;
   std::vector<hpipm::OcpQpSolution> solution_;
