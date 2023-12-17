@@ -97,9 +97,17 @@ void ConvexMPC::generateTrajRef() {
     if (pos_m.z() + 0.02 < h_des) {
       h = pos_m.z() + 0.02;
     }
-    pos_t.emplace_back(vector3_t(0, 0, h));
-    pos_t.emplace_back(vector3_t(0, 0, h));
-    pos_t.emplace_back(vector3_t(0, 0, h));
+
+    vector3_t foot_center = vector3_t::Zero();
+    for (size_t k = 0; k < foot_names.size(); k++) {
+      foot_center +=
+          pinocchioInterface_ptr_->getFramePose(foot_names[k]).translation();
+    }
+    foot_center = 1.0 / static_cast<scalar_t>(foot_names.size()) * foot_center;
+
+    pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(), h));
+    pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(), h));
+    pos_t.emplace_back(vector3_t(foot_center.x(), foot_center.y(), h));
 
   } else {
     size_t N = horizon_time / 0.05;

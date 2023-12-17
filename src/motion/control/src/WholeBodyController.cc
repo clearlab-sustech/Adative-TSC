@@ -81,7 +81,7 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_->setZero(actuated_joints_name.size());
 
   if (referenceBuffer_->getModeSchedule().get() == nullptr) {
-    return actuator_commands_;
+    return actuator_commands_; 
   }
 
   formulate();
@@ -270,8 +270,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
 
-  } else if (pos_traj.get() != nullptr && rpy_traj.get() != nullptr &&
-             vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
+  } else if(pos_traj.get() != nullptr && rpy_traj.get() != nullptr 
+            && vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
     const scalar_t time_now_ = nodeHandle_->now().seconds();
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
@@ -295,7 +295,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     if (abs(acc_fb.z()) > 5.0) {
       acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
     }
-  } else {
+  } else
+  {
     acc_fb.setZero();
   }
 
@@ -317,8 +318,7 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   auto foot_traj = referenceBuffer_.get()->getFootPosTraj();
   auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
 
-  if (nc - numContacts_ <= 0 || foot_traj.size() != nc ||
-      base_pos_traj.get() == nullptr) {
+  if (nc - numContacts_ <= 0 || foot_traj.size() != nc || base_pos_traj.get() == nullptr) {
     return MatrixDB("swing_task");
   }
   MatrixDB swing_task("swing_task");
@@ -462,13 +462,13 @@ void WholeBodyController::differential_inv_kin() {
         vector_t jnt_pos = pinocchioInterface_ptr_->qpos().tail(nj);
         vector_t jnt_vel = pinocchioInterface_ptr_->qvel().tail(nj);
         for (size_t i = 0; i < 3; i++) {
-          actuator_commands_->Kp(idx[i]) = 10.0;
-          actuator_commands_->Kd(idx[i]) = 0.1;
-          actuator_commands_->pos(idx[i]) =
-              jnt_pos(idx[i]) + jnt_vel(idx[i]) * dt_ +
-              0.5 * pow(dt_, 2) * joint_acc_(idx[i]);
-          actuator_commands_->vel(idx[i]) =
-              jnt_vel(idx[i]) + dt_ * joint_acc_(idx[i]);
+          // actuator_commands_->Kp(idx[i]) = 10.0;
+          // actuator_commands_->Kd(idx[i]) = 0.1;
+          // actuator_commands_->pos(idx[i]) =
+          //     jnt_pos(idx[i]) + jnt_vel(idx[i]) * dt_ +
+          //     0.5 * pow(dt_, 2) * joint_acc_(idx[i]);
+          // actuator_commands_->vel(idx[i]) =
+          //     jnt_vel(idx[i]) + dt_ * joint_acc_(idx[i]);
           actuator_commands_->Kp(idx[i]) = 0.0;
           actuator_commands_->Kd(idx[i]) = 0.0;
           actuator_commands_->pos(idx[i]) = 0.0;

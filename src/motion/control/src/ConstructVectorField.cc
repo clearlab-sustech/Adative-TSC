@@ -25,7 +25,7 @@ ConstructVectorField::ConstructVectorField(
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
   //     10.0, 10.0;
 
-  weight_.diagonal() << 20, 20, 50, 0.2, 0.2, 0.2, 3, 6, 5, 0.3, 0.3, 0.3;
+  weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 0.3, 30, 30, 50, 0.2, 0.2, 0.3;
   // weight_ = 20.0 * weight_;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
@@ -51,8 +51,8 @@ void ConstructVectorField::updateReferenceBuffer(
 
 void ConstructVectorField::add_linear_system(size_t k) {
   const scalar_t time_k = time_now_ + k * dt_;
-  auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
-  auto rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto foot_traj = referenceBuffer_->getFootPosTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
 
@@ -136,7 +136,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   ocp_[k].q = -weight_ * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 1e-4 * matrix_t::Identity(3 * nf, 3 * nf);
+    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));

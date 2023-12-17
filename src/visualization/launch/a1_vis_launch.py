@@ -32,6 +32,14 @@ def generate_launch_description():
                 default_value="false",
                 description="Use simulation (Gazebo) clock if true",
             ),
+            # Node(
+            #     package="visualization",
+            #     executable="visualization",
+            #     name="aliengo_visualization",
+            #     output="screen",
+            #     emulate_tty=True,
+            #     arguments=[config_file, ("__log_level:=debug")],
+            # ),
             Node(
                 package="robot_state_publisher",
                 executable="robot_state_publisher",

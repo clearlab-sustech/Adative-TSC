@@ -35,6 +35,11 @@ set(TARGET_DEPENDENCE
 rosidl_generate_interfaces(${PROJECT_NAME}
   msgs/ActuatorCmds.msg
   msgs/TouchSensor.msg
+  msgs/EstimatedStates.msg
+  msgs/Trajectory.msg
+  msgs/TorchMode.msg
+  msgs/ModeScheduleTrans.msg
+  msgs/TrajectoryArray.msg
   srv/SimulationReset.srv
   srv/GaitSwitch.srv
   DEPENDENCIES ament_cmake std_msgs geometry_msgs sensor_msgs nav_msgs
