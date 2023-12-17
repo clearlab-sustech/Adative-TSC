@@ -72,6 +72,8 @@ void ConvexMPC::generateTrajRef() {
     if ((rpy_c - rpy_m).norm() > 0.1) {
       rpy_m = 0.1 * (rpy_m - rpy_c).normalized() + rpy_c;
     }
+    rpy_m.head(2).setZero();
+
     pos_m = base_pos_traj->evaluate(t_now);
     vector_t pos_c = base_pose_m.translation();
     if ((pos_c - pos_m).norm() > 0.03) {
@@ -83,17 +85,22 @@ void ConvexMPC::generateTrajRef() {
   std::vector<scalar_t> time;
   std::vector<vector_t> rpy_t, pos_t;
   scalar_t horizon_time = referenceBuffer_->getModeSchedule()->duration();
-  if (vel_cmd.norm() < 0.01) {
+  if (vel_cmd.norm() < 0.01 && yawd_ < 0.01) {
     time.emplace_back(t_now);
     time.emplace_back(t_now + 0.5 * horizon_time);
     time.emplace_back(t_now + horizon_time);
     rpy_t.emplace_back(vector3_t(0, 0, 0));
     rpy_t.emplace_back(vector3_t(0, 0, 0));
     rpy_t.emplace_back(vector3_t(0, 0, 0));
-    pos_t.emplace_back(vector3_t(0, 0, h_des));
-    pos_t.emplace_back(vector3_t(0, 0, h_des));
-    pos_t.emplace_back(vector3_t(0, 0, h_des));
-    
+
+    scalar_t h = h_des;
+    if (pos_m.z() + 0.02 < h_des) {
+      h = pos_m.z() + 0.02;
+    }
+    pos_t.emplace_back(vector3_t(0, 0, h));
+    pos_t.emplace_back(vector3_t(0, 0, h));
+    pos_t.emplace_back(vector3_t(0, 0, h));
+
   } else {
     size_t N = horizon_time / 0.05;
     rpy_m.head(2).setZero();
@@ -276,8 +283,8 @@ void ConvexMPC::optimize() {
   auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
   Ig_ = base_pose.rotation().transpose() * Ig_0 * base_pose.rotation();
 
-  // auto base_twist =
-  //     pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+  auto base_twist =
+      pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
   auto rpy_m = toEulerAngles(base_pose.rotation());
   rpy_des_start =
       rpy_m - computeEulerAngleErr(rpy_m, rpy_traj->evaluate(time_cur));
@@ -301,8 +308,11 @@ void ConvexMPC::optimize() {
   vector_t x0(12);
   vector3_t omega0 = getJacobiFromRPYToOmega(rpy_des_start) *
                      rpy_traj->derivative(time_cur, 1);
-  x0 << pos_traj->evaluate(time_cur), pos_traj->derivative(time_cur, 1),
-      rpy_des_start, omega0;
+  // x0 << pos_traj->evaluate(time_cur), pos_traj->derivative(time_cur, 1),
+  //     rpy_des_start, omega0;
+
+ x0 << base_pose.translation(), base_twist.linear(),
+      rpy_m, base_twist.angular();
 
   const auto res = solver.solve(x0, ocp_, solution_);
   if (res == hpipm::HpipmStatus::Success ||
@@ -319,14 +329,27 @@ void ConvexMPC::optimize() {
 void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
   std::vector<scalar_t> time_array;
   std::vector<vector_t> base_pos_array;
+  std::vector<vector_t> base_vel_array;
   std::vector<vector_t> base_rpy_array;
+  std::vector<vector_t> base_omega_array;
+
+  matrix_t P(6, 12);
+  P.setZero();
+  P.topRows(3).middleCols(3, 3).setIdentity();
+  P.bottomRows(3).middleCols(9, 3).setIdentity();
+  matrix_t A = 1.0 / dt_ * (ocp_[0].A - matrix_t::Identity(12, 12));
+  matrix_t B = 1.0 / dt_ * ocp_[0].B;
+  vector_t drift = 1.0 / dt_ * ocp_[0].b;
+  vector_t acc_des = P * (A * solution_[0].x + B * solution_[0].u + drift);
 
   for (size_t k = 0; k < N; k++) {
     time_array.emplace_back(time_cur + k * dt_);
     base_pos_array.emplace_back(solution_[k].x.head(3));
+    base_vel_array.emplace_back(solution_[k].x.segment(3, 3));
     base_rpy_array.emplace_back(solution_[k].x.segment(6, 3));
+    base_omega_array.emplace_back(solution_[k].x.tail(3));
   }
-  base_pos_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
+  auto base_pos_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline);
   base_pos_traj_ptr_->set_boundary(
       CubicSplineInterpolation::BoundaryType::first_deriv,
@@ -336,13 +359,29 @@ void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
   base_pos_traj_ptr_->fit(time_array, base_pos_array);
   referenceBuffer_->setOptimizedBasePosTraj(base_pos_traj_ptr_);
 
-  base_rpy_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
+  auto base_vel_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
+      3, CubicSplineInterpolation::SplineType::cspline);
+  base_vel_traj_ptr_->set_boundary(
+      CubicSplineInterpolation::BoundaryType::first_deriv, acc_des.head(3),
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+  base_vel_traj_ptr_->fit(time_array, base_vel_array);
+  referenceBuffer_->setOptimizedBaseVelTraj(base_vel_traj_ptr_);
+
+  auto base_rpy_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline_hermite);
   base_rpy_traj_ptr_->set_boundary(
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
       CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
   base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
   referenceBuffer_->setOptimizedBaseRpyTraj(base_rpy_traj_ptr_);
+
+  auto base_omega_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
+      3, CubicSplineInterpolation::SplineType::cspline);
+  base_omega_traj_ptr_->set_boundary(
+      CubicSplineInterpolation::BoundaryType::first_deriv, acc_des.tail(3),
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+  base_omega_traj_ptr_->fit(time_array, base_omega_array);
+  referenceBuffer_->setOptimizedBaseOmegaTraj(base_omega_traj_ptr_);
 }
 
 vector3_t ConvexMPC::computeEulerAngleErr(const vector3_t &rpy_m,

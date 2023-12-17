@@ -22,6 +22,9 @@ TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
   freq_ = config_["controller"]["frequency"].as<scalar_t>();
   RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "frequency: %f",
               freq_);
+  use_vector_field = config_["controller"]["use_vector_field"].as<bool>();
+  RCLCPP_INFO_STREAM(rclcpp::get_logger("TrajectoryStabilization"), "use_vector_field: " << (use_vector_field ? "true" : "false"));
+
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
   robot_name = config_["model"]["name"].as<std::string>();
@@ -42,10 +45,14 @@ TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
   base_name = config_["model"]["base_name"].as<std::string>();
 
   run_.push(true);
-  vf_ptr_ = std::make_shared<ConstructVectorField>(nodeHandle_,
-                                                   pinocchioInterface_ptr_);
-  vector_field_thread_ =
-      std::thread(&TrajectoryStabilization::adapative_gain_loop, this);
+  if(use_vector_field)
+  {
+    vf_ptr_ = std::make_shared<ConstructVectorField>(nodeHandle_,
+                                                    pinocchioInterface_ptr_);
+    vector_field_thread_ =
+        std::thread(&TrajectoryStabilization::adapative_gain_loop, this);
+  }
+  
   wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_);
   inner_loop_thread_ = std::thread(&TrajectoryStabilization::innerLoop, this);
 }
@@ -121,6 +128,7 @@ void TrajectoryStabilization::publishCmds() {
 }
 
 void TrajectoryStabilization::innerLoop() {
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
@@ -130,17 +138,23 @@ void TrajectoryStabilization::innerLoop() {
         referenceBuffer_ == nullptr) {
       std::this_thread::sleep_for(
           std::chrono::milliseconds(int64_t(1000 / freq_)));
-    } else {
+    } else if (referenceBuffer_->isReady()) {
       std::shared_ptr<vector_t> qpos_ptr = qpos_ptr_buffer.get();
       std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
       pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 
       wbcPtr_->updateState(qpos_ptr, qvel_ptr);
       wbcPtr_->updateReferenceBuffer(referenceBuffer_);
-      // wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
-      actuator_commands_buffer.push(wbcPtr_->optimize());
-
-      publishCmds();
+      if(use_vector_field && vf_param_buffer_.get() != nullptr)
+      {
+        wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
+        actuator_commands_buffer.push(wbcPtr_->optimize());
+        publishCmds();
+      } else if(!use_vector_field)
+      {
+        actuator_commands_buffer.push(wbcPtr_->optimize());
+        publishCmds();
+      } 
     }
     timer_.endTimer();
     loop_rate.sleep();
@@ -152,8 +166,10 @@ void TrajectoryStabilization::innerLoop() {
 }
 
 void TrajectoryStabilization::adapative_gain_loop() {
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
   benchmark::RepeatedTimer timer_;
-  rclcpp::Rate loop_rate(50.0);
+  rclcpp::Rate loop_rate(100.0);
   std::fstream save_state("data_log.txt", std::ios::ate | std::ios::out);
 
   while (rclcpp::ok() && run_.get()) {
@@ -161,9 +177,9 @@ void TrajectoryStabilization::adapative_gain_loop() {
     if (qpos_ptr_buffer.get() == nullptr || qvel_ptr_buffer.get() == nullptr ||
         referenceBuffer_.get() == nullptr) {
       continue;
-    } else {
-      // RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "Adaptive Gain Computaion:
-      // run");
+    } else if (referenceBuffer_->isReady()) {
+      // RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "Adaptive
+      // Gain Computaion: run");
       vf_ptr_->updateReferenceBuffer(referenceBuffer_);
       vf_param_buffer_.push(vf_ptr_->compute());
 

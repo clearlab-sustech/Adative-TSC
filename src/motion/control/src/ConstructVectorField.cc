@@ -25,7 +25,7 @@ ConstructVectorField::ConstructVectorField(
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
   //     10.0, 10.0;
 
-  weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 0.3, 30, 30, 50, 0.2, 0.2, 0.3;
+  weight_.diagonal() << 20, 20, 50, 0.2, 0.2, 0.2, 3, 6, 5, 0.3, 0.3, 0.3;
   // weight_ = 20.0 * weight_;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
@@ -83,6 +83,7 @@ void ConstructVectorField::add_linear_system(size_t k) {
 
   ocp_[k].b.setZero(12);
   ocp_[k].b(5) += -dt_ * grav_;
+  
 }
 
 void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
@@ -135,7 +136,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   ocp_[k].q = -weight_ * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
+    ocp_[k].R = 1e-4 * matrix_t::Identity(3 * nf, 3 * nf);
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -166,15 +167,15 @@ std::shared_ptr<ConstructVectorField::VectorFieldParam>
 ConstructVectorField::compute() {
   feedback_law_ptr = nullptr;
 
-  auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
-  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
-  if (pos_traj.get() == nullptr || rpy_traj.get() == nullptr ||
-      referenceBuffer_->getFootPosTraj().empty()) {
+  if (!referenceBuffer_->isReady()) {
     return feedback_law_ptr;
   }
+  
   time_now_ = nodeHandle_->now().seconds();
 
-  size_t N = pos_traj->duration() / dt_;
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  
+  size_t N = rpy_traj->duration() / dt_;
   ocp_.resize(N + 1);
 
   Ig_ = pinocchioInterfacePtr_->getData().Ig.inertia().matrix();
@@ -214,7 +215,7 @@ ConstructVectorField::compute() {
     matrix_t P(6, 12);
     P.setZero();
     P.topRows(3).middleCols(3, 3).setIdentity();
-    P.bottomRows(3).middleCols(9, 3) = Ig_.inverse();
+    P.bottomRows(3).middleCols(9, 3).setIdentity();
 
     matrix_t A = 1.0 / dt_ * (ocp_[0].A - matrix_t::Identity(12, 12));
     matrix_t B = 1.0 / dt_ * ocp_[0].B;

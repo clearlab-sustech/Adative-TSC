@@ -156,7 +156,7 @@ void DataVisualization::innerLoop() {
     /*--------- current state --------------*/
     publishCurrentState();
 
-    if (referenceBuffer_ == nullptr) {
+    if (referenceBuffer_ == nullptr || !referenceBuffer_->isReady()) {
       continue;
     }
 

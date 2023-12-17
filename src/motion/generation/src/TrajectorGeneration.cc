@@ -69,6 +69,8 @@ std::shared_ptr<ReferenceBuffer> TrajectorGeneration::getReferenceBuffer() {
 }
 
 void TrajectorGeneration::innerLoop() {
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
 

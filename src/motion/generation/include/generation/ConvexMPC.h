@@ -65,9 +65,6 @@ private:
   std::vector<hpipm::OcpQpSolution> solution_;
   hpipm::OcpQpIpmSolverSettings solver_settings;
 
-  std::shared_ptr<CubicSplineTrajectory> base_pos_traj_ptr_;
-  std::shared_ptr<CubicSplineTrajectory> base_rpy_traj_ptr_;
-
   vector3_t vel_cmd;
   scalar_t yawd_;
 

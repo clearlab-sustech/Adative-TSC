@@ -8,7 +8,6 @@
 #include <map>
 #include <mutex>
 #include <rclcpp/rclcpp.hpp>
-#include <trans/msg/mode_schedule_trans.hpp>
 #include <trans/srv/gait_switch.hpp>
 #include <yaml-cpp/yaml.h>
 

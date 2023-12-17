@@ -2,6 +2,7 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <core/optimization/MathematicalProgram.h>
+#include <eiquadprog/eiquadprog-fast.hpp>
 #include <pinocchio/Orientation.h>
 #include <rcpputils/asserts.hpp>
 #include <utility>
@@ -78,37 +79,62 @@ void WholeBodyController::formulate() {
 std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
-  // if (base_vf_.get() == nullptr) {
-  //   return actuator_commands_;
-  // }
+
+  if (referenceBuffer_->getModeSchedule().get() == nullptr) {
+    return actuator_commands_;
+  }
 
   formulate();
 
   matrix_t H = weighedTask.A.transpose() * weighedTask.A;
-  // H.diagonal() += 1e-8 * vector_t::Ones(numDecisionVars_);
+  H.diagonal() += 1e-12 * vector_t::Ones(numDecisionVars_);
   vector_t g = -weighedTask.A.transpose() * weighedTask.b;
 
   // Solve
-  MathematicalProgram prog;
-  auto var = prog.newVectorVariables(numDecisionVars_);
-  prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
-  prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
-                                      constraints.ub, var);
-  prog.addQuadraticCost(H, g, var);
-  vector_t tau;
-  if (prog.solve()) {
-    actuator_commands_->torque =
-        prog.getSolution(var).tail(actuated_joints_name.size());
-    joint_acc_ = prog.getSolution()
-                     .head(pinocchioInterface_ptr_->nv())
+  // MathematicalProgram prog;
+  // auto var = prog.newVectorVariables(numDecisionVars_);
+  // prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
+  // prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
+  //                                     constraints.ub, var);
+  // prog.addQuadraticCost(H, g, var);
+  // vector_t tau;
+  // if (prog.solve()) {
+  //   actuator_commands_->torque =
+  //       prog.getSolution(var).tail(actuated_joints_name.size());
+  //   joint_acc_ = prog.getSolution()
+  //                    .head(pinocchioInterface_ptr_->nv())
+  //                    .tail(actuated_joints_name.size());
+  // } else {
+  //   joint_acc_.setZero(actuated_joints_name.size());
+  //   std::cerr << "wbc failed ...\n";
+  //   actuator_commands_->torque =
+  //       pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+  // }
+  // differential_inv_kin();
+
+  eiquadprog::solvers::EiquadprogFast eiquadprog_solver;
+  eiquadprog_solver.reset(numDecisionVars_, constraints.b.size(),
+                          2 * constraints.lb.size());
+  matrix_t Cin(constraints.C.rows() * 2, numDecisionVars_);
+  Cin << constraints.C, -constraints.C;
+  vector_t cin(constraints.C.rows() * 2), ce0;
+  cin << -constraints.lb, constraints.ub;
+  ce0 = -constraints.b;
+  vector_t optimal_u = vector_t::Zero(numDecisionVars_);
+  auto solver_state = eiquadprog_solver.solve_quadprog(H, g, constraints.A, ce0,
+                                                       Cin, cin, optimal_u);
+  // printf("solver state: %d\n", solver_state);
+  if (solver_state == eiquadprog::solvers::EIQUADPROG_FAST_OPTIMAL) {
+    actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
+    joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
+    differential_inv_kin();
   } else {
     joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
-    actuator_commands_->torque =
-        pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
+    actuator_commands_->setZero(actuated_joints_name.size());
+    actuator_commands_->Kd.fill(1.0);
   }
-  differential_inv_kin();
 
   return actuator_commands_;
 }
@@ -220,10 +246,11 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 
   vector6_t acc_fb;
   auto pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
-  auto rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
+  auto rpy_traj = referenceBuffer_.get()->getIntegratedBaseRpyTraj();
+  auto vel_traj = referenceBuffer_.get()->getOptimizedBaseVelTraj();
+  auto omega_traj = referenceBuffer_.get()->getOptimizedBaseOmegaTraj();
 
-  if (policy != nullptr && pos_traj != nullptr && rpy_traj != nullptr) {
-    scalar_t t = nodeHandle_->now().seconds() + dt_;
+  if (policy != nullptr) {
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
     auto base_twist =
@@ -236,29 +263,29 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     if (acc_fb.norm() > 20) {
       acc_fb = 20.0 * acc_fb.normalized();
     }
+    if (abs(acc_fb.z()) > 5.0) {
+      acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
+    }
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
 
-  } else {
+  } else if (pos_traj.get() != nullptr && rpy_traj.get() != nullptr &&
+             vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
     const scalar_t time_now_ = nodeHandle_->now().seconds();
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
     auto base_twist = pinocchioInterface_ptr_->getFrame6dVel_local(base_name);
-    vector_t rpy = toEulerAngles(base_pose.rotation());
-    vector3_t omega_des =
-        getJacobiFromRPYToOmega(rpy) * rpy_traj->derivative(time_now_, 1);
-
     pin::SE3 pose_ref;
     pose_ref.rotation() = toRotationMatrix(rpy_traj->evaluate(time_now_));
     pose_ref.translation() = pos_traj->evaluate(time_now_);
     vector6_t _spatialVelRef, _spatialAccRef;
     _spatialVelRef << base_pose.rotation().transpose() *
-                          pos_traj->derivative(time_now_, 1),
-        base_pose.rotation().transpose() * omega_des;
+                          vel_traj->evaluate(time_now_),
+        base_pose.rotation().transpose() * omega_traj->evaluate(time_now_);
     _spatialAccRef << base_pose.rotation().transpose() *
-                          pos_traj->derivative(time_now_, 2),
-        vector3_t::Zero();
+                          vel_traj->derivative(time_now_, 1),
+        base_pose.rotation().transpose() * omega_traj->derivative(time_now_, 1);
     // _spatialAccRef.setZero();
     auto pose_err = log6(base_pose.actInv(pose_ref)).toVector();
     auto vel_err = _spatialVelRef - base_twist.toVector();
@@ -268,6 +295,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     if (abs(acc_fb.z()) > 5.0) {
       acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
     }
+  } else {
+    acc_fb.setZero();
   }
 
   base_task.b =
@@ -286,9 +315,10 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   const size_t nv = pinocchioInterface_ptr_->nv();
 
   auto foot_traj = referenceBuffer_.get()->getFootPosTraj();
-  auto jnt_pos_traj = referenceBuffer_.get()->getJointsPosTraj();
+  auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
 
-  if (nc - numContacts_ <= 0 || foot_traj.size() != nc) {
+  if (nc - numContacts_ <= 0 || foot_traj.size() != nc ||
+      base_pos_traj.get() == nullptr) {
     return MatrixDB("swing_task");
   }
   MatrixDB swing_task("swing_task");
@@ -298,7 +328,6 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
       matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
   swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
   swing_task.b.setZero(swing_task.A.rows());
-  auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
 
   size_t j = 0;
   for (size_t i = 0; i < nc; ++i) {
@@ -344,7 +373,7 @@ void WholeBodyController::differential_inv_kin() {
   auto foot_traj_array = referenceBuffer_->getFootPosTraj();
   auto pos_traj = referenceBuffer_.get()->getIntegratedBasePosTraj();
 
-  if (foot_traj_array.empty()) {
+  if (foot_traj_array.empty() || pos_traj.get() == nullptr) {
     return;
   }
 
@@ -440,6 +469,10 @@ void WholeBodyController::differential_inv_kin() {
               0.5 * pow(dt_, 2) * joint_acc_(idx[i]);
           actuator_commands_->vel(idx[i]) =
               jnt_vel(idx[i]) + dt_ * joint_acc_(idx[i]);
+          actuator_commands_->Kp(idx[i]) = 0.0;
+          actuator_commands_->Kd(idx[i]) = 0.0;
+          actuator_commands_->pos(idx[i]) = 0.0;
+          actuator_commands_->vel(idx[i]) = 0.0;
         }
       }
     }
@@ -484,10 +517,10 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(37);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(200);
+  baseKp_.diagonal().fill(100);
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(30);
+  baseKd_.diagonal().fill(10);
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);

@@ -53,6 +53,7 @@ private:
   std::thread inner_loop_thread_, vector_field_thread_;
   Buffer<bool> run_;
   scalar_t freq_;
+  bool use_vector_field;
 
   std::string base_name, robot_name;
   std::vector<std::string> actuated_joints_name;

@@ -1,4 +1,5 @@
 #include "core/trajectory/ReferenceBuffer.h"
+#include <iostream>
 
 namespace clear {
 
@@ -11,9 +12,25 @@ void ReferenceBuffer::clearAll() {
   integ_base_pos_buffer_.clear();
   optimized_base_pos_buffer_.clear();
   optimized_base_rpy_buffer_.clear();
+  optimized_base_vel_buffer_.clear();
+  optimized_base_omega_buffer_.clear();
   foot_rpy_buffer_.clear();
   foot_pos_buffer_.clear();
   joints_pos_buffer_.clear();
+}
+
+bool ReferenceBuffer::isReady() { 
+  bool is_ready_ = true;
+  is_ready_ &= (integ_base_rpy_buffer_.get()!=nullptr);
+  is_ready_ &= (integ_base_pos_buffer_.get()!=nullptr);
+  is_ready_ &= (optimized_base_pos_buffer_.get()!=nullptr);
+  is_ready_ &= (optimized_base_rpy_buffer_.get()!=nullptr);
+  is_ready_ &= (optimized_base_vel_buffer_.get()!=nullptr);
+  is_ready_ &= (optimized_base_omega_buffer_.get()!=nullptr);
+  is_ready_ &= (mode_schedule_buffer_.get()!=nullptr);
+  is_ready_ &= !foot_pos_buffer_.get().empty();
+  is_ready_ &= !footholds_buffer_.get().empty();
+  return is_ready_; 
 }
 
 std::shared_ptr<CubicSplineTrajectory>
@@ -42,6 +59,16 @@ ReferenceBuffer::getOptimizedBasePosTraj() const {
   } else {
     return integ_base_pos_buffer_.get();
   }
+}
+
+std::shared_ptr<CubicSplineTrajectory>
+ReferenceBuffer::getOptimizedBaseVelTraj() const {
+  return optimized_base_vel_buffer_.get();
+}
+
+std::shared_ptr<CubicSplineTrajectory>
+ReferenceBuffer::getOptimizedBaseOmegaTraj() const {
+  return optimized_base_omega_buffer_.get();
 }
 
 std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>
@@ -86,6 +113,16 @@ void ReferenceBuffer::setOptimizedBasePosTraj(
 void ReferenceBuffer::setOptimizedBaseRpyTraj(
     std::shared_ptr<CubicSplineTrajectory> base_rpy_traj) {
   optimized_base_rpy_buffer_.push(base_rpy_traj);
+}
+
+void ReferenceBuffer::setOptimizedBaseVelTraj(
+    std::shared_ptr<CubicSplineTrajectory> base_vel_traj) {
+  optimized_base_vel_buffer_.push(base_vel_traj);
+}
+
+void ReferenceBuffer::setOptimizedBaseOmegaTraj(
+    std::shared_ptr<CubicSplineTrajectory> base_omega_traj) {
+  optimized_base_omega_buffer_.push(base_omega_traj);
 }
 
 void ReferenceBuffer::setFootRpyTraj(
