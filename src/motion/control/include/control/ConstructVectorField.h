@@ -15,6 +15,7 @@ public:
   struct VectorFieldParam {
     matrix_t K;
     vector_t b;
+    vector_t force_des;
   };
 
 public:

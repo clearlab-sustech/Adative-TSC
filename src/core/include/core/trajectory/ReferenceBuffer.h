@@ -29,6 +29,8 @@ public:
 
   std::shared_ptr<CubicSplineTrajectory> getOptimizedBaseOmegaTraj() const;
 
+  std::shared_ptr<CubicSplineTrajectory> getOptimizedForceTraj() const;
+
   std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>
   getFootRpyTraj() const;
 
@@ -59,6 +61,9 @@ public:
   void setOptimizedBaseOmegaTraj(
       std::shared_ptr<CubicSplineTrajectory> base_omega_traj);
 
+  void setOptimizedForceTraj(
+      std::shared_ptr<CubicSplineTrajectory> force_traj);
+
   void
   setFootRpyTraj(std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>
                      foot_rpy_traj);
@@ -81,6 +86,7 @@ private:
   Buffer<std::shared_ptr<CubicSplineTrajectory>> optimized_base_rpy_buffer_;
   Buffer<std::shared_ptr<CubicSplineTrajectory>> optimized_base_vel_buffer_;
   Buffer<std::shared_ptr<CubicSplineTrajectory>> optimized_base_omega_buffer_;
+  Buffer<std::shared_ptr<CubicSplineTrajectory>> optimized_force_buffer_;
   Buffer<std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>>
       foot_rpy_buffer_;
   Buffer<std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>>

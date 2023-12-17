@@ -246,7 +246,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
 
   vector6_t acc_fb;
   auto pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
-  auto rpy_traj = referenceBuffer_.get()->getIntegratedBaseRpyTraj();
+  auto rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
   auto vel_traj = referenceBuffer_.get()->getOptimizedBaseVelTraj();
   auto omega_traj = referenceBuffer_.get()->getOptimizedBaseOmegaTraj();
 
@@ -462,17 +462,17 @@ void WholeBodyController::differential_inv_kin() {
         vector_t jnt_pos = pinocchioInterface_ptr_->qpos().tail(nj);
         vector_t jnt_vel = pinocchioInterface_ptr_->qvel().tail(nj);
         for (size_t i = 0; i < 3; i++) {
-          // actuator_commands_->Kp(idx[i]) = 10.0;
-          // actuator_commands_->Kd(idx[i]) = 0.1;
-          // actuator_commands_->pos(idx[i]) =
-          //     jnt_pos(idx[i]) + jnt_vel(idx[i]) * dt_ +
-          //     0.5 * pow(dt_, 2) * joint_acc_(idx[i]);
-          // actuator_commands_->vel(idx[i]) =
-          //     jnt_vel(idx[i]) + dt_ * joint_acc_(idx[i]);
-          actuator_commands_->Kp(idx[i]) = 0.0;
-          actuator_commands_->Kd(idx[i]) = 0.0;
-          actuator_commands_->pos(idx[i]) = 0.0;
-          actuator_commands_->vel(idx[i]) = 0.0;
+          actuator_commands_->Kp(idx[i]) = 10.0;
+          actuator_commands_->Kd(idx[i]) = 0.1;
+          actuator_commands_->pos(idx[i]) =
+              jnt_pos(idx[i]) + jnt_vel(idx[i]) * dt_ +
+              0.5 * pow(dt_, 2) * joint_acc_(idx[i]);
+          actuator_commands_->vel(idx[i]) =
+              jnt_vel(idx[i]) + dt_ * joint_acc_(idx[i]);
+          // actuator_commands_->Kp(idx[i]) = 0.0;
+          // actuator_commands_->Kd(idx[i]) = 0.0;
+          // actuator_commands_->pos(idx[i]) = 0.0;
+          // actuator_commands_->vel(idx[i]) = 0.0;
         }
       }
     }
@@ -485,10 +485,19 @@ void WholeBodyController::differential_inv_kin() {
 MatrixDB WholeBodyController::formulateContactForceTask() {
   size_t nc = foot_names.size();
   size_t nv = pinocchioInterface_ptr_->nv();
+  const auto policy = base_vf_.get();
 
   MatrixDB contact_force("contact_force");
   contact_force.A.setZero(3 * nc, numDecisionVars_);
-  contact_force.b.setZero(contact_force.A.rows());
+  if(policy != nullptr)
+  {
+    contact_force.b = policy->force_des;
+    weightContactForce_ = 5;
+  }else
+  {
+    contact_force.b = referenceBuffer_->getOptimizedForceTraj()->evaluate(nodeHandle_->now().seconds());
+    weightContactForce_ = 1e1;
+  }
   for (size_t i = 0; i < nc; ++i) {
     contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);
   }
@@ -506,7 +515,7 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   weightSwingLeg_.setZero(3, 3);
   weightSwingLeg_.diagonal().fill(200);
 
-  weightContactForce_ = 1e-9;
+  weightContactForce_ = 1e-2;
 
   frictionCoeff_ = 0.5;
 
@@ -517,10 +526,10 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(37);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(100);
+  baseKp_.diagonal().fill(20.0);
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(10);
+  baseKd_.diagonal().fill(1.0);
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);

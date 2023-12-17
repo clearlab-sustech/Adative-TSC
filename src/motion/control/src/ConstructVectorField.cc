@@ -136,7 +136,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   ocp_[k].q = -weight_ * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
+    ocp_[k].R = 2e-4 * matrix_t::Identity(3 * nf, 3 * nf);
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -222,6 +222,7 @@ ConstructVectorField::compute() {
     vector_t drift = 1.0 / dt_ * ocp_[0].b;
     feedback_law_ptr->K = P * (A + B * solution_[0].K);
     feedback_law_ptr->b = P * (B * solution_[0].k + drift);
+    feedback_law_ptr->force_des = solution_[0].u;
 
     std::vector<scalar_t> time_array;
     std::vector<vector_t> base_pos_array;

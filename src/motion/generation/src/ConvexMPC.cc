@@ -241,7 +241,7 @@ void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
   ocp_[k].q = -weight_t * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
+    ocp_[k].R = 2e-4 * matrix_t::Identity(3 * nf, 3 * nf);
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         quadruped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -340,6 +340,7 @@ void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
   std::vector<vector_t> base_vel_array;
   std::vector<vector_t> base_rpy_array;
   std::vector<vector_t> base_omega_array;
+  std::vector<vector_t> force_array;
 
   matrix_t P(6, 12);
   P.setZero();
@@ -356,6 +357,7 @@ void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
     base_vel_array.emplace_back(solution_[k].x.segment(3, 3));
     base_rpy_array.emplace_back(solution_[k].x.segment(6, 3));
     base_omega_array.emplace_back(solution_[k].x.tail(3));
+    force_array.emplace_back(solution_[k].u);
   }
   auto base_pos_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline);
@@ -390,6 +392,14 @@ void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
       CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
   base_omega_traj_ptr_->fit(time_array, base_omega_array);
   referenceBuffer_->setOptimizedBaseOmegaTraj(base_omega_traj_ptr_);
+
+  auto force_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
+      foot_names.size() * 3, CubicSplineInterpolation::SplineType::cspline);
+  force_traj_ptr_->set_boundary(
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector_t::Zero(foot_names.size() * 3),
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector_t::Zero(foot_names.size() * 3));
+  force_traj_ptr_->fit(time_array, force_array);
+  referenceBuffer_->setOptimizedForceTraj(force_traj_ptr_);
 }
 
 vector3_t ConvexMPC::computeEulerAngleErr(const vector3_t &rpy_m,

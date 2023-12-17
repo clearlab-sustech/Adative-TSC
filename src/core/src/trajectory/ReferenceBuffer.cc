@@ -71,6 +71,12 @@ ReferenceBuffer::getOptimizedBaseOmegaTraj() const {
   return optimized_base_omega_buffer_.get();
 }
 
+std::shared_ptr<CubicSplineTrajectory> ReferenceBuffer::getOptimizedForceTraj() const
+{
+  return optimized_force_buffer_.get();
+}
+
+
 std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>
 ReferenceBuffer::getFootRpyTraj() const {
   return foot_rpy_buffer_.get();
@@ -123,6 +129,12 @@ void ReferenceBuffer::setOptimizedBaseVelTraj(
 void ReferenceBuffer::setOptimizedBaseOmegaTraj(
     std::shared_ptr<CubicSplineTrajectory> base_omega_traj) {
   optimized_base_omega_buffer_.push(base_omega_traj);
+}
+
+void ReferenceBuffer::setOptimizedForceTraj(
+    std::shared_ptr<CubicSplineTrajectory> force_traj)
+{
+  optimized_force_buffer_.push(force_traj);
 }
 
 void ReferenceBuffer::setFootRpyTraj(
