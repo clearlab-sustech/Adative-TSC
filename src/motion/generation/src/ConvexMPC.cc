@@ -85,13 +85,13 @@ void ConvexMPC::generateTrajRef() {
   std::vector<scalar_t> time;
   std::vector<vector_t> rpy_t, pos_t;
   scalar_t horizon_time = referenceBuffer_->getModeSchedule()->duration();
-  if (vel_cmd.norm() < 0.01 && yawd_ < 0.01) {
+  if (vel_cmd.norm() < 0.01 && abs(yawd_) < 0.01) {
     time.emplace_back(t_now);
     time.emplace_back(t_now + 0.5 * horizon_time);
     time.emplace_back(t_now + horizon_time);
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
-    rpy_t.emplace_back(vector3_t(0, 0, 0));
+    rpy_t.emplace_back(rpy_m);
+    rpy_t.emplace_back(rpy_m);
+    rpy_t.emplace_back(rpy_m);
 
     scalar_t h = h_des;
     if (pos_m.z() + 0.02 < h_des) {

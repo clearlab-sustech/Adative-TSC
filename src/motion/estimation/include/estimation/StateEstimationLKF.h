@@ -7,7 +7,6 @@
 #include <rmw/types.h>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-#include <trans/msg/estimated_states.hpp>
 #include <trans/msg/touch_sensor.hpp>
 
 using namespace rclcpp;

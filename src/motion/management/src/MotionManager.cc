@@ -19,6 +19,8 @@ void MotionManager::init() {
   intializationPtr_ =
       std::make_shared<Initialization>(this->shared_from_this());
 
+  joyStickPtr_ = std::make_shared<JoyStick>(this->shared_from_this());
+
   estimatorPtr_ =
       std::make_shared<StateEstimationLKF>(this->shared_from_this());
 
@@ -53,13 +55,17 @@ void MotionManager::innerLoop() {
 
   rclcpp::Rate loop_rate(500.0);
   const scalar_t ts = this->now().seconds();
+
   while (rclcpp::ok() && run_.get()) {
+    std::cout << "vel_cmd: " << joyStickPtr_->getLinearVelCmd().transpose()
+              << " " << joyStickPtr_->getYawVelCmd() << "\n";
+
     if (this->now().seconds() > ts + 4.0) {
       gaitSchedulePtr_->switchGait("trot");
     }
 
     if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.0);
+      trajGenPtr_->setVelCmd(joyStickPtr_->getLinearVelCmd(), joyStickPtr_->getYawVelCmd());
     }
 
     if (unitreeHWPtr_ != nullptr) {

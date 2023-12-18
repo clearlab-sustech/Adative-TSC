@@ -23,5 +23,12 @@ def generate_launch_description():
                     {"/config_file": config_file},
                 ],
             ),
+            Node(
+                package="joy",
+                executable="joy_node",
+                name="a1_joy_node",
+                output="screen",
+                emulate_tty=True,
+            ),
         ]
     )
