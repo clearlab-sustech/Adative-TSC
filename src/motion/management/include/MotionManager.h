@@ -2,6 +2,7 @@
 
 #include "DataVisualization.h"
 #include "Initialization.h"
+#include "JoyStick.h"
 #include <control/TrajectoryStabilization.h>
 #include <estimation/StateEstimationLKF.h>
 #include <gait/GaitSchedule.h>
@@ -32,6 +33,7 @@ private:
   std::shared_ptr<TrajectoryStabilization> trajectoryStabilizationPtr_;
   std::shared_ptr<DataVisualization> visPtr_;
   std::shared_ptr<Initialization> intializationPtr_;
+  std::shared_ptr<JoyStick> joyStickPtr_;
   std::shared_ptr<UnitreeHW> unitreeHWPtr_;
 
   std::thread inner_loop_thread_;

@@ -48,6 +48,8 @@ void ConvexMPC::setVelCmd(vector3_t vd, scalar_t yawd) {
   yawd_ = yawd;
 }
 
+void ConvexMPC::setHeightCmd(scalar_t h) { h_des = h; }
+
 void ConvexMPC::generateTrajRef() {
   const scalar_t t_now = nodeHandle_->now().seconds();
   vector_t rpy_m, rpy_dot_m;
@@ -319,8 +321,8 @@ void ConvexMPC::optimize() {
   // x0 << pos_traj->evaluate(time_cur), pos_traj->derivative(time_cur, 1),
   //     rpy_des_start, omega0;
 
- x0 << base_pose.translation(), base_twist.linear(),
-      rpy_m, base_twist.angular();
+  x0 << base_pose.translation(), base_twist.linear(), rpy_m,
+      base_twist.angular();
 
   const auto res = solver.solve(x0, ocp_, solution_);
   if (res == hpipm::HpipmStatus::Success ||
@@ -396,8 +398,10 @@ void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
   auto force_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       foot_names.size() * 3, CubicSplineInterpolation::SplineType::cspline);
   force_traj_ptr_->set_boundary(
-      CubicSplineInterpolation::BoundaryType::first_deriv, vector_t::Zero(foot_names.size() * 3),
-      CubicSplineInterpolation::BoundaryType::first_deriv, vector_t::Zero(foot_names.size() * 3));
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      vector_t::Zero(foot_names.size() * 3),
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      vector_t::Zero(foot_names.size() * 3));
   force_traj_ptr_->fit(time_array, force_array);
   referenceBuffer_->setOptimizedForceTraj(force_traj_ptr_);
 }

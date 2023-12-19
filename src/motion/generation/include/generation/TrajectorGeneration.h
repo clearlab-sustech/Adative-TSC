@@ -31,6 +31,8 @@ public:
 
   void setVelCmd(vector3_t vd, scalar_t yawd);
 
+  void setHeightCmd(scalar_t h);
+
 private:
   void innerLoop();
 
