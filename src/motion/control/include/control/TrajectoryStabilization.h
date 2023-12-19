@@ -58,6 +58,7 @@ private:
 
   std::string base_name, robot_name;
   std::vector<std::string> actuated_joints_name;
+  std::vector<scalar_t> joints_default_pos;
   Buffer<std::shared_ptr<ActuatorCommands>> actuator_commands_buffer;
 };
 

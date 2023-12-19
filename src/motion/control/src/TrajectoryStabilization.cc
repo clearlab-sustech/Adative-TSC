@@ -24,6 +24,9 @@ TrajectoryStabilization::TrajectoryStabilization(
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
   freq_ = config_["controller"]["frequency"].as<scalar_t>();
   RCLCPP_INFO(nodeHandle_->get_logger(), "frequency: %f", freq_);
+
+  joints_default_pos =
+        config_["model"]["default"]["joint_pos"].as<std::vector<scalar_t>>();
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
   robot_name = config_["model"]["name"].as<std::string>();
@@ -130,12 +133,44 @@ void TrajectoryStabilization::innerLoop() {
 
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
+
+  scalar_t percentage = -1.0;
+  vector_t qpos_start;
+
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
     if (qpos_ptr_buffer.get() == nullptr || qvel_ptr_buffer.get() == nullptr ||
         mpc_sol_buffer.get() == nullptr) {
       std::this_thread::sleep_for(
           std::chrono::milliseconds(int64_t(1000 / freq_)));
+    } else if (percentage < 1.0) {
+      if (percentage < 0.0) {
+        qpos_start = qpos_ptr_buffer.get()->tail(actuated_joints_name.size());
+        percentage = 0.0;
+      }
+      auto actuator_commands_ = std::make_shared<ActuatorCommands>();
+      actuator_commands_->setZero(actuated_joints_name.size());
+
+      const auto &model = pinocchioInterface_ptr_->getModel();
+      for (size_t i = 0; i < actuated_joints_name.size(); i++) {
+        auto joint_name = actuated_joints_name[i];
+        if (model.existJointName(joint_name)) {
+          pin::Index id = model.getJointId(joint_name) - 2;
+          actuator_commands_->Kp[id] = 100.0;
+          actuator_commands_->Kd[id] = 3.0;
+          actuator_commands_->pos[id] = qpos_start[id] * (1.0 - percentage) +
+                                        percentage * joints_default_pos[i];
+          actuator_commands_->vel[id] = 0.0;
+          actuator_commands_->torque[id] = 0.0;
+        }
+      }
+      percentage += 1.0 / (3.0 * freq_);
+      actuator_commands_buffer.push(actuator_commands_);
+      publishCmds();
+      if (percentage > 1.0 - 1.0 / (3.0 * freq_)) {
+        RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"),
+                    "switch to WBC");
+      }
     } else {
       std::shared_ptr<vector_t> qpos_ptr = qpos_ptr_buffer.get();
       std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
