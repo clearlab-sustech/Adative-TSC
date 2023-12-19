@@ -23,10 +23,14 @@ TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
   RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "frequency: %f",
               freq_);
   use_vector_field = config_["controller"]["use_vector_field"].as<bool>();
-  RCLCPP_INFO_STREAM(rclcpp::get_logger("TrajectoryStabilization"), "use_vector_field: " << (use_vector_field ? "true" : "false"));
+  RCLCPP_INFO_STREAM(
+      rclcpp::get_logger("TrajectoryStabilization"),
+      "use_vector_field: " << (use_vector_field ? "true" : "false"));
 
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
+  joints_default_pos =
+      config_["model"]["default"]["joint_pos"].as<std::vector<scalar_t>>();
   robot_name = config_["model"]["name"].as<std::string>();
 
   auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_default);
@@ -45,14 +49,13 @@ TrajectoryStabilization::TrajectoryStabilization(Node::SharedPtr nodeHandle)
   base_name = config_["model"]["base_name"].as<std::string>();
 
   run_.push(true);
-  if(use_vector_field)
-  {
+  if (use_vector_field) {
     vf_ptr_ = std::make_shared<ConstructVectorField>(nodeHandle_,
-                                                    pinocchioInterface_ptr_);
+                                                     pinocchioInterface_ptr_);
     vector_field_thread_ =
         std::thread(&TrajectoryStabilization::adapative_gain_loop, this);
   }
-  
+
   wbcPtr_ = std::make_shared<WholeBodyController>(nodeHandle_);
   inner_loop_thread_ = std::thread(&TrajectoryStabilization::innerLoop, this);
 }
@@ -132,12 +135,44 @@ void TrajectoryStabilization::innerLoop() {
 
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
+
+  scalar_t percentage = -1.0;
+  vector_t qpos_start;
+
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
     if (qpos_ptr_buffer.get() == nullptr || qvel_ptr_buffer.get() == nullptr ||
         referenceBuffer_ == nullptr) {
       std::this_thread::sleep_for(
           std::chrono::milliseconds(int64_t(1000 / freq_)));
+    } else if (percentage < 1.0) {
+      if (percentage < 0.0) {
+        qpos_start = qpos_ptr_buffer.get()->tail(actuated_joints_name.size());
+        percentage = 0.0;
+      }
+      auto actuator_commands_ = std::make_shared<ActuatorCommands>();
+      actuator_commands_->setZero(actuated_joints_name.size());
+
+      const auto &model = pinocchioInterface_ptr_->getModel();
+      for (size_t i = 0; i < actuated_joints_name.size(); i++) {
+        auto joint_name = actuated_joints_name[i];
+        if (model.existJointName(joint_name)) {
+          pin::Index id = model.getJointId(joint_name) - 2;
+          actuator_commands_->Kp[id] = 100.0;
+          actuator_commands_->Kd[id] = 3.0;
+          actuator_commands_->pos[id] = qpos_start[id] * (1.0 - percentage) +
+                                        percentage * joints_default_pos[i];
+          actuator_commands_->vel[id] = 0.0;
+          actuator_commands_->torque[id] = 0.0;
+        }
+      }
+      percentage += 1.0 / (3.0 * freq_);
+      actuator_commands_buffer.push(actuator_commands_);
+      publishCmds();
+      if (percentage > 1.0 - 1.0 / (3.0 * freq_)) {
+        RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"),
+                    "switch to WBC");
+      }
     } else if (referenceBuffer_->isReady()) {
       std::shared_ptr<vector_t> qpos_ptr = qpos_ptr_buffer.get();
       std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
@@ -145,16 +180,14 @@ void TrajectoryStabilization::innerLoop() {
 
       wbcPtr_->updateState(qpos_ptr, qvel_ptr);
       wbcPtr_->updateReferenceBuffer(referenceBuffer_);
-      if(use_vector_field && vf_param_buffer_.get() != nullptr)
-      {
+      if (use_vector_field && vf_param_buffer_.get() != nullptr) {
         wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
         actuator_commands_buffer.push(wbcPtr_->optimize());
         publishCmds();
-      } else if(!use_vector_field)
-      {
+      } else if (!use_vector_field) {
         actuator_commands_buffer.push(wbcPtr_->optimize());
         publishCmds();
-      } 
+      }
     }
     timer_.endTimer();
     loop_rate.sleep();
@@ -180,6 +213,10 @@ void TrajectoryStabilization::adapative_gain_loop() {
     } else if (referenceBuffer_->isReady()) {
       // RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "Adaptive
       // Gain Computaion: run");
+      std::shared_ptr<vector_t> qpos_ptr = qpos_ptr_buffer.get();
+      std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
+      pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
+
       vf_ptr_->updateReferenceBuffer(referenceBuffer_);
       vf_param_buffer_.push(vf_ptr_->compute());
 

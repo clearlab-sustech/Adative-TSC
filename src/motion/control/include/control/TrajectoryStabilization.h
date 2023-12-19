@@ -23,8 +23,7 @@ public:
   void updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
                           std::shared_ptr<vector_t> qvel_ptr);
 
-  void updateReferenceBuffer(
-      std::shared_ptr<ReferenceBuffer> referenceBuffer);
+  void updateReferenceBuffer(std::shared_ptr<ReferenceBuffer> referenceBuffer);
 
   trans::msg::ActuatorCmds::SharedPtr getCmds();
 
@@ -57,6 +56,7 @@ private:
 
   std::string base_name, robot_name;
   std::vector<std::string> actuated_joints_name;
+  std::vector<scalar_t> joints_default_pos;
   Buffer<std::shared_ptr<ActuatorCommands>> actuator_commands_buffer;
 };
 
