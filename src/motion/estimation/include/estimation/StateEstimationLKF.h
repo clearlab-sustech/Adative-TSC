@@ -7,7 +7,6 @@
 #include <rmw/types.h>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-#include <trans/msg/estimated_states.hpp>
 #include <trans/msg/touch_sensor.hpp>
 
 using namespace rclcpp;
@@ -16,7 +15,7 @@ using namespace std::chrono_literals;
 namespace clear {
 class StateEstimationLKF {
 public:
-  StateEstimationLKF(Node::SharedPtr nodeHandle, std::string config_yaml);
+  StateEstimationLKF(Node::SharedPtr nodeHandle);
 
   ~StateEstimationLKF();
 
@@ -26,11 +25,11 @@ public:
 
   void setContactFlag(vector<bool> flag);
 
-  void set_imu_msg(sensor_msgs::msg::Imu::SharedPtr msg);
+  void setImuMsg(sensor_msgs::msg::Imu::SharedPtr msg);
 
-  void set_touch_msg(trans::msg::TouchSensor::SharedPtr msg);
+  void setTouchMsg(trans::msg::TouchSensor::SharedPtr msg);
 
-  void set_joint_msg(sensor_msgs::msg::JointState::SharedPtr msg);
+  void setJointsMsg(sensor_msgs::msg::JointState::SharedPtr msg);
 
 private:
   void setup();
@@ -43,15 +42,15 @@ private:
                             std::shared_ptr<vector_t> qpos,
                             std::shared_ptr<vector_t> qvel);
 
-  void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) const;
+  void imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg) const;
 
-  void touch_callback(const trans::msg::TouchSensor::SharedPtr msg) const;
+  void touchCallback(const trans::msg::TouchSensor::SharedPtr msg) const;
 
-  void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg) const;
+  void jointCallback(const sensor_msgs::msg::JointState::SharedPtr msg) const;
 
-  void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) const;
+  void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) const;
 
-  void inner_loop();
+  void innerLoop();
 
 private:
   Node::SharedPtr nodeHandle_;

@@ -7,10 +7,14 @@
 
 namespace clear {
 
-TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
-                                         string config_yaml)
+TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
-  auto config_ = YAML::LoadFile(config_yaml);
+
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
 
   std::string robot_name = config_["model"]["name"].as<std::string>();
   std::string model_package = config_["model"]["package"].as<std::string>();
@@ -64,7 +68,7 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle,
   yawd_ = 0.0;
 
   run_.push(true);
-  inner_loop_thread_ = std::thread(&TrajectorGeneration::inner_loop, this);
+  inner_loop_thread_ = std::thread(&TrajectorGeneration::innerLoop, this);
 }
 
 TrajectorGeneration::~TrajectorGeneration() {
@@ -72,16 +76,16 @@ TrajectorGeneration::~TrajectorGeneration() {
   inner_loop_thread_.join();
 }
 
-void TrajectorGeneration::update_current_state(
+void TrajectorGeneration::updateCurrentState(
     std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
   qpos_ptr_buffer.push(qpos_ptr);
   qvel_ptr_buffer.push(qvel_ptr);
 }
 
-void TrajectorGeneration::set_reference() {
+void TrajectorGeneration::setReference() {
   if (mpc_sol_buffer.get() == nullptr) {
     ocs2::SystemObservation currentObservation;
-    const vector_t rbdState = get_rbd_state();
+    const vector_t rbdState = getRbdState();
     const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
     currentObservation.time = nodeHandle_->now().seconds();
     currentObservation.state =
@@ -96,7 +100,7 @@ void TrajectorGeneration::set_reference() {
         std::move(initTargetTrajectories));
   } else {
     ocs2::SystemObservation node1, node2;
-    const vector_t rbdState = get_rbd_state();
+    const vector_t rbdState = getRbdState();
     const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
     node1.time = nodeHandle_->now().seconds();
     node1.state =
@@ -134,7 +138,7 @@ void TrajectorGeneration::set_reference() {
   }
 }
 
-void TrajectorGeneration::inner_loop() {
+void TrajectorGeneration::innerLoop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
   while (rclcpp::ok() && run_.get()) {
@@ -146,10 +150,10 @@ void TrajectorGeneration::inner_loop() {
 
     } else {
 
-      set_reference();
+      setReference();
 
       ocs2::SystemObservation currentObservation;
-      vector_t rbdState = get_rbd_state();
+      vector_t rbdState = getRbdState();
       currentObservation.time = nodeHandle_->now().seconds();
       currentObservation.state =
           conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
@@ -200,7 +204,7 @@ void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
   yawd_ = yawd;
 }
 
-vector_t TrajectorGeneration::get_rbd_state() {
+vector_t TrajectorGeneration::getRbdState() {
   const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
   vector_t rbdState(2 * info_.generalizedCoordinatesNum);
 
@@ -223,12 +227,12 @@ vector_t TrajectorGeneration::get_rbd_state() {
   return rbdState;
 }
 
-std::shared_ptr<ocs2::PrimalSolution> TrajectorGeneration::get_mpc_sol() {
+std::shared_ptr<ocs2::PrimalSolution> TrajectorGeneration::getMpcSol() {
   return mpc_sol_buffer.get();
 }
 
 std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-TrajectorGeneration::get_robot_interface() {
+TrajectorGeneration::getRobotInterface() {
   return robot_interface_ptr_;
 }
 

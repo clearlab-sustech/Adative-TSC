@@ -1,6 +1,5 @@
 #pragma once
-
-#include <asserts/trajectory/TrajectoriesArray.h>
+#include <core/types.h>
 #include <core/misc/Buffer.h>
 #include <memory>
 #include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
@@ -18,25 +17,25 @@ namespace clear {
 class TrajectorGeneration {
 
 public:
-  TrajectorGeneration(Node::SharedPtr nodeHandle, string config_yaml);
+  TrajectorGeneration(Node::SharedPtr nodeHandle);
 
   ~TrajectorGeneration();
 
-  void update_current_state(std::shared_ptr<vector_t> qpos_ptr,
-                            std::shared_ptr<vector_t> qvel_ptr);
+  void updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
+                          std::shared_ptr<vector_t> qvel_ptr);
 
-  std::shared_ptr<ocs2::PrimalSolution> get_mpc_sol();
+  std::shared_ptr<ocs2::PrimalSolution> getMpcSol();
 
-  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface> get_robot_interface();
+  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface> getRobotInterface();
 
   void setVelCmd(vector3_t vd, scalar_t yawd);
 
 private:
-  void inner_loop();
+  void innerLoop();
 
-  vector_t get_rbd_state();
+  vector_t getRbdState();
 
-  void  set_reference();
+  void setReference();
 
 private:
   Node::SharedPtr nodeHandle_;

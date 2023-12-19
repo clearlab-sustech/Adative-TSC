@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(management)
+project(gait)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -21,23 +21,8 @@ find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(trans REQUIRED)
 find_package(core REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(pinocchio_interface)
-find_package(asserts)
-find_package(estimation)
-find_package(gait)
-find_package(generation)
-find_package(control)
-find_package(tf2_ros)
-find_package(hardware)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
+find_package(asserts REQUIRED)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -45,43 +30,38 @@ set(TARGET_DEPENDENCE
   rclcpp
   trans
   core
-  pinocchio
-  pinocchio_interface
-  nav_msgs
-  sensor_msgs
-  asserts
   yaml-cpp
-  estimation
-  gait
-  generation
-  control
-  tf2_ros
-  hardware
+  asserts
 )
-
-add_library(libunitree_legged_sdk SHARED IMPORTED)
-set_target_properties(libunitree_legged_sdk PROPERTIES IMPORTED_LOCATION ${CMAKE_INSTALL_PREFIX}/lib/libunitree_legged_sdk_amd64.so)
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 
-add_executable(${PROJECT_NAME} ${source})
+add_library(${PROJECT_NAME} SHARED ${source})
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 target_link_libraries(${PROJECT_NAME}
-  ${pinocchio_LIBRARIES}
   ${YAML_CPP_LIBRARIES}
 )
 
 ament_target_dependencies(${PROJECT_NAME} ${TARGET_DEPENDENCE})
 ament_export_dependencies(${TARGET_DEPENDENCE})
+ament_export_targets(${PROJECT_NAME}_Targets HAS_LIBRARY_TARGET)
 
-install(TARGETS ${PROJECT_NAME}
-  DESTINATION lib/${PROJECT_NAME})
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
 
-install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME})
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}_Targets
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
