@@ -17,6 +17,8 @@ ConvexMPC::ConvexMPC(Node::SharedPtr nodeHandle,
   auto config_ = YAML::LoadFile(config_file_);
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   base_name = config_["model"]["base_name"].as<std::string>();
+  scalar_t freq_ = config_["generation"]["frequency"].as<scalar_t>();
+  dt_ = 1.0 / freq_;
 
   total_mass_ = pinocchioInterface_ptr_->total_mass();
   weight_.setZero(12, 12);
@@ -58,6 +60,19 @@ void ConvexMPC::generateTrajRef() {
   auto base_twist =
       pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
 
+  if (first_run) {
+    first_run = false;
+    pos_start = base_pose_m.translation();
+    pos_start.z() = h_des;
+    rpy_start = toEulerAngles(base_pose_m.rotation());
+    rpy_start.head(2).setZero();
+  } else {
+    pos_start += dt_ * vel_cmd;
+    pos_start.z() = h_des;
+    rpy_start += dt_ * vector3_t(0, 0, yawd_);
+    rpy_start.head(2).setZero();
+  }
+
   if (referenceBuffer_->getIntegratedBasePosTraj() == nullptr ||
       referenceBuffer_->getIntegratedBaseRpyTraj() == nullptr) {
     rpy_m = toEulerAngles(base_pose_m.rotation());
@@ -68,18 +83,22 @@ void ConvexMPC::generateTrajRef() {
     auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
     auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
 
-    rpy_m = base_rpy_traj->evaluate(t_now);
+    rpy_m = rpy_start;
     rpy_dot_m = getJacobiFromOmegaToRPY(rpy_m) * base_twist.angular();
     vector_t rpy_c = toEulerAngles(base_pose_m.rotation());
     if ((rpy_c - rpy_m).norm() > 0.1) {
       rpy_m = 0.1 * (rpy_m - rpy_c).normalized() + rpy_c;
+      rpy_start = 0.1 * (rpy_start - rpy_c).normalized() + rpy_c;
+      rpy_start.head(2).setZero();
     }
     rpy_m.head(2).setZero();
 
-    pos_m = base_pos_traj->evaluate(t_now);
+    pos_m = pos_start;
     vector_t pos_c = base_pose_m.translation();
     if ((pos_c - pos_m).norm() > 0.03) {
       pos_m = 0.03 * (pos_m - pos_c).normalized() + pos_c;
+      pos_start = 0.03 * (pos_start - pos_c).normalized() + pos_c;
+      pos_start.z() = h_des;
     }
     vel_m = base_twist.linear();
   }
@@ -136,14 +155,16 @@ void ConvexMPC::generateTrajRef() {
 
   auto cubicspline_pos = std::make_shared<CubicSplineTrajectory>(3);
   cubicspline_pos->set_boundary(
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      base_pose_m.rotation() * vel_cmd,
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_pos->fit(time, pos_t);
   referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
 
   auto cubicspline_rpy = std::make_shared<CubicSplineTrajectory>(3);
   cubicspline_rpy->set_boundary(
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      vector3_t(0, 0, yawd_),
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_rpy->fit(time, rpy_t);
   referenceBuffer_->setIntegratedBaseRpyTraj(cubicspline_rpy);
@@ -152,8 +173,8 @@ void ConvexMPC::generateTrajRef() {
 void ConvexMPC::getDynamics(scalar_t time_cur, size_t k,
                             const std::shared_ptr<ModeSchedule> mode_schedule) {
   const scalar_t time_k = time_cur + k * dt_;
-  auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
-  auto rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto foot_traj = referenceBuffer_->getFootPosTraj();
 
   scalar_t phase = k * dt_ / mode_schedule->duration();
@@ -172,7 +193,8 @@ void ConvexMPC::getDynamics(scalar_t time_cur, size_t k,
   ocp_[k].A.block<3, 3>(0, 3).diagonal().fill(dt_);
   ocp_[k].A.block<3, 3>(6, 9) = dt_ * getJacobiFromOmegaToRPY(rpy_des);
   ocp_[k].B.setZero(12, nf * 3);
-  vector3_t xc = pos_traj->evaluate(time_k);
+  vector3_t xc = phase * pos_traj->evaluate(time_k) +
+                 (1.0 - phase) * base_pose.translation();
   for (size_t i = 0; i < nf; i++) {
     const auto &foot_name = foot_names[i];
     if (contact_flag[i]) {

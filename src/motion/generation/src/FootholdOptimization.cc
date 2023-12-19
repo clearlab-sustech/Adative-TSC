@@ -164,7 +164,7 @@ void FootholdOptimization::optimize() {
   } else {
     std::cout << "FootholdOptimization: " << res << "\n";
   }
-  heuristic1();
+  heuristic2();
   referenceBuffer_->setFootholds(footholds_);
 }
 

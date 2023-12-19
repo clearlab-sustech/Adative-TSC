@@ -81,7 +81,7 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_->setZero(actuated_joints_name.size());
 
   if (referenceBuffer_->getModeSchedule().get() == nullptr) {
-    return actuator_commands_; 
+    return actuator_commands_;
   }
 
   formulate();
@@ -260,18 +260,18 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     x0 << base_pose.translation(), base_twist.linear(), rpy,
         base_twist.angular();
     acc_fb = policy->K * x0 + policy->b;
-    if (acc_fb.norm() > 20) {
+    /* if (acc_fb.norm() > 20) {
       acc_fb = 20.0 * acc_fb.normalized();
     }
     if (abs(acc_fb.z()) > 5.0) {
       acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
-    }
+    } */
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
 
-  } else if(pos_traj.get() != nullptr && rpy_traj.get() != nullptr 
-            && vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
+  } else if (pos_traj.get() != nullptr && rpy_traj.get() != nullptr &&
+             vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
     const scalar_t time_now_ = nodeHandle_->now().seconds();
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
@@ -295,8 +295,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     if (abs(acc_fb.z()) > 5.0) {
       acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
     }
-  } else
-  {
+  } else {
     acc_fb.setZero();
   }
 
@@ -318,7 +317,8 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   auto foot_traj = referenceBuffer_.get()->getFootPosTraj();
   auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
 
-  if (nc - numContacts_ <= 0 || foot_traj.size() != nc || base_pos_traj.get() == nullptr) {
+  if (nc - numContacts_ <= 0 || foot_traj.size() != nc ||
+      base_pos_traj.get() == nullptr) {
     return MatrixDB("swing_task");
   }
   MatrixDB swing_task("swing_task");
@@ -417,14 +417,16 @@ void WholeBodyController::differential_inv_kin() {
                .linear() -
            base_twist.linear());
 
-      if (pos_traj.get() == nullptr) {
+      /* if (pos_traj.get() == nullptr) {
         pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
         vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
       } else {
         pos_des = (foot_traj->evaluate(time_c) - pos_traj->evaluate(time_c));
         vel_des = (foot_traj->derivative(time_c, 1) -
                    pos_traj->derivative(time_c, 1));
-      }
+      } */
+      pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
+      vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
 
       vector3_t pos_err = (pos_des - pos_m);
       if (pos_err.norm() > 0.1) {
@@ -489,14 +491,13 @@ MatrixDB WholeBodyController::formulateContactForceTask() {
 
   MatrixDB contact_force("contact_force");
   contact_force.A.setZero(3 * nc, numDecisionVars_);
-  if(policy != nullptr)
-  {
+  if (policy != nullptr) {
     contact_force.b = policy->force_des;
     weightContactForce_ = 5;
-  }else
-  {
-    contact_force.b = referenceBuffer_->getOptimizedForceTraj()->evaluate(nodeHandle_->now().seconds());
-    weightContactForce_ = 1e1;
+  } else {
+    contact_force.b = referenceBuffer_->getOptimizedForceTraj()->evaluate(
+        nodeHandle_->now().seconds());
+    weightContactForce_ = 5e1;
   }
   for (size_t i = 0; i < nc; ++i) {
     contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);

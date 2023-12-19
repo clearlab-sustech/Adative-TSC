@@ -71,30 +71,26 @@ void MotionManager::innerLoop() {
       break;
     }
 
-    /* if (gaitSchedulePtr_->getCurrentGaitName() == "stance" &&
-    joyStickPtr_->isTrotting())
-    {
+    if (gaitSchedulePtr_->getCurrentGaitName() == "stance" &&
+        joyStickPtr_->isTrotting()) {
       gaitSchedulePtr_->switchGait("trot");
-    }
-    else if (gaitSchedulePtr_->getCurrentGaitName() == "trot" &&
-    joyStickPtr_->isStance())
-    {
+    } else if (gaitSchedulePtr_->getCurrentGaitName() == "trot" &&
+               joyStickPtr_->isStance()) {
       gaitSchedulePtr_->switchGait("stance");
     }
 
-    if (gaitSchedulePtr_->getCurrentGaitName() == "trot")
-    {
+    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
       trajGenPtr_->setVelCmd(joyStickPtr_->getLinearVelCmd(),
-    joyStickPtr_->getYawVelCmd());
-    } */
+                             joyStickPtr_->getYawVelCmd());
+    }
 
-    if (this->now().seconds() > ts + 6.0 &&
+    /* if (this->now().seconds() > ts + 6.0 &&
         gaitSchedulePtr_->getCurrentGaitName() != "trot") {
       gaitSchedulePtr_->switchGait("trot");
     }
     if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
       trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.0);
-    }
+    } */
 
     // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());
 

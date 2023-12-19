@@ -69,7 +69,7 @@ void ConstructVectorField::add_linear_system(size_t k) {
   ocp_[k].A.block<3, 3>(0, 3).diagonal().fill(dt_);
   ocp_[k].A.block<3, 3>(6, 9) = dt_ * getJacobiFromOmegaToRPY(rpy);
   ocp_[k].B.setZero(12, nf * 3);
-  vector3_t xc = pos_traj->evaluate(time_k);
+  vector3_t xc = phase * pos_traj->evaluate(time_k) + (1.0 - phase) * base_pose.translation();
   for (size_t i = 0; i < nf; i++) {
     const auto &foot_name = foot_names[i];
     if (contact_flag[i]) {
