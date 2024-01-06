@@ -1,4 +1,6 @@
 # Add pinocchio library to the linker's search path
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(pinocchio REQUIRED pinocchio)
 link_directories(
   ${pinocchio_LIBRARY_DIRS}
 )

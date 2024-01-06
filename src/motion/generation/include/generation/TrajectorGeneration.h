@@ -9,54 +9,74 @@
 #include <ocs2_sqp/SqpMpc.h>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
+#include <core/trajectory/ReferenceBuffer.h>
+#include <pinocchio/algorithm/kinematics.hpp>
+#include <pinocchio/algorithm/frames.hpp>
+#include <ocs2_centroidal_model/ModelHelperFunctions.h>
 
 using namespace rclcpp;
 using namespace std;
 
-namespace clear {
-class TrajectorGeneration {
+namespace clear
+{
+  class TrajectorGeneration
+  {
 
-public:
-  TrajectorGeneration(Node::SharedPtr nodeHandle);
+  public:
+    TrajectorGeneration(Node::SharedPtr nodeHandle);
 
-  ~TrajectorGeneration();
+    ~TrajectorGeneration();
 
-  void updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
-                          std::shared_ptr<vector_t> qvel_ptr);
+    void updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
+                            std::shared_ptr<vector_t> qvel_ptr);
 
-  std::shared_ptr<ocs2::PrimalSolution> getMpcSol();
+    std::shared_ptr<ocs2::PrimalSolution> getMpcSol();
 
-  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface> getRobotInterface();
+    std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface> getRobotInterface();
 
-  void setVelCmd(vector3_t vd, scalar_t yawd);
+    void setVelCmd(vector3_t vd, scalar_t yawd);
 
-private:
-  void innerLoop();
+    std::shared_ptr<ReferenceBuffer> getReferenceBuffer();
 
-  vector_t getRbdState();
+  private:
+    void innerLoop();
 
-  void setReference();
+    vector_t getRbdState();
 
-private:
-  Node::SharedPtr nodeHandle_;
-  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-      robot_interface_ptr_;
-  std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
-  std::shared_ptr<ocs2::legged_robot::GaitReceiver> gait_receiver_ptr_;
-  std::shared_ptr<ocs2::RosReferenceManager> reference_manager_ptr_;
-  std::shared_ptr<ocs2::SqpMpc> mpc_ptr_;
+    void setReference();
 
-  Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
+    void fitTraj();
 
-  Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
-  Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;
+  private:
+    Node::SharedPtr nodeHandle_;
+    std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+        robot_interface_ptr_;
+    std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
+    std::shared_ptr<ocs2::legged_robot::GaitReceiver> gait_receiver_ptr_;
+    std::shared_ptr<ocs2::RosReferenceManager> reference_manager_ptr_;
+    std::shared_ptr<ocs2::SqpMpc> mpc_ptr_;
 
-  std::thread inner_loop_thread_;
-  Buffer<bool> run_;
-  scalar_t freq_;
+    Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
+    std::shared_ptr<ocs2::CentroidalModelPinocchioMapping> mapping_;
 
-  vector3_t vel_cmd;
-  scalar_t yawd_;
-};
+    Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
+    Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;
+
+    std::shared_ptr<ReferenceBuffer> referenceBuffer_;
+
+    std::string base_name;
+    std::vector<string> foot_names;
+
+    std::thread inner_loop_thread_;
+    Buffer<bool> run_;
+    scalar_t freq_;
+
+    vector3_t vel_cmd;
+    scalar_t yawd_;
+
+    vector3_t pos_start;
+    vector3_t rpy_zyx_start;
+    bool first_run = true;
+  };
 
 } // namespace clear

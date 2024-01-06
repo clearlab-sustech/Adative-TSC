@@ -23,13 +23,8 @@ bool ReferenceBuffer::isReady() {
   bool is_ready_ = true;
   is_ready_ &= (integ_base_rpy_buffer_.get()!=nullptr);
   is_ready_ &= (integ_base_pos_buffer_.get()!=nullptr);
-  is_ready_ &= (optimized_base_pos_buffer_.get()!=nullptr);
-  is_ready_ &= (optimized_base_rpy_buffer_.get()!=nullptr);
-  is_ready_ &= (optimized_base_vel_buffer_.get()!=nullptr);
-  is_ready_ &= (optimized_base_omega_buffer_.get()!=nullptr);
   is_ready_ &= (mode_schedule_buffer_.get()!=nullptr);
   is_ready_ &= !foot_pos_buffer_.get().empty();
-  is_ready_ &= !footholds_buffer_.get().empty();
   return is_ready_; 
 }
 

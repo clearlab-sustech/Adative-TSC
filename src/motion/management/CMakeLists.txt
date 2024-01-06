@@ -33,12 +33,6 @@ find_package(control)
 find_package(tf2_ros)
 find_package(hardware)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
-
 set(TARGET_DEPENDENCE
   ament_cmake
   ament_index_cpp

@@ -20,12 +20,25 @@ find_package(ament_cmake REQUIRED)
 find_package(ocs2_thirdparty REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
+
+if(Threads_FOUND) # Rename for catkin
+  set(Threads_INCLUDE_DIRS ${THREADS_PTHREADS_INCLUDE_DIR})
+  set(Threads_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+endif(Threads_FOUND)
+
 include(cmake/ocs2_cxx_flags.cmake)
 message(STATUS "ocs2_CXX_FLAGS: " ${ocs2_CXX_FLAGS})
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_library(${PROJECT_NAME} SHARED ${source})
-target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} 
+  ${Boost_LIBRARIES}
+  OpenMP::OpenMP_CXX
+  Threads::Threads
+)
 target_compile_options(${PROJECT_NAME} PUBLIC ${ocs2_CXX_FLAGS})   
 
 target_include_directories(${PROJECT_NAME}

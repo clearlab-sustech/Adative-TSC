@@ -31,15 +31,7 @@ find_package(ocs2_oc REQUIRED)
 find_package(ocs2_centroidal_model REQUIRED)
 find_package(ocs2_legged_robot REQUIRED)
 find_package(ocs2_mpc REQUIRED)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
-
 find_package(pinocchio_interface REQUIRED)
-find_package(tsc REQUIRED)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -54,7 +46,6 @@ set(TARGET_DEPENDENCE
   pinocchio
   hpipm-cpp
   pinocchio_interface
-  tsc
   eiquadprog
   ocs2_oc
   ocs2_centroidal_model

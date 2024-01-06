@@ -31,12 +31,7 @@ find_package(ocs2_mpc)
 find_package(ocs2_sqp)
 find_package(ocs2_legged_robot)
 find_package(ocs2_ros_interfaces)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
+find_package(ocs2_centroidal_model)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -54,6 +49,7 @@ set(TARGET_DEPENDENCE
   ocs2_sqp
   ocs2_legged_robot
   ocs2_ros_interfaces
+  ocs2_centroidal_model
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)

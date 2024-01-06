@@ -6,6 +6,10 @@
 #include <hpipm-cpp/hpipm-cpp.hpp>
 #include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
+#include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
+#include <ocs2_legged_robot/LeggedRobotInterface.h>
+#include <ocs2_oc/oc_data/PrimalSolution.h>
+#include <ocs2_mpc/SystemObservation.h>
 
 using namespace rclcpp;
 
@@ -27,6 +31,8 @@ public:
 
   void updateReferenceBuffer(std::shared_ptr<ReferenceBuffer> referenceBuffer);
 
+  void updateMpcSol(std::shared_ptr<ocs2::PrimalSolution> mpc_sol);
+
   std::shared_ptr<VectorFieldParam> compute();
 
 private:
@@ -44,7 +50,8 @@ private:
   std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr_;
   std::string base_name;
   std::vector<std::string> foot_names;
-
+  
+  Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
   std::shared_ptr<ReferenceBuffer> referenceBuffer_;
   std::shared_ptr<VectorFieldParam> feedback_law_ptr;
   const scalar_t dt_ = 0.02;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "control/MatrixDB.h"
+#include "control/ConstructVectorField.h"
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
@@ -14,95 +15,103 @@
 
 using namespace rclcpp;
 
-namespace clear {
+namespace clear
+{
 
-using namespace quadruped;
+  using namespace quadruped;
 
-struct ActuatorCommands {
-  vector_t Kp;
-  vector_t Kd;
-  vector_t pos;
-  vector_t vel;
-  vector_t torque;
+  struct ActuatorCommands
+  {
+    vector_t Kp;
+    vector_t Kd;
+    vector_t pos;
+    vector_t vel;
+    vector_t torque;
 
-  void setZero(size_t n) {
-    Kp.setZero(n);
-    Kd.setZero(n);
-    pos.setZero(n);
-    vel.setZero(n);
-    torque.setZero(n);
-  }
-};
+    void setZero(size_t n)
+    {
+      Kp.setZero(n);
+      Kd.setZero(n);
+      pos.setZero(n);
+      vel.setZero(n);
+      torque.setZero(n);
+    }
+  };
 
-// Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
-class WholeBodyController {
-public:
-  WholeBodyController(Node::SharedPtr nodeHandle, 
-                      std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-                          robot_interface_ptr);
+  // Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
+  class WholeBodyController
+  {
+  public:
+    WholeBodyController(Node::SharedPtr nodeHandle,
+                        std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+                            robot_interface_ptr);
 
-  ~WholeBodyController();
+    ~WholeBodyController();
 
-  void loadTasksSetting(bool verbose = true);
+    void loadTasksSetting(bool verbose = true);
 
-  void update_mpc_sol(std::shared_ptr<ocs2::PrimalSolution> mpc_sol);
+    void update_mpc_sol(std::shared_ptr<ocs2::PrimalSolution> mpc_sol);
 
-  void update_state(const std::shared_ptr<vector_t> qpos_ptr,
-                    const std::shared_ptr<vector_t> qvel_ptr);
+    void update_state(const std::shared_ptr<vector_t> qpos_ptr,
+                      const std::shared_ptr<vector_t> qvel_ptr);
 
-  std::shared_ptr<ActuatorCommands> optimize();
+    void updateBaseVectorField(
+        const std::shared_ptr<ConstructVectorField::VectorFieldParam> vf);
 
-private:
-  void formulate();
+    std::shared_ptr<ActuatorCommands> optimize();
 
-  void updateContactJacobi();
+  private:
+    void formulate();
 
-  size_t getNumDecisionVars() const { return numDecisionVars_; }
+    void updateContactJacobi();
 
-  MatrixDB formulateFloatingBaseEulerNewtonEqu();
-  MatrixDB formulateTorqueLimitsTask();
-  MatrixDB formulateMaintainContactTask();
-  MatrixDB formulateFrictionConeTask();
-  MatrixDB formulateMomentumTask();
-  MatrixDB formulateJointTask();
-  MatrixDB formulateContactForceTask();
+    size_t getNumDecisionVars() const { return numDecisionVars_; }
 
-  void differential_inv_kin();
+    MatrixDB formulateFloatingBaseEulerNewtonEqu();
+    MatrixDB formulateTorqueLimitsTask();
+    MatrixDB formulateMaintainContactTask();
+    MatrixDB formulateFrictionConeTask();
+    MatrixDB formulateMomentumTask();
+    MatrixDB formulateJointTask();
+    MatrixDB formulateContactForceTask();
 
-  vector_t get_rbd_state();
+    void differential_inv_kin();
 
-private:
-  Node::SharedPtr nodeHandle_;
-  Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
-  size_t mode_;
+    vector_t get_rbd_state();
 
-  size_t numDecisionVars_;
-  std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
+  private:
+    Node::SharedPtr nodeHandle_;
+    Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
+    size_t mode_;
 
-  std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-      robot_interface_ptr_;
-  std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
+    size_t numDecisionVars_;
+    std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
 
-  vector_t mpcInput, xDot;
+    std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+        robot_interface_ptr_;
+    std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
+    Buffer<std::shared_ptr<ConstructVectorField::VectorFieldParam>> base_vf_;
 
-  std::string base_name, robot_name;
-  std::vector<std::string> foot_names, actuated_joints_name;
+    vector_t mpcInput, xDot;
 
-  matrix_t Jc;
-  contact_flag_t contactFlag_{};
-  size_t numContacts_{};
+    std::string base_name, robot_name;
+    std::vector<std::string> foot_names, actuated_joints_name;
 
-  // Task Parameters:
-  matrix_t weightSwingLeg_, weightMomentum_;
-  scalar_t weightContactForce_;
-  matrix_t swingKp_, swingKd_;
-  scalar_t frictionCoeff_{};
+    matrix_t Jc;
+    contact_flag_t contactFlag_{};
+    size_t numContacts_{};
 
-  MatrixDB weighedTask, constraints;
-  scalar_t dt_ = 0.002;
-  vector_t joint_acc_;
-  std::shared_ptr<ActuatorCommands> actuator_commands_;
+    // Task Parameters:
+    matrix_t weightSwingLeg_, weightMomentum_;
+    scalar_t weightContactForce_;
+    matrix_t swingKp_, swingKd_;
+    scalar_t frictionCoeff_{};
 
-  std::fstream log_stream;
-};
+    MatrixDB weighedTask, constraints;
+    scalar_t dt_ = 0.002;
+    vector_t joint_acc_;
+    std::shared_ptr<ActuatorCommands> actuator_commands_;
+
+    std::fstream log_stream;
+  };
 } // namespace clear

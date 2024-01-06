@@ -16,7 +16,6 @@
   <depend>core</depend>
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>tsc</depend>
   <depend>yaml-cpp</depend>
   <depend>ament_index_cpp</depend>
   <depend>asserts</depend>

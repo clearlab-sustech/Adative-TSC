@@ -28,12 +28,6 @@ find_package(ocs2_pinocchio_interface REQUIRED)
 find_package(ocs2_ros_interfaces REQUIRED)
 find_package(ocs2_self_collision REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-pkg_check_modules(hpp-fcl REQUIRED hpp-fcl)
-
-include(cmake/pinocchio_config.cmake)
-
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_library(${PROJECT_NAME} SHARED ${source})
 target_link_libraries(${PROJECT_NAME}

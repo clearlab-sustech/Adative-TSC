@@ -28,9 +28,6 @@ find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(interactive_markers REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-include(cmake/pinocchio_config.cmake)
 
 set(AMENT_PACKAGE_DEPENDENCIES
     rclcpp
