@@ -1,12 +1,12 @@
 
-list(APPEND OCS2_CXX_FLAGS
-  "-march=native"
-  "-mtune=native"
-  "-fPIC"
-  "-pthread"
-  "-Wfatal-errors"
-  "-Wl,--no-as-needed"
-  )
+# list(APPEND OCS2_CXX_FLAGS
+#   "-march=native"
+#   "-mtune=native"
+#   "-fPIC"
+#   "-pthread"
+#   "-Wfatal-errors"
+#   "-Wl,--no-as-needed"
+#   )
 
 # Force Boost dynamic linking
 find_package(Boost COMPONENTS log REQUIRED)

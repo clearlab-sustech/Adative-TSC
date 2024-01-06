@@ -177,7 +177,7 @@ void LeggedRobotVisualizer::publishBaseTransform(
   if (joint_state_publisher_ != nullptr) {
     geometry_msgs::msg::TransformStamped baseToWorldTransform;
     baseToWorldTransform.header = getHeaderMsg(frameId_, timeStamp);
-    baseToWorldTransform.child_frame_id = "base";
+    baseToWorldTransform.child_frame_id = "trunk";
 
     const Eigen::Quaternion<scalar_t> q_world_base =
         getQuaternionFromEulerAnglesZyx(vector3_t(basePose.tail<3>()));

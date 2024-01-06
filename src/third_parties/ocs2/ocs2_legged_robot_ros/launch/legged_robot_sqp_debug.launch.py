@@ -39,51 +39,33 @@ def generate_launch_description():
                 default_value="false",
                 description="Use simulation (Gazebo) clock if true",
             ),
-            # Node(
-            #     package="robot_state_publisher",
-            #     executable="robot_state_publisher",
-            #     name="robot_state_publisher",
-            #     output="screen",
-            #     parameters=[
-            #         {"use_sim_time": use_sim_time},
-            #         {"robot_description": open(urdfFile).read()},
-            #         {"publish_frequency": 1000.0},
-            #     ],
-            # ),
+            Node(
+                package="robot_state_publisher",
+                executable="robot_state_publisher",
+                name="robot_state_publisher",
+                output="screen",
+                parameters=[
+                    {"use_sim_time": use_sim_time},
+                    {"robot_description": open(urdfFile).read()},
+                    {"publish_frequency": 1000.0},
+                ],
+            ),
 
-            # Node(
-            #     package="rviz2",
-            #     executable="rviz2",
-            #     name="rviz2",
-            #     prefix="gnome-terminal --",     
-            #     output="screen",
-            #     arguments=["-d", rviz_config],
-            # ),
-
-            # TimerAction(
-            #     period=2.0,
-            #     actions=[
-            #         Node(
-            #             package="ocs2_legged_robot_ros",
-            #             executable="legged_robot_sqp_mpc",
-            #             name="legged_robot_sqp_mpc",
-            #             output="screen",
-            #             prefix="gnome-terminal --",     
-            #             parameters=[
-            #                 {"/urdfFile": urdfFile},
-            #                 {"/referenceFile": referenceFile},
-            #                 {"/taskFile": taskFile},
-            #             ],
-            #         )
-            #     ]),
+            Node(
+                package="rviz2",
+                executable="rviz2",
+                name="rviz2",
+                output="screen",
+                arguments=["-d", rviz_config],
+            ),
 
             TimerAction(
                 period=2.0,
                 actions=[
                     Node(
                         package="ocs2_legged_robot_ros",
-                        executable="legged_robot_dummy",
-                        name="legged_robot_dummy",
+                        executable="legged_robot_sqp_mpc",
+                        name="legged_robot_sqp_mpc",
                         output="screen",
                         # prefix="gnome-terminal --",     
                         parameters=[
@@ -94,38 +76,55 @@ def generate_launch_description():
                     )
                 ]),
 
-            # TimerAction(
-            #     period=2.0,
-            #     actions=[
-            #         Node(
-            #             package="ocs2_legged_robot_ros",
-            #             executable="legged_robot_target",
-            #             name="legged_robot_target",
-            #             output="screen",
-            #             prefix="gnome-terminal --",     
-            #             parameters=[
-            #                 {"/referenceFile": referenceFile},
-            #             ],
-            #             emulate_tty=True,
-            #             arguments=[("__log_level:=debug")],
-            #         )
-            #     ]),
+            TimerAction(
+                period=2.0,
+                actions=[
+                    Node(
+                        package="ocs2_legged_robot_ros",
+                        executable="legged_robot_dummy",
+                        name="legged_robot_dummy",
+                        output="screen",
+                        prefix="gnome-terminal --",     
+                        parameters=[
+                            {"/urdfFile": urdfFile},
+                            {"/referenceFile": referenceFile},
+                            {"/taskFile": taskFile},
+                        ],
+                    )
+                ]),
 
-            # TimerAction(
-            #     period=4.00,
-            #     actions=[
-            #         Node(
-            #             package="ocs2_legged_robot_ros",
-            #             executable="legged_robot_gait_command",
-            #             name="legged_robot_gait_command",
-            #             output="screen",
-            #             prefix="gnome-terminal --",     
-            #             parameters=[
-            #                 {"/gaitCommandFile": gaitCommandFile},
-            #             ],
-            #             emulate_tty=True,
-            #             arguments=[("__log_level:=debug")],
-            #         )
-            #     ]),
+            TimerAction(
+                period=2.0,
+                actions=[
+                    Node(
+                        package="ocs2_legged_robot_ros",
+                        executable="legged_robot_target",
+                        name="legged_robot_target",
+                        output="screen",
+                        prefix="gnome-terminal --",     
+                        parameters=[
+                            {"/referenceFile": referenceFile},
+                        ],
+                        emulate_tty=True,
+                        arguments=[("__log_level:=debug")],
+                    )
+                ]),
+
+            TimerAction(
+                period=4.00,
+                actions=[
+                    Node(
+                        package="ocs2_legged_robot_ros",
+                        executable="legged_robot_gait_command",
+                        name="legged_robot_gait_command",
+                        output="screen",
+                        prefix="gnome-terminal --",     
+                        parameters=[
+                            {"/gaitCommandFile": gaitCommandFile},
+                        ],
+                        emulate_tty=True,
+                        arguments=[("__log_level:=debug")],
+                    )
+                ]),
         ]
     )

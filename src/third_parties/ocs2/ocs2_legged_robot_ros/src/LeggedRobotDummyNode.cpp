@@ -45,9 +45,9 @@ int main(int argc, char **argv)
     // Initialize ros
     rclcpp::init(argc, argv);
     auto nodeHandle = std::make_shared<rclcpp::Node>(robotName + "_mrt");
-    nodeHandle->declare_parameter("/referenceFile", "");
-    nodeHandle->declare_parameter("/urdfFile", "");
-    nodeHandle->declare_parameter("/taskFile", "");
+    nodeHandle->declare_parameter("/referenceFile", "/home/poplar/Desktop/VF-TSC/src/third_parties/ocs2/ocs2_legged_robot/config/command/reference.info");
+    nodeHandle->declare_parameter("/urdfFile", "/home/poplar/Desktop/VF-TSC/src/asserts/a1/a1_0.urdf");
+    nodeHandle->declare_parameter("/taskFile", "/home/poplar/Desktop/VF-TSC/src/third_parties/ocs2/ocs2_legged_robot/config/mpc/task.info");
 
     // Get node parameters
     std::string referenceFile = nodeHandle->get_parameter("/referenceFile")
