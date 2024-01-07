@@ -67,9 +67,6 @@ private:
   MatrixDB formulateSwingLegTask();
   MatrixDB formulateContactForceTask();
 
-  vector3_t computeEulerAngleErr(const vector3_t &rpy_m,
-                                 const vector3_t &rpy_d);
-
   void differential_inv_kin();
 
 private:

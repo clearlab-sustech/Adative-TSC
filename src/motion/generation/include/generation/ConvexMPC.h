@@ -42,9 +42,6 @@ private:
 
   void fitTraj(scalar_t time_cur, size_t N);
 
-  vector3_t computeEulerAngleErr(const vector3_t &rpy_m,
-                                 const vector3_t &rpy_d);
-
 private:
   Node::SharedPtr nodeHandle_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;

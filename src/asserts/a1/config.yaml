@@ -1,5 +1,5 @@
 global:
-  topic_prefix: "simulation/"
+  topic_prefix: "a1_ysp/"
   service_names:
     sim_reset: "sim_reset"
   topic_names:
@@ -15,8 +15,8 @@ global:
 model:
   name: "a1"
   package: "asserts"
-  urdf: "/a1/a1.urdf"
-  xml: "/a1/a1.xml"
+  urdf: "/a1/a1_0.urdf"
+  xml: "/a1/a1_0.xml"
   base_name: "trunk"
   foot_names: ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
   actuated_joints_name:
@@ -61,8 +61,8 @@ gait:
     switchingTimes: [0.0, 0.5]
 
   trot:
-    modeSequence: ["LF_RH", "RF_LH"]
-    switchingTimes: [0.0, 0.3, 0.6]
+    modeSequence: ["LF_RH", "FLY", "LF_RH"]
+    switchingTimes: [0.0, 0.2, 0.3, 0.5]
 
   static_walk:
     modeSequence: ["LF_RF_RH", "RF_LH_RH", "LF_RF_LH", "LF_LH_RH"]
@@ -92,7 +92,7 @@ estimation:
 
 controller:
   frequency: 500.0
-  use_vector_field: true
+  use_vector_field: false
 
 generation:
   frequency: 50.0

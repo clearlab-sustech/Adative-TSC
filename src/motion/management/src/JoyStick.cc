@@ -35,25 +35,25 @@ namespace clear
       {
         vector3_t vel_cmd_t;
         vel_cmd_t.z() = 0.0;
-        vel_cmd_t.x() = 0.2;
+        vel_cmd_t.x() = 0.4;
         vel_cmd_t.y() = 0.0;
-        vel_cmd = 0.995 * vel_cmd + 0.005 * vel_cmd_t;
+        vel_cmd = 0.999 * vel_cmd + 0.001 * vel_cmd_t;
         return vel_cmd;
       }
       else if (msg->axes.at(2) < 0.9)
       {
         vector3_t vel_cmd_t;
         vel_cmd_t.z() = 0.0;
-        vel_cmd_t.x() = -0.2;
+        vel_cmd_t.x() = -0.4;
         vel_cmd_t.y() = 0.0;
-        vel_cmd = 0.995 * vel_cmd + 0.005 * vel_cmd_t;
+        vel_cmd = 0.999 * vel_cmd + 0.001 * vel_cmd_t;
         return vel_cmd;
       }
       else
       {
         vector3_t vel_cmd_t;
         vel_cmd_t.z() = 0.0;
-        vel_cmd_t.x() = 0.2 * msg->axes.at(1);
+        vel_cmd_t.x() = 0.3 * msg->axes.at(1);
         vel_cmd_t.y() = 0.1 * msg->axes.at(0);
         vel_cmd = 0.995 * vel_cmd + 0.005 * vel_cmd_t;
         return vel_cmd;
@@ -63,7 +63,7 @@ namespace clear
 
   scalar_t JoyStick::getYawVelCmd()
   {
-    const scalar_t angular_velocity_factor = 0.2;
+    const scalar_t angular_velocity_factor = 0.3;
     auto msg = joy_msg_.get();
     if (msg == nullptr)
     {

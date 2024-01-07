@@ -22,10 +22,10 @@ ConstructVectorField::ConstructVectorField(
 
   total_mass_ = pinocchioInterfacePtr_->total_mass();
   weight_.setZero(12, 12);
-  // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
-  //     10.0, 10.0;
+  weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
+      10.0, 10.0;
 
-  weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 0.3, 30, 30, 50, 0.2, 0.2, 0.3;
+  // weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 0.3, 30, 30, 50, 0.2, 0.2, 0.3;
   // weight_ = 20.0 * weight_;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
@@ -245,23 +245,6 @@ ConstructVectorField::compute() {
     std::cout << "ConstructVectorField: " << res << "\n";
   }
   return feedback_law_ptr;
-}
-
-vector3_t ConstructVectorField::computeEulerAngleErr(const vector3_t &rpy_m,
-                                                     const vector3_t &rpy_d) {
-  vector3_t rpy_err = rpy_m - rpy_d;
-  if (rpy_err.norm() > 1.5 * M_PI) {
-    if (abs(rpy_err(0)) > M_PI) {
-      rpy_err(0) += (rpy_err(0) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(1)) > M_PI) {
-      rpy_err(1) += (rpy_err(1) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(2)) > M_PI) {
-      rpy_err(2) += (rpy_err(2) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-  }
-  return rpy_err;
 }
 
 } // namespace clear
