@@ -58,6 +58,7 @@ TrajectoryStabilization::TrajectoryStabilization(
   base_name = config_["model"]["base_name"].as<std::string>();
 
   t0 = nodeHandle_->now().seconds();
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "t0: %f", t0);
 
   run_.push(true);
   if (use_vector_field) {
@@ -199,6 +200,7 @@ void TrajectoryStabilization::innerLoop() {
 
       wbcPtr_->update_state(qpos_ptr, qvel_ptr);
       wbcPtr_->update_mpc_sol(mpc_sol_buffer.get());
+      wbcPtr_->updateReferenceBuffer(referenceBuffer_);
 
       if (use_vector_field && vf_param_buffer_.get() != nullptr) {
         wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
@@ -243,7 +245,7 @@ void TrajectoryStabilization::adapative_gain_loop() {
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   benchmark::RepeatedTimer timer_;
-  rclcpp::Rate loop_rate(100.0);
+  rclcpp::Rate loop_rate(200.0);
 
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();

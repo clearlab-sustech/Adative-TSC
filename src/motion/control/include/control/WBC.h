@@ -5,6 +5,7 @@
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
+#include <core/trajectory/ReferenceBuffer.h>
 #include <fstream>
 #include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
 #include <ocs2_legged_robot/LeggedRobotInterface.h>
@@ -37,8 +38,9 @@ public:
   void update_state(const std::shared_ptr<vector_t> qpos_ptr,
                     const std::shared_ptr<vector_t> qvel_ptr);
 
-  void updateBaseVectorField(
-      const std::shared_ptr<VectorFieldParam> vf);
+  void updateBaseVectorField(const std::shared_ptr<VectorFieldParam> vf);
+
+  void updateReferenceBuffer(std::shared_ptr<ReferenceBuffer> referenceBuffer);
 
   std::shared_ptr<ActuatorCommands> optimize();
 
@@ -53,11 +55,9 @@ private:
   MatrixDB formulateTorqueLimitsTask();
   MatrixDB formulateMaintainContactTask();
   MatrixDB formulateFrictionConeTask();
-  MatrixDB formulateMomentumTask();
-  MatrixDB formulateJointTask();
+  MatrixDB formulateFloatingBaseTask();
+  MatrixDB formulateSwingTask();
   MatrixDB formulateContactForceTask();
-
-  void differential_inv_kin();
 
   vector_t get_rbd_state();
 
@@ -68,6 +68,7 @@ private:
 
   size_t numDecisionVars_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
+  std::shared_ptr<ReferenceBuffer> referenceBuffer_;
 
   std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
       robot_interface_ptr_;

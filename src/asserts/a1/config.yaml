@@ -97,7 +97,7 @@ estimation:
 
 controller:
   frequency: 500.0
-  use_vector_field: false
+  use_vector_field: true
 
 generation:
-  frequency: 100.0
+  frequency: 50.0

@@ -42,6 +42,8 @@ ConstructVectorField::ConstructVectorField(
   solver_settings.split_step = 1;
 
   t0 = nodeHandle_->now().seconds();
+
+  RCLCPP_INFO(rclcpp::get_logger("ConstructVectorField"), "t0: %f", t0);
 }
 
 ConstructVectorField::~ConstructVectorField() {}
@@ -166,8 +168,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   }
 }
 
-std::shared_ptr<VectorFieldParam>
-ConstructVectorField::compute() {
+std::shared_ptr<VectorFieldParam> ConstructVectorField::compute() {
   feedback_law_ptr = nullptr;
 
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();

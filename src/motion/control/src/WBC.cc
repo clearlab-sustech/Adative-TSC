@@ -59,6 +59,7 @@ WBC::WBC(Node::SharedPtr nodeHandle,
   this->loadTasksSetting();
 
   t0 = nodeHandle_->now().seconds();
+  RCLCPP_INFO(rclcpp::get_logger("WBC"), "t0: %f", t0);
 }
 
 WBC::~WBC() { log_stream.close(); }
@@ -72,9 +73,13 @@ void WBC::update_state(const std::shared_ptr<vector_t> qpos_ptr,
   pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 }
 
-void WBC::updateBaseVectorField(
-    const std::shared_ptr<VectorFieldParam> vf) {
+void WBC::updateBaseVectorField(const std::shared_ptr<VectorFieldParam> vf) {
   base_vf_.push(vf);
+}
+
+void WBC::updateReferenceBuffer(
+    std::shared_ptr<ReferenceBuffer> referenceBuffer) {
+  referenceBuffer_ = referenceBuffer;
 }
 
 void WBC::formulate() {
@@ -103,8 +108,27 @@ void WBC::formulate() {
   constraints = formulateFloatingBaseEulerNewtonEqu() +
                 formulateTorqueLimitsTask() + formulateFrictionConeTask() +
                 formulateMaintainContactTask();
-  weighedTask = formulateMomentumTask() + formulateJointTask() +
+  weighedTask = formulateFloatingBaseTask() + formulateSwingTask() +
                 formulateContactForceTask();
+
+  vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
+                                nodeHandle_->now().seconds() - t0,
+                                activePrimalSolutionPtr_->timeTrajectory_,
+                                activePrimalSolutionPtr_->stateTrajectory_)
+                                .tail(actuated_joints_name.size());
+
+  vector_t joints_vel_des = ocs2::LinearInterpolation::interpolate(
+                                nodeHandle_->now().seconds() - t0,
+                                activePrimalSolutionPtr_->timeTrajectory_,
+                                activePrimalSolutionPtr_->inputTrajectory_)
+                                .tail(actuated_joints_name.size());
+
+  for (size_t i = 0; i < actuated_joints_name.size(); i++) {
+    actuator_commands_->Kp(i) = 0.0;
+    actuator_commands_->Kd(i) = 3.0;
+    actuator_commands_->pos(i) = joints_pos_des(i);
+    actuator_commands_->vel(i) = joints_vel_des(i);
+  }
 }
 
 std::shared_ptr<ActuatorCommands> WBC::optimize() {
@@ -135,66 +159,14 @@ std::shared_ptr<ActuatorCommands> WBC::optimize() {
   // printf("solver state: %d\n", solver_state);
   if (solver_state == eiquadprog::solvers::EIQUADPROG_FAST_OPTIMAL) {
     actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
-    const size_t na = actuated_joints_name.size();
-    vector_t nle = pinocchioInterface_ptr_->nle().tail(na);
-    size_t nc = foot_names.size();
-    const auto &model = pinocchioInterface_ptr_->getModel();
-    pin::Index id1, id2, id3;
-    for (size_t i = 0; i < nc; i++) {
-      if (!contactFlag_[i]) {
-        switch (i) {
-        case 0:
-          id1 = model.getJointId("FL_hip_joint") - 2;
-          id2 = model.getJointId("FL_thigh_joint") - 2;
-          id3 = model.getJointId("FL_calf_joint") - 2;
-          actuator_commands_->torque(id1) = nle(id1);
-          actuator_commands_->torque(id2) = nle(id2);
-          actuator_commands_->torque(id3) = nle(id3);
-          break;
-
-        case 1:
-          id1 = model.getJointId("FR_hip_joint") - 2;
-          id2 = model.getJointId("FR_thigh_joint") - 2;
-          id3 = model.getJointId("FR_calf_joint") - 2;
-          actuator_commands_->torque(id1) = nle(id1);
-          actuator_commands_->torque(id2) = nle(id2);
-          actuator_commands_->torque(id3) = nle(id3);
-          break;
-
-        case 2:
-          id1 = model.getJointId("RL_hip_joint") - 2;
-          id2 = model.getJointId("RL_thigh_joint") - 2;
-          id3 = model.getJointId("RL_calf_joint") - 2;
-          actuator_commands_->torque(id1) = nle(id1);
-          actuator_commands_->torque(id2) = nle(id2);
-          actuator_commands_->torque(id3) = nle(id3);
-          break;
-
-        case 3:
-          id1 = model.getJointId("RR_hip_joint") - 2;
-          id2 = model.getJointId("RR_thigh_joint") - 2;
-          id3 = model.getJointId("RR_calf_joint") - 2;
-          actuator_commands_->torque(id1) = nle(id1);
-          actuator_commands_->torque(id2) = nle(id2);
-          actuator_commands_->torque(id3) = nle(id3);
-          break;
-
-        default:
-          break;
-        }
-      }
-    }
-
     joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
-    differential_inv_kin();
   } else {
     joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
     actuator_commands_->setZero(actuated_joints_name.size());
     actuator_commands_->Kd.fill(-1.0);
   }
-
   return actuator_commands_;
 }
 
@@ -293,7 +265,7 @@ MatrixDB WBC::formulateFrictionConeTask() {
   return friction_cone;
 }
 
-MatrixDB WBC::formulateMomentumTask() {
+MatrixDB WBC::formulateFloatingBaseTask() {
   size_t nv = pinocchioInterface_ptr_->nv();
   const auto policy = base_vf_.get();
   if (policy != nullptr) {
@@ -343,118 +315,63 @@ MatrixDB WBC::formulateMomentumTask() {
   }
 }
 
-MatrixDB WBC::formulateJointTask() {
-  MatrixDB joints_task("joint_task");
-  const size_t na = actuated_joints_name.size();
-  joints_task.A.setZero(na, numDecisionVars_);
-  joints_task.A.rightCols(na).setIdentity();
+MatrixDB WBC::formulateSwingTask() {
+  const size_t nc = foot_names.size();
+  const size_t nv = pinocchioInterface_ptr_->nv();
 
-  auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
-  vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->stateTrajectory_)
-                                .tail(actuated_joints_name.size());
-  vector_t joints_vel_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->inputTrajectory_)
-                                .tail(actuated_joints_name.size());
+  auto foot_traj = referenceBuffer_.get()->getFootPosTraj();
+  auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
 
-  vector_t joints_pos = pinocchioInterface_ptr_->qpos().tail(na);
-  vector_t joints_vel = pinocchioInterface_ptr_->qvel().tail(na);
+  if (nc - numContacts_ <= 0 || foot_traj.size() != nc ||
+      base_pos_traj.get() == nullptr) {
+    return MatrixDB("swing_task");
+  }
+  MatrixDB swing_task("swing_task");
+  scalar_t t = nodeHandle_->now().seconds() + dt_;
 
-  joints_task.b = 30.0 * (joints_pos_des - joints_pos) +
-                  (joints_vel_des - joints_vel) +
-                  pinocchioInterface_ptr_->nle().tail(na);
+  matrix_t Qw =
+      matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
+  swing_task.A.setZero(3 * (nc - numContacts_), numDecisionVars_);
+  swing_task.b.setZero(swing_task.A.rows());
 
-  size_t nc = foot_names.size();
-  const auto &model = pinocchioInterface_ptr_->getModel();
-  pin::Index id1, id2, id3;
-  for (size_t i = 0; i < nc; i++) {
-    if (contactFlag_[i]) {
-      switch (i) {
-      case 0:
-        id1 = model.getJointId("FL_hip_joint") - 2;
-        id2 = model.getJointId("FL_thigh_joint") - 2;
-        id3 = model.getJointId("FL_calf_joint") - 2;
-        joints_task.A.rightCols(na)(id1, id1) = 0.0;
-        joints_task.A.rightCols(na)(id2, id2) = 0.0;
-        joints_task.A.rightCols(na)(id3, id3) = 0.0;
-        joints_task.b(id1) = 0.0;
-        joints_task.b(id2) = 0.0;
-        joints_task.b(id3) = 0.0;
-        break;
-
-      case 1:
-        id1 = model.getJointId("FR_hip_joint") - 2;
-        id2 = model.getJointId("FR_thigh_joint") - 2;
-        id3 = model.getJointId("FR_calf_joint") - 2;
-        joints_task.A.rightCols(na)(id1, id1) = 0.0;
-        joints_task.A.rightCols(na)(id2, id2) = 0.0;
-        joints_task.A.rightCols(na)(id3, id3) = 0.0;
-        joints_task.b(id1) = 0.0;
-        joints_task.b(id2) = 0.0;
-        joints_task.b(id3) = 0.0;
-        break;
-
-      case 2:
-        id1 = model.getJointId("RL_hip_joint") - 2;
-        id2 = model.getJointId("RL_thigh_joint") - 2;
-        id3 = model.getJointId("RL_calf_joint") - 2;
-        joints_task.A.rightCols(na)(id1, id1) = 0.0;
-        joints_task.A.rightCols(na)(id2, id2) = 0.0;
-        joints_task.A.rightCols(na)(id3, id3) = 0.0;
-        joints_task.b(id1) = 0.0;
-        joints_task.b(id2) = 0.0;
-        joints_task.b(id3) = 0.0;
-        break;
-
-      case 3:
-        id1 = model.getJointId("RR_hip_joint") - 2;
-        id2 = model.getJointId("RR_thigh_joint") - 2;
-        id3 = model.getJointId("RR_calf_joint") - 2;
-        joints_task.A.rightCols(na)(id1, id1) = 0.0;
-        joints_task.A.rightCols(na)(id2, id2) = 0.0;
-        joints_task.A.rightCols(na)(id3, id3) = 0.0;
-        joints_task.b(id1) = 0.0;
-        joints_task.b(id2) = 0.0;
-        joints_task.b(id3) = 0.0;
-        break;
-
-      default:
-        break;
-      }
+  size_t j = 0;
+  for (size_t i = 0; i < nc; ++i) {
+    const auto &foot_name = foot_names[i];
+    if (!contactFlag_[i]) {
+      Qw.block<3, 3>(3 * j, 3 * j) = weightSwingLeg_;
+      const auto traj = foot_traj[foot_name];
+      vector3_t pos_des =
+          traj->evaluate(t) - base_pos_traj->evaluate(t) +
+          pinocchioInterface_ptr_->getFramePose(base_name).translation();
+      vector3_t vel_des =
+          traj->derivative(t, 1) - base_pos_traj->derivative(t, 1) +
+          pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name)
+              .linear();
+      vector3_t acc_des = traj->derivative(t, 2);
+      vector3_t pos_m =
+          pinocchioInterface_ptr_->getFramePose(foot_name).translation();
+      vector3_t vel_m =
+          pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(foot_name)
+              .linear();
+      vector3_t pos_err = pos_des - pos_m;
+      vector3_t vel_err = vel_des - vel_m;
+      vector3_t accel_fb = swingKp_ * pos_err + swingKd_ * vel_err;
+      /* if (accel_fb.norm() > 10.0) {
+        accel_fb = 10.0 * accel_fb.normalized();
+      } */
+      swing_task.A.block(3 * j, 0, 3, nv) = Jc.block(3 * i, 0, 3, nv);
+      swing_task.b.segment(3 * j, 3) =
+          -pinocchioInterface_ptr_->getFrame6dAcc_localWorldAligned(foot_name)
+               .linear() +
+          accel_fb + acc_des;
+      j++;
     }
   }
 
-  return joints_task;
-}
-
-void WBC::differential_inv_kin() {
-  auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
-
-  vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->stateTrajectory_)
-                                .tail(actuated_joints_name.size());
-
-  vector_t joints_vel_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->inputTrajectory_)
-                                .tail(actuated_joints_name.size());
-
-  for (size_t i = 0; i < actuated_joints_name.size(); i++) {
-    actuator_commands_->Kp(i) = 30.0;
-    actuator_commands_->Kd(i) = 1.0;
-    actuator_commands_->pos(i) = joints_pos_des(i);
-    actuator_commands_->vel(i) = joints_vel_des(i);
-  }
-  /* std::cout << "#####################################################\n";
-  std::cout << "jnt kp: " <<  actuator_commands_->Kp.transpose() << "\n";
-  std::cout << "jnt kd: " <<  actuator_commands_->Kd.transpose() << "\n"; */
+  swing_task.A.leftCols(6).setZero();
+  swing_task.A = Qw * swing_task.A;
+  swing_task.b = Qw * swing_task.b;
+  return swing_task;
 }
 
 MatrixDB WBC::formulateContactForceTask() {
@@ -480,7 +397,7 @@ void WBC::loadTasksSetting(bool verbose) {
   weightSwingLeg_.setZero(3, 3);
   weightSwingLeg_.diagonal().fill(200);
 
-  weightContactForce_ = 1e-6;
+  weightContactForce_ = 1e-3;
 
   frictionCoeff_ = 0.5;
 

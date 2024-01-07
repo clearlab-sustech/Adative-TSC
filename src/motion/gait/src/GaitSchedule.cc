@@ -91,8 +91,8 @@ void GaitSchedule::gaitSwitch(
   } else {
     if (std::find(gait_list.begin(), gait_list.end(), request->gait_name) !=
         gait_list.end()) {
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait request: change to %s",
-                  request->gait_name.c_str());
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
+                  "gait request: change to %s", request->gait_name.c_str());
       if (request->gait_name == current_gait_.get()) {
         RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "It has been in %s ",
                     current_gait_.get().c_str());
@@ -114,14 +114,15 @@ void GaitSchedule::gaitSwitch(
         gait_buffer_.push(request->gait_name);
         check_transition_thread_ =
             std::thread(&GaitSchedule::checkGaitTransition, this);
-        RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait %s will start at time %f",
-                    gait_buffer_.get().c_str(), transition_time_.get());
+        RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
+                    "gait %s will start at time %f", gait_buffer_.get().c_str(),
+                    transition_time_.get());
       }
 
       response->is_success = true;
     } else {
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "not found gait %s in gait list",
-                  request->gait_name.c_str());
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
+                  "not found gait %s in gait list", request->gait_name.c_str());
       response->is_success = false;
     }
   }
@@ -131,8 +132,8 @@ void GaitSchedule::switchGait(std::string gait_name) {
   if (std::find(gait_list.begin(), gait_list.end(), gait_name) !=
       gait_list.end()) {
     if (gait_name != current_gait_.get() && !in_transition_.get()) {
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait request: change to %s",
-                  gait_name.c_str());
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
+                  "gait request: change to %s", gait_name.c_str());
       if (check_transition_thread_.joinable())
         check_transition_thread_.join();
 
@@ -154,8 +155,9 @@ void GaitSchedule::switchGait(std::string gait_name) {
       gait_buffer_.push(gait_name);
       check_transition_thread_ =
           std::thread(&GaitSchedule::checkGaitTransition, this);
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait %s will start at time %f",
-                  gait_buffer_.get().c_str(), transition_time_.get());
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
+                  "gait %s will start at time %f", gait_buffer_.get().c_str(),
+                  transition_time_.get());
     }
   }
 }
@@ -229,9 +231,8 @@ std::shared_ptr<ModeSchedule> GaitSchedule::eval(scalar_t time_period) {
 
 void GaitSchedule::checkGaitTransition() {
   in_transition_.push(true);
-
-  if (transition_time_.get() < nodeHandle_->now().seconds() ||
-      transition_time_.get() - nodeHandle_->now().seconds() > 1e2) {
+  const scalar_t tnow = nodeHandle_->now().seconds() - t0;
+  if (transition_time_.get() < tnow || transition_time_.get() - tnow > 1e2) {
     printf("transition time slot: %fs",
            transition_time_.get() - nodeHandle_->now().seconds());
     throw std::runtime_error("transition time slot is not valid [0, 100]");

@@ -39,6 +39,8 @@ public:
   void updateBaseVectorField(
       const std::shared_ptr<VectorFieldParam> vf);
 
+  void updateReferenceBuffer(std::shared_ptr<ReferenceBuffer> referenceBuffer);
+
   std::shared_ptr<ActuatorCommands> optimize();
 
 private:
@@ -72,6 +74,7 @@ private:
       robot_interface_ptr_;
   std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
   Buffer<std::shared_ptr<VectorFieldParam>> base_vf_;
+  std::shared_ptr<ReferenceBuffer> referenceBuffer_;
 
   vector_t mpcInput, xDot;
 

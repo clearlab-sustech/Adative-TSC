@@ -62,6 +62,7 @@ WholeBodyController::WholeBodyController(
   this->loadTasksSetting();
 
   t0 = nodeHandle_->now().seconds();
+  RCLCPP_INFO(rclcpp::get_logger("WholeBodyController"), "t0: %f", t0);
 }
 
 WholeBodyController::~WholeBodyController() { log_stream.close(); }
@@ -80,6 +81,11 @@ void WholeBodyController::update_state(
 void WholeBodyController::updateBaseVectorField(
     const std::shared_ptr<VectorFieldParam> vf) {
   base_vf_.push(vf);
+}
+
+void WholeBodyController::updateReferenceBuffer(
+    std::shared_ptr<ReferenceBuffer> referenceBuffer) {
+  referenceBuffer_ = referenceBuffer;
 }
 
 void WholeBodyController::formulate() {
@@ -321,16 +327,48 @@ MatrixDB WholeBodyController::formulateMomentumTask() {
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
 
+    // vector6_t acc_fb;
+    // auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+    // auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+
+    // const scalar_t time_now_ = nodeHandle_->now().seconds() - t0;
+    // vector3_t rpy_des = rpy_traj->evaluate(time_now_);
+    // vector3_t rpy_dot_des = rpy_traj->derivative(time_now_, 1);
+    // vector3_t rpy_ddot_des = rpy_traj->derivative(time_now_, 2);
+    // vector3_t omega_des = getJacobiFromRPYToOmega(rpy_des) * rpy_dot_des;
+    // vector3_t omega_dot_des =
+    //     getJacobiFromRPYToOmega(rpy_des) * rpy_ddot_des +
+    //     getJacobiDotFromRPYToOmega(rpy_des, rpy_dot_des) * rpy_dot_des;
+
+    // auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
+    // auto base_twist =
+    // pinocchioInterface_ptr_->getFrame6dVel_local(base_name); pin::SE3
+    // pose_ref;
+    // // pose_ref.rotation() = toRotationMatrix(rpy_traj->evaluate(time_now_));
+    // // pose_ref.translation() = pos_traj->evaluate(time_now_);
+    // pose_ref.rotation().setIdentity();
+    // pose_ref.translation() << 0, 0, 0.3;
+
+    // vector6_t _spatialVelRef, _spatialAccRef;
+    // _spatialVelRef << base_pose.rotation().transpose() *
+    //                       pos_traj->derivative(time_now_, 1),
+    //     base_pose.rotation().transpose() * omega_des;
+    // _spatialAccRef << base_pose.rotation().transpose() *
+    //                       pos_traj->derivative(time_now_, 2),
+    //     base_pose.rotation().transpose() * vector3_t::Zero();
+    // // _spatialAccRef.setZero();
+    // auto pose_err = log6(base_pose.actInv(pose_ref)).toVector();
+    // auto vel_err = 0.0 * _spatialVelRef - base_twist.toVector();
+
+    // acc_fb = 60.0 * pose_err + 1.5 * vel_err + 0.0 * _spatialAccRef;
+
     base_task.b =
         acc_fb -
         pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
-    // std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
-
     base_task.A = weightMomentum_ * base_task.A;
     base_task.b = weightMomentum_ * base_task.b;
     return base_task;
-  } else
-  {
+  } else {
     MatrixDB momentum_task("momentum_task");
 
     momentum_task.A.setZero(6, numDecisionVars_);

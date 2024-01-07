@@ -1,6 +1,7 @@
 #pragma once
 #include "control/ConstructVectorField.h"
 #include "control/WholeBodyController.h"
+#include "control/WBC.h"
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>

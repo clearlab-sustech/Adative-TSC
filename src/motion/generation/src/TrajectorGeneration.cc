@@ -74,6 +74,7 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   vel_cmd.setZero();
   yawd_ = 0.0;
   t0 = nodeHandle_->now().seconds();
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"), "t0: %f", t0);
 
   referenceBuffer_ = std::make_shared<ReferenceBuffer>();
 
