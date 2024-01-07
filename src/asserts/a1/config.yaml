@@ -61,8 +61,8 @@ gait:
     switchingTimes: [0.0, 0.5]
 
   trot:
-    modeSequence: ["LF_RH", "FLY", "LF_RH"]
-    switchingTimes: [0.0, 0.2, 0.3, 0.5]
+    modeSequence: ["LF_RH", "RF_LH"]
+    switchingTimes: [0.0, 0.4, 0.8]
 
   static_walk:
     modeSequence: ["LF_RF_RH", "RF_LH_RH", "LF_RF_LH", "LF_LH_RH"]
@@ -92,7 +92,7 @@ estimation:
 
 controller:
   frequency: 500.0
-  use_vector_field: false
+  use_vector_field: true
 
 generation:
   frequency: 50.0
