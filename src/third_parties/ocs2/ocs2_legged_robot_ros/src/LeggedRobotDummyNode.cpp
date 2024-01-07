@@ -38,68 +38,73 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using namespace ocs2;
 using namespace legged_robot;
 
-int main(int argc, char **argv)
-{
-    const std::string robotName = "l2aurdf01";
+int main(int argc, char **argv) {
+  const std::string robotName = "l2aurdf01";
 
-    // Initialize ros
-    rclcpp::init(argc, argv);
-    auto nodeHandle = std::make_shared<rclcpp::Node>(robotName + "_mrt");
-    nodeHandle->declare_parameter("/referenceFile", "/home/poplar/Desktop/VF-TSC/src/third_parties/ocs2/ocs2_legged_robot/config/command/reference.info");
-    nodeHandle->declare_parameter("/urdfFile", "/home/poplar/Desktop/VF-TSC/src/asserts/a1/a1_0.urdf");
-    nodeHandle->declare_parameter("/taskFile", "/home/poplar/Desktop/VF-TSC/src/third_parties/ocs2/ocs2_legged_robot/config/mpc/task.info");
+  // Initialize ros
+  rclcpp::init(argc, argv);
+  auto nodeHandle = std::make_shared<rclcpp::Node>(robotName + "_mrt");
+  nodeHandle->declare_parameter(
+      "/referenceFile", "/home/poplar/Desktop/VF-TSC/src/third_parties/ocs2/"
+                        "ocs2_legged_robot/config/command/reference.info");
+  nodeHandle->declare_parameter(
+      "/urdfFile", "/home/poplar/Desktop/VF-TSC/src/asserts/a1/a1_0.urdf");
+  nodeHandle->declare_parameter("/taskFile",
+                                "/home/poplar/Desktop/VF-TSC/src/third_parties/"
+                                "ocs2/ocs2_legged_robot/config/mpc/task.info");
 
-    // Get node parameters
-    std::string referenceFile = nodeHandle->get_parameter("/referenceFile")
-                                    .get_parameter_value()
-                                    .get<std::string>();
-    std::string urdfFile = nodeHandle->get_parameter("/urdfFile")
-                               .get_parameter_value()
-                               .get<std::string>();
-    std::string taskFile = nodeHandle->get_parameter("/taskFile")
-                               .get_parameter_value()
-                               .get<std::string>();
-    RCLCPP_INFO(nodeHandle->get_logger(), "LeggedRobotInterface start");
+  // Get node parameters
+  std::string referenceFile = nodeHandle->get_parameter("/referenceFile")
+                                  .get_parameter_value()
+                                  .get<std::string>();
+  std::string urdfFile = nodeHandle->get_parameter("/urdfFile")
+                             .get_parameter_value()
+                             .get<std::string>();
+  std::string taskFile = nodeHandle->get_parameter("/taskFile")
+                             .get_parameter_value()
+                             .get<std::string>();
+  RCLCPP_INFO(nodeHandle->get_logger(), "LeggedRobotInterface start");
 
-    // Robot interface
-    LeggedRobotInterface interface(taskFile, urdfFile, referenceFile);
+  // Robot interface
+  LeggedRobotInterface interface(taskFile, urdfFile, referenceFile);
 
-    RCLCPP_INFO(nodeHandle->get_logger(), "LeggedRobotInterface done");
+  RCLCPP_INFO(nodeHandle->get_logger(), "LeggedRobotInterface done");
 
-    // MRT
-    MRT_ROS_Interface mrt(nodeHandle, robotName);
-    mrt.initRollout(&interface.getRollout());
+  // MRT
+  MRT_ROS_Interface mrt(nodeHandle, robotName);
+  mrt.initRollout(&interface.getRollout());
 
-    // Visualization
-    CentroidalModelPinocchioMapping pinocchioMapping(
-        interface.getCentroidalModelInfo());
-    PinocchioEndEffectorKinematics endEffectorKinematics(
-        interface.getPinocchioInterface(), pinocchioMapping,
-        interface.modelSettings().contactNames3DoF);
-    auto leggedRobotVisualizer = std::make_shared<LeggedRobotVisualizer>(
-        interface.getPinocchioInterface(), interface.getCentroidalModelInfo(),
-        endEffectorKinematics, nodeHandle);
+  // Visualization
+  CentroidalModelPinocchioMapping pinocchioMapping(
+      interface.getCentroidalModelInfo());
+  PinocchioEndEffectorKinematics endEffectorKinematics(
+      interface.getPinocchioInterface(), pinocchioMapping,
+      interface.modelSettings().contactNames3DoF);
+  auto leggedRobotVisualizer = std::make_shared<LeggedRobotVisualizer>(
+      interface.getPinocchioInterface(), interface.getCentroidalModelInfo(),
+      endEffectorKinematics, nodeHandle);
 
-    // Dummy legged robot
-    MRT_ROS_Dummy_Loop leggedRobotDummySimulator(nodeHandle,
-                                                 mrt, interface.mpcSettings().mrtDesiredFrequency_,
-                                                 interface.mpcSettings().mpcDesiredFrequency_);
-    leggedRobotDummySimulator.subscribeObservers({leggedRobotVisualizer});
+  // Dummy legged robot
+  MRT_ROS_Dummy_Loop leggedRobotDummySimulator(
+      nodeHandle, mrt, interface.mpcSettings().mrtDesiredFrequency_,
+      interface.mpcSettings().mpcDesiredFrequency_);
+  leggedRobotDummySimulator.subscribeObservers({leggedRobotVisualizer});
 
-    // Initial state
-    SystemObservation initObservation;
-    initObservation.state = interface.getInitialState();
-    initObservation.input =
-        vector_t::Zero(interface.getCentroidalModelInfo().inputDim);
-    initObservation.mode = ModeNumber::STANCE;
+  // Initial state
+  SystemObservation initObservation;
+  initObservation.state = interface.getInitialState();
+  initObservation.input =
+      vector_t::Zero(interface.getCentroidalModelInfo().inputDim);
+  initObservation.mode = ModeNumber::STANCE;
+  initObservation.time = 5.0;
 
-    // Initial command
-    TargetTrajectories initTargetTrajectories({0.0}, {initObservation.state},
-                                              {initObservation.input});
+  // Initial command
+  TargetTrajectories initTargetTrajectories({0.0}, {initObservation.state},
+                                            {initObservation.input});
 
-    // run dummy
-    leggedRobotDummySimulator.run(initObservation, initTargetTrajectories);
+  // run dummy
+  leggedRobotDummySimulator.run(initObservation, initTargetTrajectories);
 
-    // Successful exit
-    return 0;
+  // Successful exit
+  return 0;
 }

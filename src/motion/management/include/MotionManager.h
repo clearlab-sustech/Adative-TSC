@@ -7,6 +7,7 @@
 #include <estimation/StateEstimationLKF.h>
 #include <gait/GaitSchedule.h>
 #include <generation/TrajectorGeneration.h>
+#include <generation/TrajectorGenerationOCS2.h>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 #include <unitree_hw/UnitreeHW.h>

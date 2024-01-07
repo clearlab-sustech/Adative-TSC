@@ -45,6 +45,7 @@ private:
   Node::SharedPtr nodeHandle_;
   rclcpp::Service<trans::srv::GaitSwitch>::SharedPtr gait_service_;
   std::string robot_name;
+  scalar_t t0 = 0.0;
 
   std::vector<std::string> gait_list;
   Buffer<std::string> current_gait_;

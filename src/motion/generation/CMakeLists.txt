@@ -32,6 +32,7 @@ find_package(ocs2_sqp)
 find_package(ocs2_legged_robot)
 find_package(ocs2_ros_interfaces)
 find_package(ocs2_centroidal_model)
+find_package(ocs2_legged_robot_ros)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -50,6 +51,7 @@ set(TARGET_DEPENDENCE
   ocs2_legged_robot
   ocs2_ros_interfaces
   ocs2_centroidal_model
+  ocs2_legged_robot_ros
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)

@@ -20,7 +20,8 @@ GaitSchedule::GaitSchedule(Node::SharedPtr nodeHandle)
 
   current_gait_.push(gait_list[0]);
   gait_buffer_.push(gait_list[1]);
-  transition_time_.push(nodeHandle_->now().seconds());
+  transition_time_.push(0.0);
+  t0 = nodeHandle_->now().seconds();
 
   check_.push(true);
   in_transition_.push(false);
@@ -139,7 +140,7 @@ void GaitSchedule::switchGait(std::string gait_name) {
       scalar_t phase_ = cycle_timer_->getCycleTime() /
                         gait_map_[current_gait_name]->duration();
       if (current_gait_name == "stance") {
-        transition_time_.push(nodeHandle_->now().seconds() + 0.05);
+        transition_time_.push(nodeHandle_->now().seconds() + 0.05 - t0);
       } else if (gait_name == "stance") {
         transition_time_.push(
             nodeHandle_->now().seconds() +
@@ -239,7 +240,7 @@ void GaitSchedule::checkGaitTransition() {
   rclcpp::Rate loop_rate(1000.0);
   while (rclcpp::ok() && check_.get() &&
          gait_buffer_.get() != current_gait_.get()) {
-    if (nodeHandle_->now().seconds() > transition_time_.get()) {
+    if (nodeHandle_->now().seconds() - t0 > transition_time_.get()) {
       current_gait_.push(gait_buffer_.get());
       cycle_timer_ = std::make_shared<CycleTimer>(
           nodeHandle_->shared_from_this(),

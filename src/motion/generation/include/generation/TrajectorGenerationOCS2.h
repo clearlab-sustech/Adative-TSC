@@ -7,10 +7,12 @@
 #include <ocs2_centroidal_model/ModelHelperFunctions.h>
 #include <ocs2_legged_robot/LeggedRobotInterface.h>
 #include <ocs2_legged_robot_ros/gait/GaitReceiver.h>
+#include <ocs2_legged_robot_ros/visualization/LeggedRobotVisualizer.h>
+#include <ocs2_pinocchio_interface/PinocchioEndEffectorKinematics.h>
+#include <ocs2_ros_interfaces/mrt/MRT_ROS_Dummy_Loop.h>
+#include <ocs2_ros_interfaces/mrt/MRT_ROS_Interface.h>
 #include <ocs2_ros_interfaces/synchronized_module/RosReferenceManager.h>
 #include <ocs2_sqp/SqpMpc.h>
-#include <pinocchio/algorithm/frames.hpp>
-#include <pinocchio/algorithm/kinematics.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
 
@@ -18,12 +20,12 @@ using namespace rclcpp;
 using namespace std;
 
 namespace clear {
-class TrajectorGeneration {
+class TrajectorGenerationOCS2 {
 
 public:
-  TrajectorGeneration(Node::SharedPtr nodeHandle);
+  TrajectorGenerationOCS2(Node::SharedPtr nodeHandle);
 
-  ~TrajectorGeneration();
+  ~TrajectorGenerationOCS2();
 
   void updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
                           std::shared_ptr<vector_t> qvel_ptr);
@@ -39,6 +41,8 @@ public:
 private:
   void innerLoop();
 
+  void mpcInit();
+
   vector_t getRbdState();
 
   void setReference();
@@ -49,13 +53,14 @@ private:
   Node::SharedPtr nodeHandle_;
   std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
       robot_interface_ptr_;
+  std::shared_ptr<ocs2::MRT_ROS_Interface> mrt_ptr_;
   std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
-  std::shared_ptr<ocs2::legged_robot::GaitReceiver> gait_receiver_ptr_;
-  std::shared_ptr<ocs2::RosReferenceManager> reference_manager_ptr_;
-  std::shared_ptr<ocs2::SqpMpc> mpc_ptr_;
+  std::shared_ptr<ocs2::legged_robot::LeggedRobotVisualizer> visualizer_ptr_;
 
   Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
   std::shared_ptr<ocs2::CentroidalModelPinocchioMapping> mapping_;
+
+  scalar_t mrtDesiredFrequency_, mpcDesiredFrequency_;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
   Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;
@@ -68,8 +73,7 @@ private:
   std::thread inner_loop_thread_;
   Buffer<bool> run_;
   scalar_t freq_;
-  scalar_t t0 = 0.0;
-  
+
   vector3_t vel_cmd;
   scalar_t yawd_;
 

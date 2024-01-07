@@ -62,6 +62,7 @@ private:
   matrix_t weight_;
   scalar_t time_now_;
   vector3_t rpy_des_start;
+  scalar_t t0 = 0.0;
 
   std::vector<hpipm::OcpQp> ocp_;
   std::vector<hpipm::OcpQpSolution> solution_;

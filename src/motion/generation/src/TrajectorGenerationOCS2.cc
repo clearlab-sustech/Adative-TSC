@@ -1,4 +1,4 @@
-#include "generation/TrajectorGeneration.h"
+#include "generation/TrajectorGenerationOCS2.h"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <core/misc/Benchmark.h>
 #include <core/misc/NumericTraits.h>
@@ -7,7 +7,7 @@
 
 namespace clear {
 
-TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
+TrajectorGenerationOCS2::TrajectorGenerationOCS2(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
 
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
@@ -28,8 +28,8 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   base_name = config_["model"]["base_name"].as<std::string>();
 
   freq_ = config_["generation"]["frequency"].as<scalar_t>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "[TrajectorGeneration] frequency: %f",
-              freq_);
+  RCLCPP_INFO(nodeHandle_->get_logger(),
+              "[TrajectorGenerationOCS2] frequency: %f", freq_);
 
   std::string ocs2_leg_robot_package =
       config_["ocs2"]["package"].as<std::string>();
@@ -47,14 +47,6 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   robot_interface_ptr_ =
       std::make_shared<ocs2::legged_robot::LeggedRobotInterface>(
           task_file, urdf, reference_file);
-  gait_receiver_ptr_ = std::make_shared<ocs2::legged_robot::GaitReceiver>(
-      nodeHandle_,
-      robot_interface_ptr_->getSwitchedModelReferenceManagerPtr()
-          ->getGaitSchedule(),
-      robot_name);
-  reference_manager_ptr_ = std::make_shared<ocs2::RosReferenceManager>(
-      robot_name, robot_interface_ptr_->getReferenceManagerPtr());
-  reference_manager_ptr_->subscribe(nodeHandle_);
 
   conversions_ptr_ = std::make_shared<ocs2::CentroidalModelRbdConversions>(
       robot_interface_ptr_->getPinocchioInterface(),
@@ -63,46 +55,84 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   mapping_ = std::make_shared<ocs2::CentroidalModelPinocchioMapping>(
       robot_interface_ptr_->getCentroidalModelInfo());
 
-  mpc_ptr_ = std::make_shared<ocs2::SqpMpc>(
-      robot_interface_ptr_->mpcSettings(), robot_interface_ptr_->sqpSettings(),
-      robot_interface_ptr_->getOptimalControlProblem(),
-      robot_interface_ptr_->getInitializer());
-  mpc_ptr_->getSolverPtr()->setReferenceManager(reference_manager_ptr_);
-  mpc_ptr_->getSolverPtr()->addSynchronizedModule(gait_receiver_ptr_);
-  mpc_ptr_->reset();
+  mrt_ptr_ = std::make_shared<ocs2::MRT_ROS_Interface>(nodeHandle_, robot_name);
+  mrt_ptr_->initRollout(&robot_interface_ptr_->getRollout());
+
+  ocs2::CentroidalModelPinocchioMapping pinocchioMapping(
+      robot_interface_ptr_->getCentroidalModelInfo());
+  ocs2::PinocchioEndEffectorKinematics endEffectorKinematics(
+      robot_interface_ptr_->getPinocchioInterface(), pinocchioMapping,
+      robot_interface_ptr_->modelSettings().contactNames3DoF);
+  visualizer_ptr_ = std::make_shared<ocs2::legged_robot::LeggedRobotVisualizer>(
+      robot_interface_ptr_->getPinocchioInterface(),
+      robot_interface_ptr_->getCentroidalModelInfo(), endEffectorKinematics,
+      nodeHandle_);
+
+  mrtDesiredFrequency_ =
+      robot_interface_ptr_->mpcSettings().mrtDesiredFrequency_;
+  mpcDesiredFrequency_ =
+      robot_interface_ptr_->mpcSettings().mpcDesiredFrequency_;
 
   vel_cmd.setZero();
   yawd_ = 0.0;
-  t0 = nodeHandle_->now().seconds();
 
   referenceBuffer_ = std::make_shared<ReferenceBuffer>();
 
+  mpcInit();
+
   run_.push(true);
-  inner_loop_thread_ = std::thread(&TrajectorGeneration::innerLoop, this);
+  inner_loop_thread_ = std::thread(&TrajectorGenerationOCS2::innerLoop, this);
 }
 
-TrajectorGeneration::~TrajectorGeneration() {
+TrajectorGenerationOCS2::~TrajectorGenerationOCS2() {
   run_.push(false);
   inner_loop_thread_.join();
 }
 
-std::shared_ptr<ReferenceBuffer> TrajectorGeneration::getReferenceBuffer() {
+std::shared_ptr<ReferenceBuffer> TrajectorGenerationOCS2::getReferenceBuffer() {
   return referenceBuffer_;
 }
 
-void TrajectorGeneration::updateCurrentState(
+void TrajectorGenerationOCS2::updateCurrentState(
     std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
   qpos_ptr_buffer.push(qpos_ptr);
   qvel_ptr_buffer.push(qvel_ptr);
 }
 
-void TrajectorGeneration::setReference() {
+void TrajectorGenerationOCS2::mpcInit() {
+  RCLCPP_WARN_STREAM(nodeHandle_->get_logger(),
+                     "Waiting for the initial policy ...");
+
+  ocs2::SystemObservation initObservation;
+  initObservation.state = robot_interface_ptr_->getInitialState();
+  initObservation.input =
+      vector_t::Zero(robot_interface_ptr_->getCentroidalModelInfo().inputDim);
+  initObservation.mode = ocs2::legged_robot::ModeNumber::STANCE;
+
+  // Initial command
+  ocs2::TargetTrajectories initTargetTrajectories(
+      {0.0}, {initObservation.state}, {initObservation.input});
+  // Reset MPC node
+  mrt_ptr_->resetMpc(initTargetTrajectories);
+
+  // Wait for the initial policy
+  while (!mrt_ptr_->initialPolicyReceived() && rclcpp::ok()) {
+    rclcpp::spin_some(nodeHandle_);
+    mrt_ptr_->setCurrentObservation(initObservation);
+    rclcpp::Rate(robot_interface_ptr_->mpcSettings().mrtDesiredFrequency_)
+        .sleep();
+  }
+  RCLCPP_INFO_STREAM(nodeHandle_->get_logger(),
+                     "Initial policy has been received.");
+}
+
+void TrajectorGenerationOCS2::setReference() {
   if (mpc_sol_buffer.get() == nullptr) {
     ocs2::SystemObservation currentObservation;
     const vector_t rbdState = getRbdState();
 
     const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
-    currentObservation.time = nodeHandle_->now().seconds() - t0;
+    currentObservation.time = nodeHandle_->now().seconds();
     currentObservation.state =
         conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
     currentObservation.input = vector_t::Zero(info_.inputDim);
@@ -111,8 +141,6 @@ void TrajectorGeneration::setReference() {
                                                     {currentObservation.state},
                                                     {currentObservation.input});
 
-    mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
-        std::move(initTargetTrajectories));
   } else {
     ocs2::SystemObservation node1, node2;
     const vector_t rbdState = getRbdState();
@@ -133,7 +161,7 @@ void TrajectorGeneration::setReference() {
     }
 
     const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
-    node1.time = nodeHandle_->now().seconds() - t0;
+    node1.time = nodeHandle_->now().seconds();
     node1.state =
         conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
     node1.state.head(6).setZero();
@@ -153,12 +181,10 @@ void TrajectorGeneration::setReference() {
         -1.48, 0.1, 0.72, -1.48;
     node1.mode = 15; // stance
 
-    node2.time =
-        nodeHandle_->now().seconds() - t0 + mpc_ptr_->settings().timeHorizon_ + 0.1;
+    node2.time = nodeHandle_->now().seconds() + 1.1;
     node2.state = node1.state;
-    node2.state.segment(6, 3) +=
-        (mpc_ptr_->settings().timeHorizon_ + 0.1) * vel_cmd;
-    node2.state[9] += yawd_ * (mpc_ptr_->settings().timeHorizon_ + 0.1);
+    node2.state.segment(6, 3) += 1.1 * vel_cmd;
+    node2.state[9] += yawd_ * 1.1;
     node2.input = vector_t::Zero(info_.inputDim);
     node2.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
         -1.48, 0.1, 0.72, -1.48;
@@ -167,79 +193,87 @@ void TrajectorGeneration::setReference() {
     ocs2::TargetTrajectories initTargetTrajectories({node1.time, node2.time},
                                                     {node1.state, node2.state},
                                                     {node1.input, node2.input});
-    mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
-        std::move(initTargetTrajectories));
   }
 }
 
-void TrajectorGeneration::innerLoop() {
+void TrajectorGenerationOCS2::innerLoop() {
+  // Helper function to check if policy is updated and starts at the given time.
+  // Due to ROS message conversion delay and very fast MPC loop, we might get an
+  // old policy instead of the latest one.
+  const auto policyUpdatedForTime = [this](scalar_t time) {
+    constexpr scalar_t tol =
+        0.1; // policy must start within this fraction of dt
+    return mrt_ptr_->updatePolicy() &&
+           std::abs(mrt_ptr_->getPolicy().timeTrajectory_.front() - time) <
+               (tol / mpcDesiredFrequency_);
+  };
+
+  rclcpp::Rate loop_rate(mpcDesiredFrequency_);
+  rclcpp::Rate loop_mrt_rate(mrtDesiredFrequency_);
   benchmark::RepeatedTimer timer_;
-  rclcpp::Rate loop_rate(freq_);
+  const scalar_t t0 = nodeHandle_->now().seconds();
 
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();
 
-    if (qpos_ptr_buffer.get().get() == nullptr ||
-        qvel_ptr_buffer.get().get() == nullptr) {
-      continue;
-    } else {
-      setReference();
+    if (qpos_ptr_buffer.get().get() != nullptr &&
+        qvel_ptr_buffer.get().get() != nullptr) {
+
+      const scalar_t t = nodeHandle_->now().seconds() - t0;
+
+      /* RCLCPP_INFO(nodeHandle_->get_logger(),
+                  "[TrajectorGeneration] Current time: %f", t); */
 
       ocs2::SystemObservation currentObservation;
       vector_t rbdState = getRbdState();
-      currentObservation.time = nodeHandle_->now().seconds() - t0;
+      currentObservation.time = t;
       currentObservation.state =
           conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
-      bool mpcIsUpdated =
-          mpc_ptr_->run(currentObservation.time, currentObservation.state);
-      if (mpcIsUpdated) {
-        auto primalSolutionPtr = std::make_unique<ocs2::PrimalSolution>();
-        const scalar_t finalTime =
-            (mpc_ptr_->settings().solutionTimeWindow_ < 0)
-                ? mpc_ptr_->getSolverPtr()->getFinalTime()
-                : currentObservation.time +
-                      mpc_ptr_->settings().solutionTimeWindow_;
-        mpc_ptr_->getSolverPtr()->getPrimalSolution(finalTime,
-                                                    primalSolutionPtr.get());
-        /* printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
-               "$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-        for (size_t i = 0; i < primalSolutionPtr->timeTrajectory_.size(); i++) {
-          std::cout
-              << "sol t="
-              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
-              << ", state: "
-              << primalSolutionPtr->stateTrajectory_[i].head(12).transpose()
-              << "\n"
-              << "ref t="
-              << std::to_string(primalSolutionPtr->timeTrajectory_[i])
-              << ", state: "
-              << reference_manager_ptr_->getTargetTrajectories()
-                     .getDesiredState(primalSolutionPtr->timeTrajectory_[i])
-                     .head(12)
-                     .transpose()
-              << "\n";
-        } */
-        mpc_sol_buffer.push(std::move(primalSolutionPtr));
+      currentObservation.mode = ocs2::legged_robot::ModeNumber::STANCE;
+      currentObservation.input = vector_t::Zero(
+          robot_interface_ptr_->getCentroidalModelInfo().inputDim);
 
-        fitTraj();
+      mrt_ptr_->setCurrentObservation(currentObservation);
+
+      /* RCLCPP_INFO(nodeHandle_->get_logger(),
+                  "[TrajectorGeneration] Observation is published at: %f", t);
+       */
+
+      while (!policyUpdatedForTime(t) && rclcpp::ok()) {
+        loop_mrt_rate.sleep();
+        // RCLCPP_INFO(nodeHandle_->get_logger(),
+        //             "[TrajectorGeneration] Wait for the policy to be
+        //             updated");
       }
+
+      auto mpc_sol = std::make_shared<ocs2::PrimalSolution>();
+      *mpc_sol = mrt_ptr_->getPolicy();
+      mpc_sol_buffer.push(mpc_sol);
+      // fitTraj();
+      /* RCLCPP_INFO(nodeHandle_->get_logger(),
+                  "[TrajectorGeneration] New MPC policy starting at: %f",
+                  mrt_ptr_->getPolicy().timeTrajectory_.front()); */
+      // Update vis
+      visualizer_ptr_->update(currentObservation, mrt_ptr_->getPolicy(),
+                              mrt_ptr_->getCommand());
+
+      timer_.endTimer();
+      loop_rate.sleep();
     }
-    timer_.endTimer();
-    loop_rate.sleep();
   }
+
   RCLCPP_INFO(nodeHandle_->get_logger(),
               "[TrajectorGeneration] max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
-  std::cerr << mpc_ptr_->getSolverPtr()->getBenchmarkingInfo();
 }
 
-void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
+void TrajectorGenerationOCS2::setVelCmd(vector3_t vd, scalar_t yawd) {
   vel_cmd = vd;
   yawd_ = yawd;
 }
 
-vector_t TrajectorGeneration::getRbdState() {
+vector_t TrajectorGenerationOCS2::getRbdState() {
   const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
   vector_t rbdState(2 * info_.generalizedCoordinatesNum);
 
@@ -262,7 +296,7 @@ vector_t TrajectorGeneration::getRbdState() {
   return rbdState;
 }
 
-void TrajectorGeneration::fitTraj() {
+void TrajectorGenerationOCS2::fitTraj() {
   auto mpc_sol = mpc_sol_buffer.get();
   if (mpc_sol.get() == nullptr) {
     return;
@@ -355,12 +389,12 @@ void TrajectorGeneration::fitTraj() {
   referenceBuffer_->setFootPosTraj(foot_pos_traj);
 }
 
-std::shared_ptr<ocs2::PrimalSolution> TrajectorGeneration::getMpcSol() {
+std::shared_ptr<ocs2::PrimalSolution> TrajectorGenerationOCS2::getMpcSol() {
   return mpc_sol_buffer.get();
 }
 
 std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-TrajectorGeneration::getRobotInterface() {
+TrajectorGenerationOCS2::getRobotInterface() {
   return robot_interface_ptr_;
 }
 
