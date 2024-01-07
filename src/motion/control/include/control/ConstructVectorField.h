@@ -1,27 +1,21 @@
 #pragma once
+#include "control/common.h"
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
 #include <core/trajectory/ReferenceBuffer.h>
 #include <hpipm-cpp/hpipm-cpp.hpp>
-#include <pinocchio/PinocchioInterface.h>
-#include <rclcpp/rclcpp.hpp>
 #include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
 #include <ocs2_legged_robot/LeggedRobotInterface.h>
-#include <ocs2_oc/oc_data/PrimalSolution.h>
 #include <ocs2_mpc/SystemObservation.h>
+#include <ocs2_oc/oc_data/PrimalSolution.h>
+#include <pinocchio/PinocchioInterface.h>
+#include <rclcpp/rclcpp.hpp>
 
 using namespace rclcpp;
 
 namespace clear {
 class ConstructVectorField {
-public:
-  struct VectorFieldParam {
-    matrix_t K;
-    vector_t b;
-    vector_t force_des;
-  };
-
 public:
   ConstructVectorField(
       Node::SharedPtr nodeHandle,
@@ -50,7 +44,7 @@ private:
   std::shared_ptr<PinocchioInterface> pinocchioInterfacePtr_;
   std::string base_name;
   std::vector<std::string> foot_names;
-  
+
   Buffer<std::shared_ptr<ocs2::PrimalSolution>> mpc_sol_buffer;
   std::shared_ptr<ReferenceBuffer> referenceBuffer_;
   std::shared_ptr<VectorFieldParam> feedback_law_ptr;

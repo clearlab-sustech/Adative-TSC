@@ -63,7 +63,7 @@ private:
   scalar_t t0 = 0.0;
 
   bool use_vector_field;
-  Buffer<std::shared_ptr<ConstructVectorField::VectorFieldParam>>
+  Buffer<std::shared_ptr<VectorFieldParam>>
       vf_param_buffer_;
 
   std::string base_name, robot_name;

@@ -2,7 +2,6 @@
 
 #include "control/ConstructVectorField.h"
 #include "control/MatrixDB.h"
-#include "control/common.h"
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
@@ -14,6 +13,8 @@
 #include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
 
+#include "control/common.h"
+
 using namespace rclcpp;
 
 namespace clear {
@@ -21,13 +22,13 @@ namespace clear {
 using namespace quadruped;
 
 // Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
-class WholeBodyController {
+class WBC {
 public:
-  WholeBodyController(Node::SharedPtr nodeHandle,
-                      std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-                          robot_interface_ptr);
+  WBC(Node::SharedPtr nodeHandle,
+      std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+          robot_interface_ptr);
 
-  ~WholeBodyController();
+  ~WBC();
 
   void loadTasksSetting(bool verbose = true);
 

@@ -1,4 +1,4 @@
-#include "control/WholeBodyController.h"
+#include "control/WBC.h"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <eiquadprog/eiquadprog-fast.hpp>
@@ -9,10 +9,9 @@
 
 namespace clear {
 
-WholeBodyController::WholeBodyController(
-    Node::SharedPtr nodeHandle,
-    std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-        robot_interface_ptr)
+WBC::WBC(Node::SharedPtr nodeHandle,
+         std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+             robot_interface_ptr)
     : nodeHandle_(nodeHandle), robot_interface_ptr_(robot_interface_ptr),
       log_stream("log_stream_wbc.txt", std::ios::ate | std::ios::out) {
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
@@ -24,8 +23,7 @@ WholeBodyController::WholeBodyController(
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "[WholeBodyController] model file: %s",
-              urdf.c_str());
+  RCLCPP_INFO(nodeHandle_->get_logger(), "[WBC] model file: %s", urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   std::string ocs2_leg_robot_package =
@@ -47,8 +45,7 @@ WholeBodyController::WholeBodyController(
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   for (const auto &name : foot_names) {
-    RCLCPP_INFO(nodeHandle_->get_logger(),
-                "[WholeBodyController] foot name: %s", name.c_str());
+    RCLCPP_INFO(nodeHandle_->get_logger(), "[WBC] foot name: %s", name.c_str());
   }
   pinocchioInterface_ptr_->setContactPoints(foot_names);
 
@@ -64,25 +61,23 @@ WholeBodyController::WholeBodyController(
   t0 = nodeHandle_->now().seconds();
 }
 
-WholeBodyController::~WholeBodyController() { log_stream.close(); }
+WBC::~WBC() { log_stream.close(); }
 
-void WholeBodyController::update_mpc_sol(
-    std::shared_ptr<ocs2::PrimalSolution> mpc_sol) {
+void WBC::update_mpc_sol(std::shared_ptr<ocs2::PrimalSolution> mpc_sol) {
   mpc_sol_buffer.push(mpc_sol);
 }
 
-void WholeBodyController::update_state(
-    const std::shared_ptr<vector_t> qpos_ptr,
-    const std::shared_ptr<vector_t> qvel_ptr) {
+void WBC::update_state(const std::shared_ptr<vector_t> qpos_ptr,
+                       const std::shared_ptr<vector_t> qvel_ptr) {
   pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 }
 
-void WholeBodyController::updateBaseVectorField(
+void WBC::updateBaseVectorField(
     const std::shared_ptr<VectorFieldParam> vf) {
   base_vf_.push(vf);
 }
 
-void WholeBodyController::formulate() {
+void WBC::formulate() {
   auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
   scalar_t currentTime = nodeHandle_->now().seconds() - t0;
   mode_ = activePrimalSolutionPtr_->modeSchedule_.modeAtTime(currentTime);
@@ -112,7 +107,7 @@ void WholeBodyController::formulate() {
                 formulateContactForceTask();
 }
 
-std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
+std::shared_ptr<ActuatorCommands> WBC::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
   if (mpc_sol_buffer.get().get() == nullptr) {
@@ -203,7 +198,7 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   return actuator_commands_;
 }
 
-void WholeBodyController::updateContactJacobi() {
+void WBC::updateContactJacobi() {
   Jc = matrix_t(3 * foot_names.size(), pinocchioInterface_ptr_->nv());
   for (size_t i = 0; i < foot_names.size(); ++i) {
     matrix6x_t jac;
@@ -212,7 +207,7 @@ void WholeBodyController::updateContactJacobi() {
   }
 }
 
-MatrixDB WholeBodyController::formulateFloatingBaseEulerNewtonEqu() {
+MatrixDB WBC::formulateFloatingBaseEulerNewtonEqu() {
   MatrixDB eulerNewtonEqu("eulerNewtonEqu");
   auto &data = pinocchioInterface_ptr_->getData();
   size_t nv = pinocchioInterface_ptr_->nv();
@@ -231,7 +226,7 @@ MatrixDB WholeBodyController::formulateFloatingBaseEulerNewtonEqu() {
   return eulerNewtonEqu;
 }
 
-MatrixDB WholeBodyController::formulateTorqueLimitsTask() {
+MatrixDB WBC::formulateTorqueLimitsTask() {
   MatrixDB limit_tau("limit_tau");
   size_t na = actuated_joints_name.size();
   limit_tau.C.setZero(na, numDecisionVars_);
@@ -241,7 +236,7 @@ MatrixDB WholeBodyController::formulateTorqueLimitsTask() {
   return limit_tau;
 }
 
-MatrixDB WholeBodyController::formulateMaintainContactTask() {
+MatrixDB WBC::formulateMaintainContactTask() {
   MatrixDB contact_task("contact_task");
   size_t nc = foot_names.size();
   size_t nv = pinocchioInterface_ptr_->nv();
@@ -261,7 +256,7 @@ MatrixDB WholeBodyController::formulateMaintainContactTask() {
   return contact_task;
 }
 
-MatrixDB WholeBodyController::formulateFrictionConeTask() {
+MatrixDB WBC::formulateFrictionConeTask() {
   MatrixDB friction_cone("friction_cone");
   size_t nc = foot_names.size();
   size_t nv = pinocchioInterface_ptr_->nv();
@@ -298,7 +293,7 @@ MatrixDB WholeBodyController::formulateFrictionConeTask() {
   return friction_cone;
 }
 
-MatrixDB WholeBodyController::formulateMomentumTask() {
+MatrixDB WBC::formulateMomentumTask() {
   size_t nv = pinocchioInterface_ptr_->nv();
   const auto policy = base_vf_.get();
   if (policy != nullptr) {
@@ -329,8 +324,7 @@ MatrixDB WholeBodyController::formulateMomentumTask() {
     base_task.A = weightMomentum_ * base_task.A;
     base_task.b = weightMomentum_ * base_task.b;
     return base_task;
-  } else
-  {
+  } else {
     MatrixDB momentum_task("momentum_task");
 
     momentum_task.A.setZero(6, numDecisionVars_);
@@ -349,7 +343,7 @@ MatrixDB WholeBodyController::formulateMomentumTask() {
   }
 }
 
-MatrixDB WholeBodyController::formulateJointTask() {
+MatrixDB WBC::formulateJointTask() {
   MatrixDB joints_task("joint_task");
   const size_t na = actuated_joints_name.size();
   joints_task.A.setZero(na, numDecisionVars_);
@@ -437,7 +431,7 @@ MatrixDB WholeBodyController::formulateJointTask() {
   return joints_task;
 }
 
-void WholeBodyController::differential_inv_kin() {
+void WBC::differential_inv_kin() {
   auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
 
   vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
@@ -463,7 +457,7 @@ void WholeBodyController::differential_inv_kin() {
   std::cout << "jnt kd: " <<  actuator_commands_->Kd.transpose() << "\n"; */
 }
 
-MatrixDB WholeBodyController::formulateContactForceTask() {
+MatrixDB WBC::formulateContactForceTask() {
   size_t nc = foot_names.size();
   size_t nv = pinocchioInterface_ptr_->nv();
 
@@ -478,7 +472,7 @@ MatrixDB WholeBodyController::formulateContactForceTask() {
   return contact_force;
 }
 
-void WholeBodyController::loadTasksSetting(bool verbose) {
+void WBC::loadTasksSetting(bool verbose) {
   // Load task file
   weightMomentum_.setZero(6, 6);
   weightMomentum_.diagonal().fill(100);
@@ -515,7 +509,7 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   }
 }
 
-vector_t WholeBodyController::get_rbd_state() {
+vector_t WBC::get_rbd_state() {
   auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
   const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
   vector_t rbdState(2 * info_.generalizedCoordinatesNum);

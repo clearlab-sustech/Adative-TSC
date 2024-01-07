@@ -166,7 +166,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   }
 }
 
-std::shared_ptr<ConstructVectorField::VectorFieldParam>
+std::shared_ptr<VectorFieldParam>
 ConstructVectorField::compute() {
   feedback_law_ptr = nullptr;
 
