@@ -7,10 +7,13 @@ using namespace rclcpp;
 
 namespace clear {
 
-DataVisualization::DataVisualization(Node::SharedPtr nodeHandle,
-                                     std::string config_yaml)
+DataVisualization::DataVisualization(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
-  auto config_ = YAML::LoadFile(config_yaml);
+
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+  auto config_ = YAML::LoadFile(config_file_);
 
   std::string topic_prefix =
       config_["global"]["topic_prefix"].as<std::string>();
@@ -20,16 +23,15 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle,
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("DataVisualization"), "model file: %s",
+              urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
-  auto foot_names =
-      config_["model"]["foot_names"].as<std::vector<std::string>>();
+  foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
 
   actuated_joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
 
-  pinocchioInterface_ptr_->setContactPoints(foot_names);
   base_name = config_["model"]["base_name"].as<std::string>();
 
   auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_system_default);
@@ -40,13 +42,13 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle,
           "joint_states", qos);
   foot_traj_msg_publisher_ =
       nodeHandle_->create_publisher<visualization_msgs::msg::MarkerArray>(
-          "foot_traj_vis", qos);
+          topic_prefix + "foot_traj_vis", qos);
   foot_traj_ref_msg_publisher_ =
       nodeHandle_->create_publisher<visualization_msgs::msg::MarkerArray>(
-          "foot_traj_ref_vis", qos);
+          topic_prefix + "foot_traj_ref_vis", qos);
   footholds_pub_ =
       nodeHandle_->create_publisher<visualization_msgs::msg::MarkerArray>(
-          "footholds_vis", qos);
+          topic_prefix + "footholds_vis", qos);
   base_traj_pub_ =
       nodeHandle_->create_publisher<visualization_msgs::msg::Marker>(
           topic_prefix + "base_trajectory", qos);
@@ -63,7 +65,7 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle,
   line_strip_base.color.r = 0.0;
   line_strip_base.color.g = 0.0;
   line_strip_base.color.b = 0.0;
-  line_strip_base.ns = "trunk";
+  line_strip_base.ns = base_name;
 
   line_strip_base_ref.header.frame_id = "world";
   line_strip_base_ref.action = visualization_msgs::msg::Marker::ADD;
@@ -115,8 +117,8 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle,
         visualization_msgs::msg::Marker::ADD;
     line_strip_footholds_.markers[i].type =
         visualization_msgs::msg::Marker::SPHERE_LIST;
-    line_strip_footholds_.markers[i].color.a = 0.6;
-    line_strip_footholds_.markers[i].color.r = 0.6;
+    line_strip_footholds_.markers[i].color.a = 0.7;
+    line_strip_footholds_.markers[i].color.r = 0.0;
     line_strip_footholds_.markers[i].color.g = 0.6;
     line_strip_footholds_.markers[i].color.b = 0.6;
     line_strip_footholds_.markers[i].scale.x = 0.04;
@@ -125,7 +127,7 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle,
     line_strip_footholds_.markers[i].ns = foot_names[i];
   }
 
-  inner_loop_thread_ = std::thread(&DataVisualization::inner_loop, this);
+  inner_loop_thread_ = std::thread(&DataVisualization::innerLoop, this);
   run_.push(true);
 }
 
@@ -134,7 +136,7 @@ DataVisualization::~DataVisualization() {
   inner_loop_thread_.join();
 }
 
-void DataVisualization::inner_loop() {
+void DataVisualization::innerLoop() {
   rclcpp::Rate loop_rate(500);
   std::this_thread::sleep_for(
       std::chrono::milliseconds(10)); // very important, why?
@@ -154,7 +156,7 @@ void DataVisualization::inner_loop() {
     /*--------- current state --------------*/
     publishCurrentState();
 
-    if (refTrajBuffer_.get() == nullptr) {
+    if (referenceBuffer_ == nullptr || !referenceBuffer_->isReady()) {
       continue;
     }
 
@@ -169,9 +171,6 @@ void DataVisualization::inner_loop() {
     }
 
     /*--------- footholds --------------*/
-    if (footholds_.get().empty()) {
-      continue;
-    }
     if (iter % 50 == 0) {
       publishFootholds();
     }
@@ -183,14 +182,15 @@ void DataVisualization::inner_loop() {
 }
 
 void DataVisualization::publishFootholds() {
-  auto footholds = footholds_.get();
+  auto footholds = referenceBuffer_->getFootholds();
+  if (footholds.empty()) {
+    return;
+  }
   if (footholds.size() == foot_names.size()) {
     for (size_t i = 0; i < foot_names.size(); i++) {
       auto &marker = line_strip_footholds_.markers[i];
       marker.header.stamp = nodeHandle_->now();
-      if (marker.points.size() > 50) {
-        marker.points.erase(marker.points.begin());
-      }
+      marker.points.clear();
       geometry_msgs::msg::Point point;
       vector3_t pos = footholds[foot_names[i]].second;
       point.x = pos.x();
@@ -203,39 +203,42 @@ void DataVisualization::publishFootholds() {
 }
 
 void DataVisualization::publishBaseTrajectory() {
-  auto base_pos_traj = refTrajBuffer_.get()->get_base_pos_traj();
-  if (base_pos_traj == nullptr)
+  auto base_pos_traj_int = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
+  if (base_pos_traj_int == nullptr || base_pos_traj == nullptr)
     return;
 
   line_strip_base.header.stamp = nodeHandle_->now();
   line_strip_base_ref.header.stamp = nodeHandle_->now();
 
-  if (line_strip_base.points.size() > 200) {
-    line_strip_base.points.erase(line_strip_base.points.begin());
+  line_strip_base.points.clear();
+  const scalar_t time_dur1 = base_pos_traj_int->duration();
+  for (size_t i = 0; i * 0.02 < time_dur1; i++) {
+    vector3_t pos =
+        base_pos_traj_int->evaluate(i * 0.02 + base_pos_traj_int->ts());
+    geometry_msgs::msg::Point point;
+    point.x = pos.x();
+    point.y = pos.y();
+    point.z = pos.z();
+    line_strip_base.points.emplace_back(point);
   }
-  if (line_strip_base_ref.points.size() > 200) {
-    line_strip_base_ref.points.erase(line_strip_base_ref.points.begin());
-  }
-
-  geometry_msgs::msg::Point point;
-  vector3_t pos =
-      pinocchioInterface_ptr_->getFramePose(base_name).translation();
-  point.x = pos.x();
-  point.y = pos.y();
-  point.z = pos.z();
-  line_strip_base.points.emplace_back(point);
   base_traj_pub_->publish(line_strip_base);
 
-  pos = base_pos_traj->evaluate(nodeHandle_->now().seconds());
-  point.x = pos.x();
-  point.y = pos.y();
-  point.z = pos.z();
-  line_strip_base_ref.points.emplace_back(point);
+  line_strip_base_ref.points.clear();
+  const scalar_t time_dur2 = base_pos_traj->duration();
+  for (size_t i = 0; i * 0.02 < time_dur2; i++) {
+    vector3_t pos = base_pos_traj->evaluate(i * 0.02 + base_pos_traj->ts());
+    geometry_msgs::msg::Point point;
+    point.x = pos.x();
+    point.y = pos.y();
+    point.z = pos.z();
+    line_strip_base_ref.points.emplace_back(point);
+  }
   base_traj_ref_pub_->publish(line_strip_base_ref);
 }
 
 void DataVisualization::publishFootTrajectory() {
-  auto foot_traj = refTrajBuffer_.get()->get_foot_pos_traj();
+  auto foot_traj = referenceBuffer_->getFootPosTraj();
   if (foot_traj.size() == foot_names.size()) {
     for (size_t i = 0; i < foot_names.size(); i++) {
       auto &marker = line_strip_foot_traj_.markers[i];
@@ -247,9 +250,6 @@ void DataVisualization::publishFootTrajectory() {
       if (marker.points.size() > 200) {
         marker.points.erase(marker.points.begin());
       }
-      if (ref_marker.points.size() > 200) {
-        ref_marker.points.erase(ref_marker.points.begin());
-      }
 
       geometry_msgs::msg::Point point;
       vector3_t pos =
@@ -259,11 +259,16 @@ void DataVisualization::publishFootTrajectory() {
       point.z = pos.z();
       marker.points.emplace_back(point);
 
-      pos = foot_traj[foot_names[i]]->evaluate(nodeHandle_->now().seconds());
-      point.x = pos.x();
-      point.y = pos.y();
-      point.z = pos.z();
-      ref_marker.points.emplace_back(point);
+      ref_marker.points.clear();
+      auto foot_traj_i = foot_traj[foot_names[i]];
+      const scalar_t time_dur = foot_traj_i->duration();
+      for (size_t i = 0; i * 0.02 < time_dur; i++) {
+        pos = foot_traj_i->evaluate(i * 0.02 + foot_traj_i->ts());
+        point.x = pos.x();
+        point.y = pos.y();
+        point.z = pos.z();
+        ref_marker.points.emplace_back(point);
+      }
     }
     foot_traj_msg_publisher_->publish(line_strip_foot_traj_);
     foot_traj_ref_msg_publisher_->publish(line_strip_foot_traj_ref_);
@@ -302,20 +307,15 @@ void DataVisualization::publishCurrentState() {
   joint_state_publisher_->publish(jnt_state_msg);
 }
 
-void DataVisualization::update_current_state(
-    std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
+void DataVisualization::updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
+                                           std::shared_ptr<vector_t> qvel_ptr) {
   qpos_ptr_buffer.push(qpos_ptr);
   qvel_ptr_buffer.push(qvel_ptr);
 }
 
-void DataVisualization::update_trajectory_reference(
-    std::shared_ptr<TrajectoriesArray> referenceTrajectoriesPtr) {
-  refTrajBuffer_.push(referenceTrajectoriesPtr);
-}
-
-void DataVisualization::update_footholds(
-    std::map<std::string, std::pair<scalar_t, vector3_t>> footholds) {
-  footholds_.push(footholds);
+void DataVisualization::updateReferenceBuffer(
+    std::shared_ptr<ReferenceBuffer> referenceBuffer) {
+  referenceBuffer_ = referenceBuffer;
 }
 
 } // namespace clear

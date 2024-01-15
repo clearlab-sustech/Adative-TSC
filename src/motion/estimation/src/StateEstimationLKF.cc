@@ -4,31 +4,38 @@
 
 namespace clear {
 
-StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
-                                       std::string config_yaml)
+StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
 
-  auto config_ = YAML::LoadFile(config_yaml);
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
+  auto config_ = YAML::LoadFile(config_file_);
+  log_dir = config_["global"]["log_dir"].as<std::string>();
 
   robot_name = config_["model"]["name"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "robot_name: %s", robot_name.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "robot_name: %s",
+              robot_name.c_str());
 
   std::string model_package = config_["model"]["package"].as<std::string>();
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "model file: %s", urdf.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "model file: %s",
+              urdf.c_str());
 
   pinocchioInterface_ptr = std::make_unique<PinocchioInterface>(urdf.c_str());
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   dt_ = config_["estimation"]["dt"].as<scalar_t>();
   use_odom_ = config_["estimation"]["use_odom"].as<bool>();
 
-  RCLCPP_INFO(nodeHandle_->get_logger(), "dt: %f", dt_);
-  RCLCPP_INFO(nodeHandle_->get_logger(), "use odom: %s",
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "dt: %f", dt_);
+  RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "use odom: %s",
               use_odom_ ? "true" : "false");
   for (const auto &name : foot_names) {
-    RCLCPP_INFO(nodeHandle_->get_logger(), "foot name: %s", name.c_str());
+    RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "foot name: %s",
+                name.c_str());
     cflag_.emplace_back(true);
   }
 
@@ -42,7 +49,7 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
         config_["global"]["topic_names"]["imu"].as<std::string>();
     imu_subscription_ = nodeHandle_->create_subscription<sensor_msgs::msg::Imu>(
         topic_prefix + imu_topic, qos,
-        std::bind(&StateEstimationLKF::imu_callback, this,
+        std::bind(&StateEstimationLKF::imuCallback, this,
                   std::placeholders::_1));
 
     std::string touch_sensor_topic =
@@ -50,7 +57,7 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
     touch_subscription_ =
         nodeHandle_->create_subscription<trans::msg::TouchSensor>(
             topic_prefix + touch_sensor_topic, qos,
-            std::bind(&StateEstimationLKF::touch_callback, this,
+            std::bind(&StateEstimationLKF::touchCallback, this,
                       std::placeholders::_1));
 
     std::string joints_topic =
@@ -58,7 +65,7 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
     joints_state_subscription_ =
         nodeHandle_->create_subscription<sensor_msgs::msg::JointState>(
             topic_prefix + joints_topic, qos,
-            std::bind(&StateEstimationLKF::joint_callback, this,
+            std::bind(&StateEstimationLKF::jointCallback, this,
                       std::placeholders::_1));
 
     std::string odom_topic =
@@ -66,11 +73,11 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle,
     odom_subscription_ =
         nodeHandle_->create_subscription<nav_msgs::msg::Odometry>(
             topic_prefix + odom_topic, qos,
-            std::bind(&StateEstimationLKF::odom_callback, this,
+            std::bind(&StateEstimationLKF::odomCallback, this,
                       std::placeholders::_1));
   }
 
-  inner_loop_thread_ = std::thread(&StateEstimationLKF::inner_loop, this);
+  inner_loop_thread_ = std::thread(&StateEstimationLKF::innerLoop, this);
   run_.push(true);
   setup();
 }
@@ -233,8 +240,12 @@ void StateEstimationLKF::linearMotionEstimate(
   qvel->head(3) = quat.toRotationMatrix().transpose() * x_est.segment(3, 3);
 }
 
-void StateEstimationLKF::inner_loop() {
+void StateEstimationLKF::innerLoop() {
   rclcpp::Rate loop_rate(1.0 / dt_);
+  std::fstream save_motor_tau(log_dir + "/motor_tau_log.txt",
+                              std::ios::ate | std::ios::out);
+
+  const scalar_t t0 = nodeHandle_->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (imu_msg_buffer.get().get() == nullptr ||
         touch_msg_buffer.get().get() == nullptr ||
@@ -254,14 +265,18 @@ void StateEstimationLKF::inner_loop() {
     std::shared_ptr<vector_t> qvel_ptr_ = std::make_shared<vector_t>(model_.nv);
     qvel_ptr_->setZero();
 
+    vector_t tau_est = vector_t::Zero(joint_state_msg->name.size());
     for (size_t k = 0; k < joint_state_msg->name.size(); k++) {
       if (static_cast<int>(k) < model_.njoints &&
           model_.existJointName(joint_state_msg->name[k])) {
         pin::Index id = model_.getJointId(joint_state_msg->name[k]) - 2;
         (*qpos_ptr_)[id + 7] = joint_state_msg->position[k];
         (*qvel_ptr_)[id + 6] = joint_state_msg->velocity[k];
+        tau_est[id] = joint_state_msg->effort[k];
       }
     }
+    save_motor_tau << rclcpp::Time(joint_state_msg->header.stamp).seconds()
+                   << " " << tau_est.transpose() << "\n";
 
     if (use_odom_) {
       const auto &orientation = odom_msg->pose.pose.orientation;
@@ -282,23 +297,26 @@ void StateEstimationLKF::inner_loop() {
     } else {
       // const auto touch_sensor_data = touch_msg_buffer.get()->value;
       // for (auto &data : touch_sensor_data) {
-      //   RCLCPP_INFO(nodeHandle_->get_logger(), "touch_sensor_data: %f",
-      //   data);
+      //   RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"),
+      //   "touch_sensor_data: %f", data);
       // }
       angularMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
       linearMotionEstimate(*imu_msg, qpos_ptr_, qvel_ptr_);
     }
 
-    qpos_ptr_buffer.push(qpos_ptr_);
-    qvel_ptr_buffer.push(qvel_ptr_);
+    if (nodeHandle_->now().seconds() - t0 > 0.3) {
+      qpos_ptr_buffer.push(qpos_ptr_);
+      qvel_ptr_buffer.push(qvel_ptr_);
+    }
 
-    /* RCLCPP_INFO_STREAM(nodeHandle_->get_logger(),
+    /* RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
                        "qpos: " << (*qpos_ptr_).transpose() << "\n");
-    RCLCPP_INFO_STREAM(nodeHandle_->get_logger(),
+    RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
                        "qvel: " << (*qvel_ptr_).transpose() << "\n"); */
 
     loop_rate.sleep();
   }
+  save_motor_tau.close();
 }
 
 std::shared_ptr<vector_t> StateEstimationLKF::getQpos() {
@@ -309,47 +327,47 @@ std::shared_ptr<vector_t> StateEstimationLKF::getQvel() {
   return qvel_ptr_buffer.get();
 }
 
-void StateEstimationLKF::imu_callback(
+void StateEstimationLKF::imuCallback(
     const sensor_msgs::msg::Imu::SharedPtr msg) const {
   if (msg->header.frame_id == robot_name) {
     imu_msg_buffer.push(msg);
   }
 }
 
-void StateEstimationLKF::touch_callback(
+void StateEstimationLKF::touchCallback(
     const trans::msg::TouchSensor::SharedPtr msg) const {
   if (msg->header.frame_id == robot_name) {
     touch_msg_buffer.push(msg);
   }
 }
 
-void StateEstimationLKF::joint_callback(
+void StateEstimationLKF::jointCallback(
     const sensor_msgs::msg::JointState::SharedPtr msg) const {
   if (msg->header.frame_id == robot_name) {
     joint_state_msg_buffer.push(msg);
   }
 }
 
-void StateEstimationLKF::set_imu_msg(sensor_msgs::msg::Imu::SharedPtr msg) {
+void StateEstimationLKF::setImuMsg(sensor_msgs::msg::Imu::SharedPtr msg) {
   if (msg->header.frame_id == robot_name) {
     imu_msg_buffer.push(msg);
   }
 }
 
-void StateEstimationLKF::set_touch_msg(trans::msg::TouchSensor::SharedPtr msg) {
+void StateEstimationLKF::setTouchMsg(trans::msg::TouchSensor::SharedPtr msg) {
   if (msg->header.frame_id == robot_name) {
     touch_msg_buffer.push(msg);
   }
 }
 
-void StateEstimationLKF::set_joint_msg(
+void StateEstimationLKF::setJointsMsg(
     sensor_msgs::msg::JointState::SharedPtr msg) {
   if (msg->header.frame_id == robot_name) {
     joint_state_msg_buffer.push(msg);
   }
 }
 
-void StateEstimationLKF::odom_callback(
+void StateEstimationLKF::odomCallback(
     const nav_msgs::msg::Odometry::SharedPtr msg) const {
   if (msg->header.frame_id == robot_name) {
     odom_msg_buffer.push(msg);

@@ -4,8 +4,8 @@ link_directories(
 )
 
 # Add pinocchio flags
-set(PIANO_PINOCCHIO_FLAGS
-  ${PIANO_CXX_FLAGS}
+set(OCS2_PINOCCHIO_FLAGS
+  ${OCS2_CXX_FLAGS}
   ${pinocchio_CFLAGS_OTHER}
   -Wno-ignored-attributes
   # -Wno-invalid-partial-specialization   # to silence warning with unsupported Eigen Tensor

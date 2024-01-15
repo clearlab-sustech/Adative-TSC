@@ -27,16 +27,11 @@ find_package(yaml-cpp REQUIRED)
 find_package(pinocchio_interface)
 find_package(asserts)
 find_package(estimation)
+find_package(gait)
 find_package(generation)
-find_package(atsc)
+find_package(control)
 find_package(tf2_ros)
 find_package(hardware)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -51,8 +46,9 @@ set(TARGET_DEPENDENCE
   asserts
   yaml-cpp
   estimation
+  gait
   generation
-  atsc
+  control
   tf2_ros
   hardware
 )

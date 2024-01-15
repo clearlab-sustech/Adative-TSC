@@ -1,5 +1,5 @@
 global:
-  topic_prefix: "simulation/"
+  topic_prefix: "exp_ysp/"
   service_names:
     sim_reset: "sim_reset"
   topic_names:
@@ -11,6 +11,7 @@ global:
     actuators_cmds: "actuators_cmds"
     mode_schedule: "mode_schedule"
     trajectories: "trajectories"
+  log_dir: "/home/clear-lab/ysp/exp_data_ocs2/omega_random_pro"
 
 ocs2:
   package: "ocs2_legged_robot"
@@ -20,8 +21,8 @@ ocs2:
 model:
   name: "a1"
   package: "asserts"
-  urdf: "/a1/a1.urdf"
-  xml: "/a1/a1.xml"
+  urdf: "/a1/a1_0.urdf"
+  xml: "/a1/a1_0.xml"
   base_name: "trunk"
   foot_names: ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
   actuated_joints_name:
@@ -67,12 +68,12 @@ gait:
 
   trot:
     modeSequence: ["LF_RH", "RF_LH"]
-    switchingTimes: [0.0, 0.5, 1.0]
+    switchingTimes: [0.0, 0.3, 0.6]
 
   static_walk:
     modeSequence: ["LF_RF_RH", "RF_LH_RH", "LF_RF_LH", "LF_LH_RH"]
     switchingTimes: [0.0, 0.4, 0.8, 1.2, 1.6]
-
+  
   pawup:
     modeSequence: ["RF_LH"]
     switchingTimes: [0.0, 2.0]
@@ -97,6 +98,7 @@ estimation:
 
 controller:
   frequency: 500.0
+  use_vector_field: true
 
 generation:
   frequency: 100.0

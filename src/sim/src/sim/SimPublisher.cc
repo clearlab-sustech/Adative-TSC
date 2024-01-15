@@ -15,7 +15,7 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
       config_["model"]["xml"].as<std::string>();
   mju::strcpy_arr(sim_->filename, model_file.c_str());
   sim_->uiloadrequest.fetch_add(1);
-  RCLCPP_INFO(this->get_logger(), "model file: %s", model_file.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "model file: %s", model_file.c_str());
 
   std::string sim_reset_service =
       config_["global"]["service_names"]["sim_reset"].as<std::string>();
@@ -48,24 +48,24 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
   mjtNum freq_imu = config_["simulation"]["frequency"]["imu"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_imu},
-      std::bind(&SimPublisher::imu_callback, this)));
+      std::bind(&SimPublisher::imuCallback, this)));
 
   mjtNum freq_joints_state =
       config_["simulation"]["frequency"]["joints_state"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_joints_state},
-      std::bind(&SimPublisher::joint_callback, this)));
+      std::bind(&SimPublisher::jointCallback, this)));
 
   mjtNum freq_odom = config_["simulation"]["frequency"]["odom"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_odom},
-      std::bind(&SimPublisher::odom_callback, this)));
+      std::bind(&SimPublisher::odomCallback, this)));
 
   mjtNum freq_touch_sensor =
       config_["simulation"]["frequency"]["touch_sensor"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_touch_sensor},
-      std::bind(&SimPublisher::touch_callback, this)));
+      std::bind(&SimPublisher::touchCallback, this)));
 
   mjtNum freq_drop_old_message =
       config_["simulation"]["frequency"]["drop_old_message"].as<mjtNum>();
@@ -85,11 +85,11 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
 
   actuator_cmds_buffer_ = std::make_shared<ActuatorCmdsBuffer>();
 
-  RCLCPP_INFO(this->get_logger(), "Start SimPublisher ...");
+  RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "Start SimPublisher ...");
 }
 
 SimPublisher::~SimPublisher() {
-  RCLCPP_INFO(this->get_logger(), "close SimPublisher node ...");
+  RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "close SimPublisher node ...");
 }
 
 void SimPublisher::reset_callback(
@@ -100,7 +100,7 @@ void SimPublisher::reset_callback(
   }
   if (sim_->d_ != nullptr) {
     if (request->header.frame_id != std::string(&sim_->m_->names[0])) {
-      RCLCPP_ERROR(this->get_logger(), "reset request is not for %s",
+      RCLCPP_ERROR(rclcpp::get_logger("SimPublisher"), "reset request is not for %s",
                    &sim_->m_->names[0]);
       response->is_success = false;
     } else {
@@ -122,7 +122,7 @@ void SimPublisher::reset_callback(
             sim_->d_->qpos[sim_->m_->jnt_qposadr[joint_id]] =
                 request->joint_state.position[i];
           } else {
-            RCLCPP_WARN(this->get_logger(),
+            RCLCPP_WARN(rclcpp::get_logger("SimPublisher"),
                         "[Reset Request] joint %s does not exist",
                         request->joint_state.name[i].c_str());
           }
@@ -137,14 +137,14 @@ void SimPublisher::reset_callback(
         }
       }
       response->is_success = true;
-      RCLCPP_INFO(this->get_logger(), "reset robot state...");
+      RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "reset robot state...");
     }
   } else {
     response->is_success = false;
   }
 }
 
-void SimPublisher::imu_callback() {
+void SimPublisher::imuCallback() {
   if (sim_->d_ != nullptr) {
     auto message = sensor_msgs::msg::Imu();
     message.header.frame_id = &sim_->m_->names[0];
@@ -189,20 +189,20 @@ void SimPublisher::imu_callback() {
         }
       }
       if (acc_flag) {
-        RCLCPP_WARN(this->get_logger(), "Required acc sensor does not exist");
+        RCLCPP_WARN(rclcpp::get_logger("SimPublisher"), "Required acc sensor does not exist");
       }
       if (quat_flag) {
-        RCLCPP_WARN(this->get_logger(), "Required quat sensor does not exist");
+        RCLCPP_WARN(rclcpp::get_logger("SimPublisher"), "Required quat sensor does not exist");
       }
       if (gyro_flag) {
-        RCLCPP_WARN(this->get_logger(), "Required gyro sensor does not exist");
+        RCLCPP_WARN(rclcpp::get_logger("SimPublisher"), "Required gyro sensor does not exist");
       }
     }
     imu_publisher_->publish(message);
   }
 }
 
-void SimPublisher::touch_callback() {
+void SimPublisher::touchCallback() {
   if (sim_->d_ != nullptr) {
     auto message = trans::msg::TouchSensor();
     message.header.frame_id = &sim_->m_->names[0];
@@ -222,7 +222,7 @@ void SimPublisher::touch_callback() {
   }
 }
 
-void SimPublisher::odom_callback() {
+void SimPublisher::odomCallback() {
   if (sim_->d_ != nullptr) {
     auto message = nav_msgs::msg::Odometry();
     {
@@ -239,18 +239,15 @@ void SimPublisher::odom_callback() {
       message.twist.twist.linear.x = sim_->d_->qvel[0];
       message.twist.twist.linear.y = sim_->d_->qvel[1];
       message.twist.twist.linear.z = sim_->d_->qvel[2];
-      message.twist.twist.angular.x =
-          sim_->d_->qvel[3] + noise_gyro * mju_standardNormal(nullptr);
-      message.twist.twist.angular.y =
-          sim_->d_->qvel[4] + noise_gyro * mju_standardNormal(nullptr);
-      message.twist.twist.angular.z =
-          sim_->d_->qvel[5] + noise_gyro * mju_standardNormal(nullptr);
+      message.twist.twist.angular.x = sim_->d_->qvel[3];
+      message.twist.twist.angular.y = sim_->d_->qvel[4];
+      message.twist.twist.angular.z = sim_->d_->qvel[5];
     }
     odom_publisher_->publish(message);
   }
 }
 
-void SimPublisher::joint_callback() {
+void SimPublisher::jointCallback() {
   if (sim_->d_ != nullptr) {
     sensor_msgs::msg::JointState jointState;
     jointState.header.frame_id = &sim_->m_->names[0];
@@ -296,7 +293,7 @@ void SimPublisher::actuator_cmd_callback(
       actuator_cmds_buffer_->vel[k] = msg->vel_des[k];
       actuator_cmds_buffer_->torque[k] = msg->feedforward_torque[k];
     }
-    // RCLCPP_INFO(this->get_logger(), "subscribe actuator cmds %f",
+    // RCLCPP_INFO(rclcpp::get_logger("SimPublisher"), "subscribe actuator cmds %f",
     // actuator_cmds_buffer_->time);
   }
 }

@@ -11,7 +11,7 @@ namespace clear {
 class Initialization {
 
 public:
-  Initialization(Node::SharedPtr nodeHandle, std::string config_yaml);
+  Initialization(Node::SharedPtr nodeHandle);
 
   ~Initialization();
 
@@ -19,8 +19,5 @@ public:
 
 private:
   Node::SharedPtr nodeHandle_;
-  std::string config_yaml_;
-
-  Client<trans::srv::SimulationReset>::SharedPtr reset_state_client_;
 };
 } // namespace clear
