@@ -140,7 +140,7 @@ void TrajectoryStabilization::innerLoop() {
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
 
-  scalar_t percentage = -1.0;
+  scalar_t percentage = 1.2;
   vector_t qpos_start;
 
   while (rclcpp::ok() && run_.get()) {

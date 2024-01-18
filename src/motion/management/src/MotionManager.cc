@@ -19,18 +19,27 @@ void MotionManager::init() {
   intializationPtr_ =
       std::make_shared<Initialization>(this->shared_from_this());
 
+  // intializationPtr_->reset_simulation();
+  // rclcpp::spin_some(this->shared_from_this());
+
   joyStickPtr_ = std::make_shared<JoyStick>(this->shared_from_this());
 
-  while (!joyStickPtr_->isStart()) {
-    rclcpp::spin_some(this->shared_from_this());
-  }
+  // while (!joyStickPtr_->isStart()) {
+  //   rclcpp::spin_some(this->shared_from_this());
+  // }
 
   estimatorPtr_ =
       std::make_shared<StateEstimationLKF>(this->shared_from_this());
 
+  RCLCPP_INFO(this->get_logger(), "StateEstimationLKF Ready");
+
   gaitSchedulePtr_ = std::make_shared<GaitSchedule>(this->shared_from_this());
 
+  RCLCPP_INFO(this->get_logger(), "GaitSchedule Ready");
+
   trajGenPtr_ = std::make_shared<TrajectorGeneration>(this->shared_from_this());
+
+  RCLCPP_INFO(this->get_logger(), "TrajectorGeneration Ready");
 
   trajectoryStabilizationPtr_ =
       std::make_shared<TrajectoryStabilization>(this->shared_from_this());
@@ -41,19 +50,19 @@ void MotionManager::init() {
                                        .get_parameter_value()
                                        .get<std::string>();
 
-  auto config_ = YAML::LoadFile(config_file_);
-  bool hardware_ = config_["estimation"]["hardware"].as<bool>();
-  if (hardware_) {
-    unitreeHWPtr_ = std::make_shared<UnitreeHW>(this->shared_from_this());
-    scalar_t t0 = this->now().seconds();
-    while (this->now().seconds() - t0 < 1.0) {
-      unitreeHWPtr_->switch_to_damping();
-      unitreeHWPtr_->read();
-    }
-  } else {
-    intializationPtr_->reset_simulation();
-    rclcpp::spin_some(this->shared_from_this());
-  }
+  // auto config_ = YAML::LoadFile(config_file_);
+  // bool hardware_ = config_["estimation"]["hardware"].as<bool>();
+  // if (hardware_) {
+  //   unitreeHWPtr_ = std::make_shared<UnitreeHW>(this->shared_from_this());
+  //   scalar_t t0 = this->now().seconds();
+  //   while (this->now().seconds() - t0 < 1.0) {
+  //     unitreeHWPtr_->switch_to_damping();
+  //     unitreeHWPtr_->read();
+  //   }
+  // } else {
+  //   intializationPtr_->reset_simulation();
+  //   rclcpp::spin_some(this->shared_from_this());
+  // }
 
   inner_loop_thread_ = std::thread(&MotionManager::innerLoop, this);
   run_.push(true);
@@ -75,15 +84,7 @@ void MotionManager::innerLoop() {
       break;
     }
 
-    if (gaitSchedulePtr_->getCurrentGaitName() == "stance" &&
-        joyStickPtr_->isTrotting()) {
-      gaitSchedulePtr_->switchGait("trot");
-    } else if (gaitSchedulePtr_->getCurrentGaitName() == "trot" &&
-               joyStickPtr_->isStance()) {
-      gaitSchedulePtr_->switchGait("stance");
-    }
-
-    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
+    if (gaitSchedulePtr_->getCurrentGaitName() == "walk") {
       trajGenPtr_->setVelCmd(joyStickPtr_->getLinearVelCmd(),
                              joyStickPtr_->getYawVelCmd());
     }
@@ -98,12 +99,12 @@ void MotionManager::innerLoop() {
 
     // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());
 
-    if (unitreeHWPtr_ != nullptr) {
+    /* if (unitreeHWPtr_ != nullptr) {
       unitreeHWPtr_->read();
       estimatorPtr_->setImuMsg(unitreeHWPtr_->get_imu_msg());
       estimatorPtr_->setTouchMsg(unitreeHWPtr_->get_touch_msg());
       estimatorPtr_->setJointsMsg(unitreeHWPtr_->get_joint_msg());
-    }
+    } */
 
     scalar_t horizon_time_ =
         min(2.0, max(0.5, gaitSchedulePtr_->currentGaitCycle()));
@@ -125,10 +126,10 @@ void MotionManager::innerLoop() {
                                 estimatorPtr_->getQvel());
     visPtr_->updateReferenceBuffer(trajGenPtr_->getReferenceBuffer());
 
-    if (unitreeHWPtr_ != nullptr) {
+    /* if (unitreeHWPtr_ != nullptr) {
       unitreeHWPtr_->set_actuator_cmds(trajectoryStabilizationPtr_->getCmds());
       unitreeHWPtr_->send();
-    }
+    } */
 
     loop_rate.sleep();
   }

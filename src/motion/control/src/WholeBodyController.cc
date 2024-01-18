@@ -253,7 +253,8 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
   } else if (pos_traj.get() != nullptr && rpy_traj.get() != nullptr &&
              vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
-    const scalar_t time_now_ = nodeHandle_->now().seconds();
+    scalar_t time_now_ = nodeHandle_->now().seconds() + dt_;
+    // - (modePtr_->endTime-modePtr_->duration);
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
     auto base_twist = pinocchioInterface_ptr_->getFrame6dVel_local(base_name);
@@ -272,10 +273,6 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     auto vel_err = _spatialVelRef - base_twist.toVector();
 
     acc_fb = baseKp_ * pose_err + baseKd_ * vel_err + _spatialAccRef;
-
-    if (abs(acc_fb.z()) > 5.0) {
-      acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
-    }
   } else {
     acc_fb.setZero();
   }

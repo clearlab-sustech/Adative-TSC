@@ -2,6 +2,7 @@
 
 #include "generation/ConvexMPC.h"
 #include "generation/FootholdOptimization.h"
+#include "generation/LipGen.h"
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
@@ -49,6 +50,7 @@ private:
 
   std::shared_ptr<FootholdOptimization> footholdOpt_ptr;
   std::shared_ptr<ConvexMPC> baseOpt_ptr;
+  std::shared_ptr<LipGen> lipGen_ptr;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
   Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;

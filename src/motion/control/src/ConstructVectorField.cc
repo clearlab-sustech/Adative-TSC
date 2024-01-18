@@ -25,7 +25,7 @@ ConstructVectorField::ConstructVectorField(
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
       //     10.0, 10.0;
 
-  weight_.diagonal() << 40, 40, 50, 0.1, 0.3, 0.1, 30, 30, 50, 0.2, 0.2, 0.3;
+  weight_.diagonal() << 30, 30, 60, 1.0, 0.1, 0.1, 20, 20, 10, 0.3, 0.3, 0.2;
   // weight_ = 20.0 * weight_;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;

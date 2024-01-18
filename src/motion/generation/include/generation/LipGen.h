@@ -13,17 +13,18 @@
 using namespace rclcpp;
 
 namespace clear {
-class ConvexMPC {
-public:
-  ConvexMPC(Node::SharedPtr nodeHandle,
-            std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr,
-            std::shared_ptr<ReferenceBuffer> referenceBuffer);
+class LipGen {
 
-  ~ConvexMPC();
+public:
+  LipGen(Node::SharedPtr nodeHandle,
+         std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr,
+         std::shared_ptr<ReferenceBuffer> referenceBuffer);
+
+  ~LipGen();
 
   void optimize();
 
-  void setVelCmd(vector3_t vd, scalar_t yawd);
+  void setVelCmd(vector3_t vel);
 
   void setHeightCmd(scalar_t h);
 
@@ -53,21 +54,17 @@ private:
   scalar_t h_des = 0.53;
   scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;
-  scalar_t total_mass_;
-  matrix3_t Ig_;
-  const scalar_t mu_ = 0.5;
   matrix_t weight_;
-  vector3_t rpy_des_start;
   bool first_run_ = true;
+  std::map<std::string, vector3_t>
+      footholds_nominal_pos; // nominal footholds relative to nominal com pos
 
   std::vector<hpipm::OcpQp> ocp_;
   std::vector<hpipm::OcpQpSolution> solution_;
   hpipm::OcpQpIpmSolverSettings solver_settings;
 
   vector3_t vel_cmd;
-  scalar_t yawd_;
 
-  vector3_t rpy_start;
   vector3_t pos_start;
   bool first_run = true;
   scalar_t t0 = 0.0;

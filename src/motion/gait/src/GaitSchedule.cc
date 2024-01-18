@@ -18,7 +18,7 @@ GaitSchedule::GaitSchedule(Node::SharedPtr nodeHandle)
     gait_map_.insert({gaitName, loadGait(config_, gaitName)});
   }
 
-  current_gait_.push(gait_list[0]);
+  current_gait_.push(gait_list[1]);
   gait_buffer_.push(gait_list[1]);
   transition_time_.push(nodeHandle_->now().seconds());
 

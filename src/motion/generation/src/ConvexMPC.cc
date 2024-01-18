@@ -23,7 +23,7 @@ ConvexMPC::ConvexMPC(Node::SharedPtr nodeHandle,
 
   total_mass_ = pinocchioInterface_ptr_->total_mass();
   weight_.setZero(12, 12);
-  weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 0.3, 30, 30, 50, 0.2, 0.2, 0.3;
+  weight_.diagonal() << 30, 30, 60, 1.0, 0.1, 0.1, 20, 20, 10, 0.3, 0.3, 0.2;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
   solver_settings.iter_max = 30;
@@ -60,7 +60,7 @@ void ConvexMPC::generateTrajRef() {
   scalar_t magn = 0;
   scalar_t alpha = 0.75;
   if (t_now - t0 > 6.0) {
-    magn = 0.2 * (sin(alpha * (t_now - t0)) > 0 ? 1.0 : -1.0);
+    magn = 0.0 * (sin(alpha * (t_now - t0)) > 0 ? 1.0 : -1.0);
   }
 
   if (first_run) {
@@ -118,12 +118,12 @@ void ConvexMPC::generateTrajRef() {
   // cubicspline_pos->set_boundary(
   //     CubicSplineInterpolation::BoundaryType::first_deriv,
   //     base_pose_m.rotation() * vel_cmd,
-  //     CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
+  //     CubicSplineInterpolation::BoundaryType::second_deriv,
+  //     vector3_t::Zero());
   cubicspline_pos->set_boundary(
       CubicSplineInterpolation::BoundaryType::first_deriv,
       vector3_t(magn, 0, 0.0),
-      CubicSplineInterpolation::BoundaryType::second_deriv,
-      vector3_t::Zero());
+      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_pos->fit(time, pos_t);
   referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
 
@@ -225,6 +225,8 @@ void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
   vector_t x_des(12);
   x_des << pos_traj->evaluate(time_k), v_des, rpy_des, omega_des;
 
+  // std::cout << "xdes " << k << ": " << x_des.transpose() << "\n";
+
   matrix_t weight_t = weight_;
   // weight_t.topLeftCorner(3, 3) =
   //     skew(v_des).transpose() * weight_t.topLeftCorner(3, 3) * skew(v_des);
@@ -320,6 +322,12 @@ void ConvexMPC::optimize() {
   const auto res = solver.solve(x0, ocp_, solution_);
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
+    /* for (size_t i = 0; i < solution_.size(); i++) {
+      std::cout << "x " << i << ": " << solution_[i].x.transpose() << "\n";
+    }
+    for (size_t i = 0; i < solution_.size(); i++) {
+      std::cout << "u " << i << ": " << solution_[i].u.transpose() << "\n";
+    } */
     fitTraj(time_cur, N);
   } else {
     std::cout << "ConvexMPC: " << res << "\n";

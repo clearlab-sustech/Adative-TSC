@@ -20,10 +20,6 @@ public:
 
   scalar_t getHeightCmd();
 
-  bool isStance();
-
-  bool isTrotting();
-
   bool eStop();
 
   bool isStart();

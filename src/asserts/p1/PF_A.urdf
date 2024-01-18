@@ -127,7 +127,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/base_Link.STL"/>
+        <mesh filename="package://asserts/p1/meshes/base_Link.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -137,7 +137,7 @@
       <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
       <geometry>
         <mesh
-          filename="package://description/model/urdf/PF_A/meshes/base_Link.STL"/>
+          filename="package://asserts/p1/meshes/base_Link.STL"/>
       </geometry>
     </collision>
     <inertial>
@@ -242,7 +242,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/abad_L_Link.STL"/>
+        <mesh filename="package://asserts/p1/meshes/abad_L_Link.STL"/>
       </geometry>
       <material name=""/>
       <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -250,7 +250,7 @@
     <collision>
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
-            <mesh filename="package://description/model/urdf/PF_A/meshes/abad_L_Link.STL" />
+            <mesh filename="package://asserts/p1/meshes/abad_L_Link.STL" />
         </geometry>
     </collision>
     <inertial>
@@ -273,7 +273,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/hip_L_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/hip_L_Link.STL" />
       </geometry>
       <material name=""/>
       <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -281,7 +281,7 @@
     <collision>
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/hip_L_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/hip_L_Link.STL" />
         </geometry>
     </collision>
     <inertial>
@@ -304,7 +304,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/knee_L_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/knee_L_Link.STL" />
       </geometry>
       <material name=""/>
       <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -312,7 +312,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/knee_L_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/knee_L_Link.STL" />
       </geometry>
     </collision>
     <inertial>
@@ -333,7 +333,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 -0.03"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/foot_L_Link.STL"/>
+        <mesh filename="package://asserts/p1/meshes/foot_L_Link.STL"/>
       </geometry>
       <material name=""/>
       <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -341,7 +341,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 -0.03"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/foot_L_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/foot_L_Link.STL" />
       </geometry>
     </collision>
     <inertial>
@@ -398,7 +398,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/abad_R_Link.STL"/>
+        <mesh filename="package://asserts/p1/meshes/abad_R_Link.STL"/>
       </geometry>
       <material name=""/>
       <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -406,7 +406,7 @@
     <collision>
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
-            <mesh filename="package://description/model/urdf/PF_A/meshes/abad_R_Link.STL" />
+            <mesh filename="package://asserts/p1/meshes/abad_R_Link.STL" />
         </geometry>
     </collision>
     <inertial>
@@ -429,7 +429,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/hip_R_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/hip_R_Link.STL" />
       </geometry>
       <material name=""/>
       <color rgba="1 0.98039 0.6 1"/>
@@ -437,7 +437,7 @@
     <collision>
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/hip_R_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/hip_R_Link.STL" />
         </geometry>
     </collision>
     <inertial>
@@ -460,7 +460,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/knee_R_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/knee_R_Link.STL" />
       </geometry>
       <material name=""/>
       <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -468,7 +468,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/knee_R_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/knee_R_Link.STL" />
       </geometry>
     </collision>
     <inertial>
@@ -489,7 +489,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 -0.03"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/foot_R_Link.STL"/>
+        <mesh filename="package://asserts/p1/meshes/foot_R_Link.STL"/>
       </geometry>
       <material name=""/>
       <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -497,7 +497,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 -0.03"/>
       <geometry>
-        <mesh filename="package://description/model/urdf/PF_A/meshes/foot_R_Link.STL" />
+        <mesh filename="package://asserts/p1/meshes/foot_R_Link.STL" />
       </geometry>
     </collision>
     <inertial>

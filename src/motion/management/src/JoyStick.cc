@@ -90,22 +90,4 @@ bool JoyStick::isStart() {
   return start_.get();
 }
 
-bool JoyStick::isStance() {
-  auto msg = joy_msg_.get();
-  if (msg == nullptr) {
-    return true;
-  } else {
-    return (msg->buttons.at(1) > 0);
-  }
-}
-
-bool JoyStick::isTrotting() {
-  auto msg = joy_msg_.get();
-  if (msg == nullptr) {
-    return false;
-  } else {
-    return (msg->buttons.at(2) > 0);
-  }
-}
-
 } // namespace clear

@@ -44,6 +44,9 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   baseOpt_ptr = std::make_shared<ConvexMPC>(
       nodeHandle_, pinocchioInterface_ptr_, referenceBuffer_);
 
+  lipGen_ptr = std::make_shared<LipGen>(nodeHandle_, pinocchioInterface_ptr_,
+                                        referenceBuffer_);
+
   run_.push(true);
   inner_loop_thread_ = std::thread(&TrajectorGeneration::innerLoop, this);
 }
@@ -53,11 +56,9 @@ TrajectorGeneration::~TrajectorGeneration() {
   inner_loop_thread_.join();
 }
 
-void TrajectorGeneration::setHeightCmd(scalar_t h)
-{
+void TrajectorGeneration::setHeightCmd(scalar_t h) {
   baseOpt_ptr->setHeightCmd(h);
 }
-
 
 void TrajectorGeneration::updateCurrentState(
     std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
@@ -96,7 +97,7 @@ void TrajectorGeneration::innerLoop() {
 
       generateBaseTraj();
 
-      generateFootholds();
+      // generateFootholds();
 
       generateFootTraj();
     }
@@ -111,6 +112,7 @@ void TrajectorGeneration::innerLoop() {
 
 void TrajectorGeneration::TrajectorGeneration::generateBaseTraj() {
   baseOpt_ptr->optimize();
+  lipGen_ptr->optimize();
 }
 
 void TrajectorGeneration::generateFootholds() { footholdOpt_ptr->optimize(); }

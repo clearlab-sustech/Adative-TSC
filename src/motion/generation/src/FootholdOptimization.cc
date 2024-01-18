@@ -199,14 +199,14 @@ void FootholdOptimization::heuristic1() {
   for (size_t i = 0; i < nf; i++) {
     const auto &foot_name = foot_names[i];
     scalar_t pfx_rel, pfy_rel;
-    scalar_t x_fb = abs(base_twist.linear().x() - v_des.x()) > 0.1
+    scalar_t x_fb = abs(base_twist.linear().x() - v_des.x()) > 0.01
                         ? base_twist.linear().x() - v_des.x()
                         : 0.0;
-    scalar_t y_fb = abs(base_twist.linear().y() - v_des.y()) > 0.1
+    scalar_t y_fb = abs(base_twist.linear().y() - v_des.y()) > 0.01
                         ? base_twist.linear().y() - v_des.y()
                         : 0.0;
-    pfx_rel = 0.1 * x_fb;
-    pfy_rel = 0.1 * y_fb;
+    pfx_rel = 0.03 * x_fb;
+    pfy_rel = 0.03 * y_fb;
     pfx_rel = std::min(std::max(pfx_rel, -p_rel_max), p_rel_max);
     pfy_rel = std::min(std::max(pfy_rel, -p_rel_y_max), p_rel_y_max);
     footholds_[foot_name].second.x() += pfx_rel;
@@ -252,11 +252,11 @@ void FootholdOptimization::heuristic2() {
     foothold.second = base_pose.translation() +
                       (pYawCorrected + std::max(0.0, nextStanceTime) * v_des);
     pfx_rel = 0.5 * mode_schedule->duration() * v_des.x() +
-              0.01 * (base_twist.linear().x() - v_des.x()) +
+              0.1 * (base_twist.linear().x() - v_des.x()) +
               (0.5 * base_pose.translation().z() / 9.81) *
                   (base_twist.linear().y() * rpy_dot.z());
     pfy_rel = 0.5 * mode_schedule->duration() * v_des.y() +
-              0.01 * (base_twist.linear().y() - v_des.y()) +
+              0.1 * (base_twist.linear().y() - v_des.y()) +
               (0.5 * base_pose.translation().z() / 9.81) *
                   (-base_twist.linear().x() * rpy_dot.z());
     pfx_rel = std::min(std::max(pfx_rel, -p_rel_x_max), p_rel_x_max);
