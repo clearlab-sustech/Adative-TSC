@@ -7,22 +7,26 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    # config_file_name = "aliengo/config.yaml"
     config_file_name = "p1/config.yaml"
     config_file = os.path.join(get_package_share_path("asserts"), config_file_name)
-    # print(config_file)
     return LaunchDescription(
         [
             Node(
                 package="management",
                 executable="management",
-                name="a1_management",
+                name="p1_management",
                 output="screen",
                 emulate_tty=True,
                 parameters=[
-                            {"/config_file": config_file},
-                        ],
-                # prefix=['gdb -ex=r --args'],
+                    {"/config_file": config_file},
+                ],
+            ),
+            Node(
+                package="joy",
+                executable="joy_node",
+                name="p1_joy_node",
+                output="screen",
+                emulate_tty=True,
             ),
         ]
     )

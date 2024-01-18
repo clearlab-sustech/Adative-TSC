@@ -5,11 +5,12 @@ namespace clear {
 
 GaitSchedule::GaitSchedule(Node::SharedPtr nodeHandle)
     : nodeHandle_(nodeHandle) {
+
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
                                        .get_parameter_value()
                                        .get<std::string>();
+
   auto config_ = YAML::LoadFile(config_file_);
-  
   gait_list = config_["gait"]["list"].as<std::vector<std::string>>();
 
   gait_map_.clear();
@@ -24,11 +25,11 @@ GaitSchedule::GaitSchedule(Node::SharedPtr nodeHandle)
   check_.push(true);
   in_transition_.push(false);
 
-  std::string topic_prefix = config_["gait"]["topic_prefix"].as<std::string>();
+  std::string topic_prefix = config_["global"]["topic_prefix"].as<std::string>();
   robot_name = config_["model"]["name"].as<std::string>();
   gait_service_ = nodeHandle_->create_service<trans::srv::GaitSwitch>(
       topic_prefix + "gait_switch",
-      std::bind(&GaitSchedule::gait_switch, this, std::placeholders::_1,
+      std::bind(&GaitSchedule::gaitSwitch, this, std::placeholders::_1,
                 std::placeholders::_2));
 
   cycle_timer_ =
@@ -67,7 +68,7 @@ GaitSchedule::loadGait(const YAML::Node node, const std::string &gait_name) {
   // convert the mode name to mode enum
   modeSequence.reserve(modeSequenceString.size());
   for (const auto &modeName : modeSequenceString) {
-    modeSequence.push_back(legged_robot::string2ModeNumber(modeName));
+    modeSequence.push_back(biped::string2ModeNumber(modeName));
   }
   auto gait =
       std::make_shared<ModeSchedule>(duration, eventPhases, modeSequence);
@@ -77,7 +78,7 @@ GaitSchedule::loadGait(const YAML::Node node, const std::string &gait_name) {
   return gait;
 }
 
-void GaitSchedule::gait_switch(
+void GaitSchedule::gaitSwitch(
     const std::shared_ptr<trans::srv::GaitSwitch::Request> request,
     std::shared_ptr<trans::srv::GaitSwitch::Response> response) {
   if (request->header.frame_id != robot_name) {
@@ -89,8 +90,8 @@ void GaitSchedule::gait_switch(
   } else {
     if (std::find(gait_list.begin(), gait_list.end(), request->gait_name) !=
         gait_list.end()) {
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
-                  "gait request: change to %s", request->gait_name.c_str());
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait request: change to %s",
+                  request->gait_name.c_str());
       if (request->gait_name == current_gait_.get()) {
         RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "It has been in %s ",
                     current_gait_.get().c_str());
@@ -104,39 +105,38 @@ void GaitSchedule::gait_switch(
           check_transition_thread_.join();
 
         auto current_gait_name = current_gait_.get();
-        scalar_t phase_ = cycle_timer_->get_cycle_time() /
+        scalar_t phase_ = cycle_timer_->getCycleTime() /
                           gait_map_[current_gait_name]->duration();
         transition_time_.push(
             nodeHandle_->now().seconds() +
             gait_map_[current_gait_name]->timeLeftInModeSequence(phase_));
         gait_buffer_.push(request->gait_name);
         check_transition_thread_ =
-            std::thread(&GaitSchedule::check_gait_transition, this);
-        RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
-                    "gait %s will start at time %f", gait_buffer_.get().c_str(),
-                    transition_time_.get());
+            std::thread(&GaitSchedule::checkGaitTransition, this);
+        RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait %s will start at time %f",
+                    gait_buffer_.get().c_str(), transition_time_.get());
       }
 
       response->is_success = true;
     } else {
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
-                  "not found gait %s in gait list", request->gait_name.c_str());
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "not found gait %s in gait list",
+                  request->gait_name.c_str());
       response->is_success = false;
     }
   }
 }
 
-void GaitSchedule::switch_gait(std::string gait_name) {
+void GaitSchedule::switchGait(std::string gait_name) {
   if (std::find(gait_list.begin(), gait_list.end(), gait_name) !=
       gait_list.end()) {
     if (gait_name != current_gait_.get() && !in_transition_.get()) {
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
-                  "gait request: change to %s", gait_name.c_str());
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait request: change to %s",
+                  gait_name.c_str());
       if (check_transition_thread_.joinable())
         check_transition_thread_.join();
 
       auto current_gait_name = current_gait_.get();
-      scalar_t phase_ = cycle_timer_->get_cycle_time() /
+      scalar_t phase_ = cycle_timer_->getCycleTime() /
                         gait_map_[current_gait_name]->duration();
       if (current_gait_name == "stance") {
         transition_time_.push(nodeHandle_->now().seconds() + 0.05);
@@ -152,22 +152,21 @@ void GaitSchedule::switch_gait(std::string gait_name) {
       }
       gait_buffer_.push(gait_name);
       check_transition_thread_ =
-          std::thread(&GaitSchedule::check_gait_transition, this);
-      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"),
-                  "gait %s will start at time %f", gait_buffer_.get().c_str(),
-                  transition_time_.get());
+          std::thread(&GaitSchedule::checkGaitTransition, this);
+      RCLCPP_WARN(rclcpp::get_logger("GaitSchedule"), "gait %s will start at time %f",
+                  gait_buffer_.get().c_str(), transition_time_.get());
     }
   }
 }
 
-size_t GaitSchedule::current_mode() {
+size_t GaitSchedule::currentMode() {
   auto current_gait_name = current_gait_.get();
   scalar_t phase_ =
-      cycle_timer_->get_cycle_time() / gait_map_[current_gait_name]->duration();
+      cycle_timer_->getCycleTime() / gait_map_[current_gait_name]->duration();
   return gait_map_[current_gait_name]->getModeFromPhase(phase_);
 }
 
-scalar_t GaitSchedule::current_gait_cycle() {
+scalar_t GaitSchedule::currentGaitCycle() {
   return gait_map_[current_gait_.get()]->duration();
 }
 
@@ -183,7 +182,7 @@ std::shared_ptr<ModeSchedule> GaitSchedule::eval(scalar_t time_period) {
   const auto &gait_seq = gait_map_[current_gait_name]->modeSequence();
   const auto &gait_event_phase = gait_map_[current_gait_name]->eventPhases();
 
-  scalar_t time_c = cycle_timer_->get_cycle_time();
+  scalar_t time_c = cycle_timer_->getCycleTime();
   scalar_t phase_c = time_c / gait_duration;
   int idx = gait_cur->getModeIndexFromPhase(phase_c);
 
@@ -227,7 +226,7 @@ std::shared_ptr<ModeSchedule> GaitSchedule::eval(scalar_t time_period) {
   return modeSchedule;
 }
 
-void GaitSchedule::check_gait_transition() {
+void GaitSchedule::checkGaitTransition() {
   in_transition_.push(true);
 
   if (transition_time_.get() < nodeHandle_->now().seconds() ||
@@ -253,8 +252,6 @@ void GaitSchedule::check_gait_transition() {
 
   in_transition_.push(false);
 }
-std::string GaitSchedule::get_current_gait_name() {
-  return current_gait_.get();
-}
+std::string GaitSchedule::getCurrentGaitName() { return current_gait_.get(); }
 
 } // namespace clear

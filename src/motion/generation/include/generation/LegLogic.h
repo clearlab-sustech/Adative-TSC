@@ -1,13 +1,13 @@
 #pragma once
 
-#include <asserts/gait/ModeSchedule.h>
-#include <asserts/gait/MotionPhaseDefinition.h>
+#include <core/gait/ModeSchedule.h>
+#include <core/gait/MotionPhaseDefinition.h>
 
 #include <memory>
 #include <vector>
 
 namespace clear {
-namespace legged_robot {
+namespace biped {
 
 struct TimeInterval {
   scalar_t start;
@@ -21,5 +21,5 @@ getTimeOfNextTouchDown(scalar_t time_cur,
 std::vector<scalar_t>
 getTimeOfNextLiftOff(scalar_t time_cur,
                      const std::shared_ptr<ModeSchedule> mode_schedule);
-} // namespace legged_robot
+} // namespace biped
 } // namespace clear

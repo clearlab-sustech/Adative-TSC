@@ -23,9 +23,11 @@
   <depend>estimation</depend>
   <depend>gait</depend>
   <depend>generation</depend>
-  <depend>atsc</depend>
+  <depend>control</depend>
   <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
+  <depend>hardware</depend>
+  <depend>joy</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -29,8 +29,9 @@ find_package(asserts)
 find_package(estimation)
 find_package(gait)
 find_package(generation)
-find_package(atsc)
+find_package(control)
 find_package(tf2_ros)
+find_package(hardware)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -47,9 +48,13 @@ set(TARGET_DEPENDENCE
   estimation
   gait
   generation
-  atsc
+  control
   tf2_ros
+  hardware
 )
+
+add_library(libunitree_legged_sdk SHARED IMPORTED)
+set_target_properties(libunitree_legged_sdk PROPERTIES IMPORTED_LOCATION ${CMAKE_INSTALL_PREFIX}/lib/libunitree_legged_sdk_amd64.so)
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 

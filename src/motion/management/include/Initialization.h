@@ -19,8 +19,5 @@ public:
 
 private:
   Node::SharedPtr nodeHandle_;
-  std::string config_file_;
-
-  Client<trans::srv::SimulationReset>::SharedPtr reset_state_client_;
 };
 } // namespace clear

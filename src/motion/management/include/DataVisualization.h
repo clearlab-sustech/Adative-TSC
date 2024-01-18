@@ -1,15 +1,13 @@
 #pragma once
 
-#include <pinocchio/PinocchioInterface.h>
-#include <tf2_ros/transform_broadcaster.h>
-
+#include <core/trajectory/ReferenceBuffer.h>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 #include <visualization_msgs/msg/marker_array.hpp>
-
-#include "asserts/trajectory/ReferenceBuffer.h"
 
 using namespace rclcpp;
 
@@ -20,17 +18,14 @@ public:
 
   ~DataVisualization();
 
-  void update_current_state(std::shared_ptr<vector_t> qpos_ptr,
-                            std::shared_ptr<vector_t> qvel_ptr);
+  void updateCurrentState(std::shared_ptr<vector_t> qpos_ptr,
+                          std::shared_ptr<vector_t> qvel_ptr);
 
-  void set_trajectory_reference(
-      std::shared_ptr<ReferenceBuffer> referenceTrajectoriesPtr);
-
-  void update_footholds(
-      std::map<std::string, std::pair<scalar_t, vector3_t>> footholds);
+  void updateReferenceBuffer(
+      std::shared_ptr<ReferenceBuffer> referenceBuffer);
 
 private:
-  void inner_loop();
+  void innerLoop();
 
   void publishCurrentState();
 
@@ -52,7 +47,7 @@ private:
   Buffer<bool> run_;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer, qvel_ptr_buffer;
-  std::shared_ptr<ReferenceBuffer> refTrajBuffer_;
+  std::shared_ptr<ReferenceBuffer> referenceBuffer_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_publisher_;

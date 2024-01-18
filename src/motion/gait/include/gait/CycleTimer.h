@@ -13,12 +13,12 @@ public:
 
   ~CycleTimer();
 
-  void timer_reset();
+  void timerReset();
 
-  scalar_t get_cycle_time();
+  scalar_t getCycleTime();
 
 private:
-  void inner_loop();
+  void innerLoop();
 
 private:
   Node::SharedPtr nodeHandle_;

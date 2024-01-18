@@ -7,13 +7,6 @@ PinocchioInterface::PinocchioInterface(const char *urdf_name) {
   this->data_ = pin::Data(this->model_);
   qpos_.setZero(model_.nq);
   qvel_.setZero(model_.nv);
-
-  /* for (pinocchio::JointIndex joint_id = 0;
-       joint_id < (pinocchio::JointIndex)model_.njoints; ++joint_id)
-    std::cout << std::setw(24) << std::left << model_.names[joint_id] << ":"
-              << model_.getJointId(model_.names[joint_id]) << std::endl;
-  std::cout << "Joint effortLimit: " << model_.effortLimit.transpose()
-            << std::endl; */
 }
 
 PinocchioInterface::~PinocchioInterface() {}

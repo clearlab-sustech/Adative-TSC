@@ -1,5 +1,3 @@
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-
 # list(APPEND CLEAR_CXX_FLAGS
 #   "-march=native"
 #   "-mtune=native"
@@ -9,6 +7,7 @@ find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 #   "-Wl,--no-as-needed"
 #   )
 
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 list(APPEND CLEAR_CXX_FLAGS
   "-DBOOST_ALL_DYN_LINK"
   )

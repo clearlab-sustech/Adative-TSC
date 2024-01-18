@@ -4,21 +4,22 @@
 namespace clear {
 
 Initialization::Initialization(Node::SharedPtr nodeHandle)
-    : nodeHandle_(nodeHandle) {
-  config_file_ = nodeHandle_->get_parameter("/config_file")
-                                       .get_parameter_value()
-                                       .get<std::string>();
-  auto config_ = YAML::LoadFile(config_file_);
-  std::string topic_prefix =
-      config_["global"]["topic_prefix"].as<std::string>();
-  reset_state_client_ = nodeHandle_->create_client<trans::srv::SimulationReset>(
-      topic_prefix + "sim_reset");
-}
+    : nodeHandle_(nodeHandle) {}
 
 Initialization::~Initialization() {}
 
 void Initialization::reset_simulation() {
+
+  const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
+                                       .get_parameter_value()
+                                       .get<std::string>();
+
   auto config_ = YAML::LoadFile(config_file_);
+  std::string topic_prefix =
+      config_["global"]["topic_prefix"].as<std::string>();
+  auto reset_state_client_ =
+      nodeHandle_->create_client<trans::srv::SimulationReset>(topic_prefix +
+                                                              "sim_reset");
   const auto joints_name =
       config_["model"]["actuated_joints_name"].as<std::vector<std::string>>();
   const auto joint_pos =
@@ -43,8 +44,7 @@ void Initialization::reset_simulation() {
     request->joint_state.position.push_back(joint_pos[i]);
   }
 
-  RCLCPP_INFO(rclcpp::get_logger("Initialization"),
-              "waiting for service %s ...",
+  RCLCPP_INFO(rclcpp::get_logger("Initialization"), "waiting for service %s ...",
               reset_state_client_->get_service_name());
   while (!reset_state_client_->wait_for_service(20ms)) {
     std::this_thread::sleep_for(std::chrono::microseconds(50));
@@ -63,8 +63,7 @@ void Initialization::reset_simulation() {
       RCLCPP_INFO(rclcpp::get_logger("Initialization"),
                   "call service reset_state success");
     } else {
-      RCLCPP_ERROR(rclcpp::get_logger("Initialization"),
-                   "Failed to reset state");
+      RCLCPP_ERROR(rclcpp::get_logger("Initialization"), "Failed to reset state");
     }
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("Initialization"),

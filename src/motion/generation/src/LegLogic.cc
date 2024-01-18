@@ -2,18 +2,18 @@
 #include "generation/LegLogic.h"
 
 namespace clear {
-namespace legged_robot {
+namespace biped {
 
 std::vector<scalar_t>
 getTimeOfNextTouchDown(scalar_t time_cur,
                        const std::shared_ptr<ModeSchedule> mode_schedule) {
-  auto contact_flag_last = modeNumber2StanceLeg(
-      mode_schedule->getModeFromPhase(mode_schedule->eventPhases().front()));
   std::vector<scalar_t> td_time_array;
-  td_time_array.resize(contact_flag_last.size());
+  td_time_array.resize(4);
 
-  for (size_t i = 0; i < contact_flag_last.size(); i++) {
+  for (size_t i = 0; i < 4; i++) {
     td_time_array[i] = time_cur + mode_schedule->duration();
+    auto contact_flag_last = modeNumber2StanceLeg(
+        mode_schedule->getModeFromPhase(mode_schedule->eventPhases().front()));
     for (const auto &phase : mode_schedule->eventPhases()) {
       auto contact_flag =
           modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -30,14 +30,13 @@ getTimeOfNextTouchDown(scalar_t time_cur,
 std::vector<scalar_t>
 getTimeOfNextLiftOff(scalar_t time_cur,
                      const std::shared_ptr<ModeSchedule> mode_schedule) {
-
-  auto contact_flag_last = modeNumber2StanceLeg(
-      mode_schedule->getModeFromPhase(mode_schedule->eventPhases().front()));
   std::vector<scalar_t> lift_time_array;
-  lift_time_array.resize(contact_flag_last.size());
+  lift_time_array.resize(4);
 
-  for (size_t i = 0; i < contact_flag_last.size(); i++) {
+  for (size_t i = 0; i < 4; i++) {
     lift_time_array[i] = time_cur + mode_schedule->duration();
+    auto contact_flag_last = modeNumber2StanceLeg(
+        mode_schedule->getModeFromPhase(mode_schedule->eventPhases().front()));
     for (const auto &phase : mode_schedule->eventPhases()) {
       auto contact_flag =
           modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -50,5 +49,5 @@ getTimeOfNextLiftOff(scalar_t time_cur,
   }
   return lift_time_array;
 }
-} // namespace legged_robot
+} // namespace biped
 } // namespace clear

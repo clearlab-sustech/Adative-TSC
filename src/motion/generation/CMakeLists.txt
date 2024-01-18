@@ -24,8 +24,9 @@ find_package(core REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(pinocchio_interface)
-find_package(asserts)
+find_package(pinocchio_interface REQUIRED)
+find_package(asserts REQUIRED)
+find_package(hpipm_interface_ament REQUIRED)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -39,6 +40,7 @@ set(TARGET_DEPENDENCE
   sensor_msgs
   asserts
   yaml-cpp
+  hpipm_interface_ament
 )
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)

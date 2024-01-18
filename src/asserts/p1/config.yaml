@@ -1,5 +1,5 @@
 global:
-  topic_prefix: "simulation/"
+  topic_prefix: "PF_A_ysp/"
   service_names:
     sim_reset: "sim_reset"
   topic_names:
@@ -11,12 +11,13 @@ global:
     actuators_cmds: "actuators_cmds"
     mode_schedule: "mode_schedule"
     trajectories: "trajectories"
+  log_dir: "/home/clear-lab/ysp/exp_data/walk_around"
 
 model:
-  name: "p1"
+  name: "PF_A"
   package: "asserts"
-  urdf: "/p1/p1.urdf"
-  xml: "/p1/p1.xml"
+  urdf: "/p1/PF_A.urdf"
+  xml: "/p1/PF_A.xml"
   base_name: "base"
   foot_names: ["foot_L", "foot_R"]
   actuated_joints_name:
@@ -25,20 +26,20 @@ model:
       "hip_L_joint",
       "knee_L_joint",
       "abad_R_joint",
-      "hip_R_joint", 
-      "knee_R_joint"
+      "hip_R_joint",
+      "knee_R_joint",
     ]
   default:
     joint_pos:
       [
         0.0,
-        -0.0759,
-        0.283,
+       -0.152
+        0.351
         0.0,
-        -0.0759,
-        -0.283
+        0.152,
+       -0.351,
       ]
-    base_pos: [0, 0, 0.583]
+    base_pos: [0, 0, 0.57]
     base_quat: [1, 0, 0, 0]
 
 gait:
@@ -48,13 +49,10 @@ gait:
     modeSequence: ["STANCE"]
     switchingTimes: [0.0, 0.5]
 
-  walk:
+  trot:
     modeSequence: ["LF", "RF"]
-    switchingTimes: [0.0, 0.2, 0.4]
+    switchingTimes: [0.0, 0.3, 0.6]
 
-  topic_prefix: "simulation/"
-  topic_names:
-    mode_schedule: "mode_schedule"
   frequency: 500.0
 
 simulation:
@@ -62,7 +60,7 @@ simulation:
     joints_state: 500.0
     imu: 400.0
     touch_sensor: 500.0
-    odom: 500.0
+    odom: 30.0
     drop_old_message: 10.0
 
 estimation:
@@ -72,6 +70,7 @@ estimation:
 
 controller:
   frequency: 500.0
+  use_vector_field: false
 
 generation:
-  frequency: 100.0
+  frequency: 30.0
