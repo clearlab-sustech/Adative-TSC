@@ -10,6 +10,10 @@
 
 namespace clear {
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> bbd32c6f4d1ad268f36378b3bb3a975da76236b3
 class JoyStick {
 public:
   JoyStick(rclcpp::Node::SharedPtr nodeHandle);
@@ -26,21 +30,31 @@ public:
 
   bool eStop();
 
+<<<<<<< HEAD
   bool isStart();
 
+=======
+>>>>>>> bbd32c6f4d1ad268f36378b3bb3a975da76236b3
 private:
   void joy_cb(const std::shared_ptr<sensor_msgs::msg::Joy> joy_msg) const;
 
   rclcpp::Node::SharedPtr nodeHandle_;
 
   Buffer<bool> e_stop_;
+<<<<<<< HEAD
   Buffer<bool> start_;
+=======
+>>>>>>> bbd32c6f4d1ad268f36378b3bb3a975da76236b3
   mutable Buffer<std::shared_ptr<sensor_msgs::msg::Joy>> joy_msg_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
 
   scalar_t h_des_ = 0.0;
   vector3_t vel_cmd;
+<<<<<<< HEAD
+=======
+
+>>>>>>> bbd32c6f4d1ad268f36378b3bb3a975da76236b3
 };
 
 } // namespace clear

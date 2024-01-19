@@ -249,8 +249,14 @@ void FootholdOptimization::heuristic2() {
     scalar_t pfx_rel, pfy_rel;
     std::pair<scalar_t, vector3_t> foothold;
     foothold.first = nextStanceTime + t;
+<<<<<<< HEAD
     foothold.second = base_pose.translation() +
                       (pYawCorrected + std::max(0.0, nextStanceTime) * v_des);
+=======
+    foothold.second =
+        base_pose.translation() +
+        (pYawCorrected + std::max(0.0, nextStanceTime) * v_des);
+>>>>>>> bbd32c6f4d1ad268f36378b3bb3a975da76236b3
     pfx_rel = 0.5 * mode_schedule->duration() * v_des.x() +
               0.01 * (base_twist.linear().x() - v_des.x()) +
               (0.5 * base_pose.translation().z() / 9.81) *

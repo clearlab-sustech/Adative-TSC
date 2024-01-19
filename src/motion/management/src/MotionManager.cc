@@ -21,10 +21,13 @@ void MotionManager::init() {
 
   joyStickPtr_ = std::make_shared<JoyStick>(this->shared_from_this());
 
+<<<<<<< HEAD
   while (!joyStickPtr_->isStart()) {
     rclcpp::spin_some(this->shared_from_this());
   }
 
+=======
+>>>>>>> bbd32c6f4d1ad268f36378b3bb3a975da76236b3
   estimatorPtr_ =
       std::make_shared<StateEstimationLKF>(this->shared_from_this());
 
@@ -86,7 +89,20 @@ void MotionManager::innerLoop() {
     if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
       trajGenPtr_->setVelCmd(joyStickPtr_->getLinearVelCmd(),
                              joyStickPtr_->getYawVelCmd());
+<<<<<<< HEAD
+=======
     }
+
+    /* if (this->now().seconds() > ts + 6.0 &&
+        gaitSchedulePtr_->getCurrentGaitName() != "trot") {
+      gaitSchedulePtr_->switchGait("trot");
+>>>>>>> bbd32c6f4d1ad268f36378b3bb3a975da76236b3
+    }
+    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
+      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.1);
+    } */
+
+    // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());
 
     /* if (this->now().seconds() > ts + 6.0 &&
         gaitSchedulePtr_->getCurrentGaitName() != "trot") {
