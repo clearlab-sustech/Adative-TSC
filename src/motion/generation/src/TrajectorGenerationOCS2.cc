@@ -212,6 +212,10 @@ void TrajectorGenerationOCS2::innerLoop() {
   rclcpp::Rate loop_mrt_rate(mrtDesiredFrequency_);
   benchmark::RepeatedTimer timer_;
   const scalar_t t0 = nodeHandle_->now().seconds();
+<<<<<<< HEAD
+=======
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGenerationOCS2"), "t0: %f", t0);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();

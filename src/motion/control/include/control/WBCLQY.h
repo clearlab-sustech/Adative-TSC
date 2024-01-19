@@ -5,11 +5,8 @@
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
-<<<<<<< HEAD
-=======
 #include <core/trajectory/ReferenceBuffer.h>
 #include <fstream>
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 #include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
 #include <ocs2_legged_robot/LeggedRobotInterface.h>
 #include <ocs2_mpc/SystemObservation.h>
@@ -26,17 +23,13 @@ namespace clear {
 using namespace quadruped;
 
 // Decision Variables: x = [\dot v^T, F^T, \tau^T]^T
-class WBC {
+class WBCLQY {
 public:
-<<<<<<< HEAD
-  WBC(Node::SharedPtr nodeHandle);
-=======
-  WBC(Node::SharedPtr nodeHandle,
+  WBCLQY(Node::SharedPtr nodeHandle,
       std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
           robot_interface_ptr);
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
-  ~WBC();
+  ~WBCLQY();
 
   void loadTasksSetting(bool verbose = true);
 
@@ -62,19 +55,10 @@ private:
   MatrixDB formulateTorqueLimitsTask();
   MatrixDB formulateMaintainContactTask();
   MatrixDB formulateFrictionConeTask();
-<<<<<<< HEAD
-  MatrixDB formulateBaseTask();
-  MatrixDB formulateSwingLegTask();
-  MatrixDB formulateContactForceTask();
-
-  void differential_inv_kin();
-
-=======
   MatrixDB formulateFloatingBaseTask();
   MatrixDB formulateSwingTask();
   MatrixDB formulateContactForceTask();
 
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   vector_t get_rbd_state();
 
 private:
@@ -84,18 +68,12 @@ private:
 
   size_t numDecisionVars_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
-<<<<<<< HEAD
-
-  Buffer<std::shared_ptr<VectorFieldParam>> base_vf_;
-  std::shared_ptr<ReferenceBuffer> referenceBuffer_;
-=======
   std::shared_ptr<ReferenceBuffer> referenceBuffer_;
 
   std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
       robot_interface_ptr_;
   std::shared_ptr<ocs2::CentroidalModelRbdConversions> conversions_ptr_;
   Buffer<std::shared_ptr<VectorFieldParam>> base_vf_;
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   vector_t mpcInput, xDot;
 
@@ -107,15 +85,9 @@ private:
   size_t numContacts_{};
 
   // Task Parameters:
-<<<<<<< HEAD
-  matrix_t weightSwingLeg_, weightBase_;
-  scalar_t weightContactForce_;
-  matrix_t swingKp_, swingKd_, baseKp_, baseKd_;
-=======
   matrix_t weightSwingLeg_, weightMomentum_;
   scalar_t weightContactForce_;
   matrix_t swingKp_, swingKd_;
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   scalar_t frictionCoeff_{};
 
   MatrixDB weighedTask, constraints;
@@ -123,10 +95,7 @@ private:
   vector_t joint_acc_;
   std::shared_ptr<ActuatorCommands> actuator_commands_;
   scalar_t t0 = 0.0;
-<<<<<<< HEAD
-=======
 
   std::fstream log_stream;
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 };
 } // namespace clear

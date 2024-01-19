@@ -25,7 +25,11 @@ ConstructVectorField::ConstructVectorField(
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
   //     10.0, 10.0;
 
+<<<<<<< HEAD
   weight_.diagonal() << 40, 40, 50, 0.1, 0.1, 0.1, 30, 30, 50, 0.2, 0.2, 0.3;
+=======
+  weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 0.3, 30, 30, 50, 0.2, 0.2, 0.3;
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   // weight_ = 20.0 * weight_;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
@@ -42,6 +46,11 @@ ConstructVectorField::ConstructVectorField(
   solver_settings.split_step = 1;
 
   t0 = nodeHandle_->now().seconds();
+<<<<<<< HEAD
+=======
+
+  RCLCPP_INFO(rclcpp::get_logger("ConstructVectorField"), "t0: %f", t0);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 }
 
 ConstructVectorField::~ConstructVectorField() {}
@@ -58,8 +67,13 @@ void ConstructVectorField::updateMpcSol(
 
 void ConstructVectorField::add_linear_system(size_t k) {
   const scalar_t time_k = time_now_ + k * dt_;
+<<<<<<< HEAD
   auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
   auto rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
+=======
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   auto foot_traj = referenceBuffer_->getFootPosTraj();
 
   auto contact_flag = quadruped::modeNumber2StanceLeg(
@@ -123,9 +137,14 @@ void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
 void ConstructVectorField::add_cost(size_t k, size_t N) {
   const size_t nf = foot_names.size();
   const scalar_t time_k = time_now_ + k * dt_;
+<<<<<<< HEAD
   auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
   auto rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
   auto force_traj = referenceBuffer_->getOptimizedForceTraj();
+=======
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   vector3_t rpy_des = rpy_traj->evaluate(time_k) -
                       rpy_traj->evaluate(time_now_) + rpy_des_start;
@@ -141,6 +160,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   ocp_[k].q = -weight_ * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
+<<<<<<< HEAD
     ocp_[k].R = 2e-5 * matrix_t::Identity(3 * nf, 3 * nf);
     vector_t force_des = force_traj->evaluate(time_k);
     ocp_[k].r = -ocp_[k].R * force_des;
@@ -156,6 +176,39 @@ ConstructVectorField::compute() {
 
   auto rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
   auto pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
+=======
+    ocp_[k].R = 2e-4 * matrix_t::Identity(3 * nf, 3 * nf);
+    auto contact_flag = quadruped::modeNumber2StanceLeg(
+        mpc_sol_buffer.get()->modeSchedule_.modeAtTime(time_k));
+    int nc = 0;
+    for (bool flag : contact_flag) {
+      if (flag) {
+        nc++;
+      }
+    }
+    nc = max(1, nc);
+    vector3_t force_des_i =
+        total_mass_ / nc *
+        (vector3_t(0, 0, grav_) + pos_traj->derivative(time_k, 2));
+    vector_t force_des = vector_t::Zero(3 * nf);
+    for (size_t k = 0; k < nf; k++) {
+      if (contact_flag[k]) {
+        force_des.segment(3 * k, 3) = force_des_i;
+      }
+    }
+    ocp_[k].r = -ocp_[k].R * force_des;
+  } else {
+    // ocp_[k].Q = 1e2 * ocp_[k].Q;
+    // ocp_[k].q = 1e2 * ocp_[k].q;
+  }
+}
+
+std::shared_ptr<VectorFieldParam> ConstructVectorField::compute() {
+  feedback_law_ptr = nullptr;
+
+  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
+  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   auto foot_traj = referenceBuffer_->getFootPosTraj();
 
   if (pos_traj == nullptr || rpy_traj == nullptr || foot_traj.empty()) {
@@ -230,7 +283,11 @@ ConstructVectorField::compute() {
 vector3_t ConstructVectorField::computeEulerAngleErr(const vector3_t &rpy_m,
                                                      const vector3_t &rpy_d) {
   vector3_t rpy_err = rpy_m - rpy_d;
+<<<<<<< HEAD
   while (rpy_err.norm() > 1.5 * M_PI) {
+=======
+  if (rpy_err.norm() > 1.5 * M_PI) {
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
     if (abs(rpy_err(0)) > M_PI) {
       rpy_err(0) += (rpy_err(0) > 0 ? -2.0 : 2.0) * M_PI;
     }

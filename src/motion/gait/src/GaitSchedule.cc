@@ -109,7 +109,11 @@ void GaitSchedule::gaitSwitch(
         scalar_t phase_ = cycle_timer_->getCycleTime() /
                           gait_map_[current_gait_name]->duration();
         transition_time_.push(
+<<<<<<< HEAD
             nodeHandle_->now().seconds() - t0 +
+=======
+            nodeHandle_->now().seconds() +
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
             gait_map_[current_gait_name]->timeLeftInModeSequence(phase_));
         gait_buffer_.push(request->gait_name);
         check_transition_thread_ =
@@ -144,12 +148,20 @@ void GaitSchedule::switchGait(std::string gait_name) {
         transition_time_.push(nodeHandle_->now().seconds() + 0.05 - t0);
       } else if (gait_name == "stance") {
         transition_time_.push(
+<<<<<<< HEAD
             nodeHandle_->now().seconds() - t0 +
+=======
+            nodeHandle_->now().seconds() +
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
             gait_map_[current_gait_name]->timeLeftInModeSequence(phase_) +
             gait_map_[current_gait_name]->duration());
       } else {
         transition_time_.push(
+<<<<<<< HEAD
             nodeHandle_->now().seconds() - t0 +
+=======
+            nodeHandle_->now().seconds() +
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
             gait_map_[current_gait_name]->timeLeftInModeSequence(phase_));
       }
       gait_buffer_.push(gait_name);
@@ -231,8 +243,13 @@ std::shared_ptr<ModeSchedule> GaitSchedule::eval(scalar_t time_period) {
 
 void GaitSchedule::checkGaitTransition() {
   in_transition_.push(true);
+<<<<<<< HEAD
   const scalar_t t_now = nodeHandle_->now().seconds() - t0;
   if (transition_time_.get() < t_now || transition_time_.get() - t_now > 1e2) {
+=======
+  const scalar_t tnow = nodeHandle_->now().seconds() - t0;
+  if (transition_time_.get() < tnow || transition_time_.get() - tnow > 1e2) {
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
     printf("transition time slot: %fs",
            transition_time_.get() - nodeHandle_->now().seconds());
     throw std::runtime_error("transition time slot is not valid [0, 100]");
@@ -241,7 +258,11 @@ void GaitSchedule::checkGaitTransition() {
   rclcpp::Rate loop_rate(1000.0);
   while (rclcpp::ok() && check_.get() &&
          gait_buffer_.get() != current_gait_.get()) {
+<<<<<<< HEAD
     if (t_now > transition_time_.get()) {
+=======
+    if (nodeHandle_->now().seconds() - t0 > transition_time_.get()) {
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
       current_gait_.push(gait_buffer_.get());
       cycle_timer_ = std::make_shared<CycleTimer>(
           nodeHandle_->shared_from_this(),

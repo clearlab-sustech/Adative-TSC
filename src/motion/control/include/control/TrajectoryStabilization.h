@@ -1,6 +1,10 @@
 #pragma once
 #include "control/ConstructVectorField.h"
 #include "control/WholeBodyController.h"
+<<<<<<< HEAD
+=======
+#include "control/WBC.h"
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
@@ -70,8 +74,11 @@ private:
   std::vector<std::string> actuated_joints_name;
   std::vector<scalar_t> joints_default_pos;
   Buffer<std::shared_ptr<ActuatorCommands>> actuator_commands_buffer;
+<<<<<<< HEAD
   std::string log_dir;
 
+=======
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 };
 
 } // namespace clear

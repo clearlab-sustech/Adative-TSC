@@ -98,7 +98,10 @@ estimation:
 controller:
   frequency: 500.0
   use_vector_field: true
+<<<<<<< HEAD
   log_dir: "/home/clear/workspace/VF-TSC/exp/ocs2_pro"
+=======
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
 generation:
-  frequency: 100.0
+  frequency: 50.0

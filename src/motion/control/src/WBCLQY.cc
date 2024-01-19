@@ -1,4 +1,4 @@
-#include "control/WholeBodyController.h"
+#include "control/WBCLQY.h"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <eiquadprog/eiquadprog-fast.hpp>
@@ -9,16 +9,11 @@
 
 namespace clear {
 
-WholeBodyController::WholeBodyController(
-    Node::SharedPtr nodeHandle,
-    std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
-        robot_interface_ptr)
-<<<<<<< HEAD:src/motion/control/src/WholeBodyController.cc
-    : nodeHandle_(nodeHandle), robot_interface_ptr_(robot_interface_ptr) {
-=======
+WBCLQY::WBCLQY(Node::SharedPtr nodeHandle,
+         std::shared_ptr<ocs2::legged_robot::LeggedRobotInterface>
+             robot_interface_ptr)
     : nodeHandle_(nodeHandle), robot_interface_ptr_(robot_interface_ptr),
       log_stream("log_stream_wbc.txt", std::ios::ate | std::ios::out) {
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42:src/motion/atsc/src/WholeBodyController.cc
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
                                        .get_parameter_value()
                                        .get<std::string>();
@@ -28,8 +23,7 @@ WholeBodyController::WholeBodyController(
   std::string urdf =
       ament_index_cpp::get_package_share_directory(model_package) +
       config_["model"]["urdf"].as<std::string>();
-  RCLCPP_INFO(nodeHandle_->get_logger(), "[WholeBodyController] model file: %s",
-              urdf.c_str());
+  RCLCPP_INFO(nodeHandle_->get_logger(), "[WBCLQY] model file: %s", urdf.c_str());
   pinocchioInterface_ptr_ = std::make_shared<PinocchioInterface>(urdf.c_str());
 
   std::string ocs2_leg_robot_package =
@@ -51,8 +45,7 @@ WholeBodyController::WholeBodyController(
 
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   for (const auto &name : foot_names) {
-    RCLCPP_INFO(nodeHandle_->get_logger(),
-                "[WholeBodyController] foot name: %s", name.c_str());
+    RCLCPP_INFO(nodeHandle_->get_logger(), "[WBCLQY] foot name: %s", name.c_str());
   }
   pinocchioInterface_ptr_->setContactPoints(foot_names);
 
@@ -66,44 +59,31 @@ WholeBodyController::WholeBodyController(
   this->loadTasksSetting();
 
   t0 = nodeHandle_->now().seconds();
-<<<<<<< HEAD:src/motion/control/src/WholeBodyController.cc
-=======
-  RCLCPP_INFO(rclcpp::get_logger("WholeBodyController"), "t0: %f", t0);
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42:src/motion/atsc/src/WholeBodyController.cc
+  RCLCPP_INFO(rclcpp::get_logger("WBCLQY"), "t0: %f", t0);
+
 }
 
-WholeBodyController::~WholeBodyController() {}
+WBCLQY::~WBCLQY() { log_stream.close(); }
 
-void WholeBodyController::updateReferenceBuffer(
-    std::shared_ptr<ReferenceBuffer> referenceBuffer) {
-  referenceBuffer_ = referenceBuffer;
-}
-
-void WholeBodyController::update_mpc_sol(
-    std::shared_ptr<ocs2::PrimalSolution> mpc_sol) {
+void WBCLQY::update_mpc_sol(std::shared_ptr<ocs2::PrimalSolution> mpc_sol) {
   mpc_sol_buffer.push(mpc_sol);
 }
 
-void WholeBodyController::update_state(
-    const std::shared_ptr<vector_t> qpos_ptr,
-    const std::shared_ptr<vector_t> qvel_ptr) {
+void WBCLQY::update_state(const std::shared_ptr<vector_t> qpos_ptr,
+                       const std::shared_ptr<vector_t> qvel_ptr) {
   pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 }
 
-void WholeBodyController::updateBaseVectorField(
-    const std::shared_ptr<VectorFieldParam> vf) {
+void WBCLQY::updateBaseVectorField(const std::shared_ptr<VectorFieldParam> vf) {
   base_vf_.push(vf);
 }
 
-<<<<<<< HEAD:src/motion/control/src/WholeBodyController.cc
-=======
-void WholeBodyController::updateReferenceBuffer(
+void WBCLQY::updateReferenceBuffer(
     std::shared_ptr<ReferenceBuffer> referenceBuffer) {
   referenceBuffer_ = referenceBuffer;
 }
 
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42:src/motion/atsc/src/WholeBodyController.cc
-void WholeBodyController::formulate() {
+void WBCLQY::formulate() {
   auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
   scalar_t currentTime = nodeHandle_->now().seconds() - t0;
   mode_ = activePrimalSolutionPtr_->modeSchedule_.modeAtTime(currentTime);
@@ -116,9 +96,6 @@ void WholeBodyController::formulate() {
 
   mpcInput = activePrimalSolutionPtr_->controllerPtr_->computeInput(
       currentTime, currentObservation.state);
-  if (mpcInput_last.size() != mpcInput.size()) {
-    mpcInput_last = mpcInput;
-  }
 
   xDot = robot_interface_ptr_->getOptimalControlProblem()
              .dynamicsPtr->computeFlowMap(currentTime, currentObservation.state,
@@ -132,13 +109,30 @@ void WholeBodyController::formulate() {
   constraints = formulateFloatingBaseEulerNewtonEqu() +
                 formulateTorqueLimitsTask() + formulateFrictionConeTask() +
                 formulateMaintainContactTask();
-  weighedTask = formulateMomentumTask() + formulateSwingLegTask() +
+  weighedTask = formulateFloatingBaseTask() + formulateSwingTask() +
                 formulateContactForceTask();
 
-  mpcInput_last = mpcInput;
+  vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
+                                nodeHandle_->now().seconds() - t0,
+                                activePrimalSolutionPtr_->timeTrajectory_,
+                                activePrimalSolutionPtr_->stateTrajectory_)
+                                .tail(actuated_joints_name.size());
+
+  vector_t joints_vel_des = ocs2::LinearInterpolation::interpolate(
+                                nodeHandle_->now().seconds() - t0,
+                                activePrimalSolutionPtr_->timeTrajectory_,
+                                activePrimalSolutionPtr_->inputTrajectory_)
+                                .tail(actuated_joints_name.size());
+
+  for (size_t i = 0; i < actuated_joints_name.size(); i++) {
+    actuator_commands_->Kp(i) = 30.0;
+    actuator_commands_->Kd(i) = 1.0;
+    actuator_commands_->pos(i) = joints_pos_des(i);
+    actuator_commands_->vel(i) = joints_vel_des(i);
+  }
 }
 
-std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
+std::shared_ptr<ActuatorCommands> WBCLQY::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
   if (mpc_sol_buffer.get().get() == nullptr) {
@@ -168,18 +162,16 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
     actuator_commands_->torque = optimal_u.tail(actuated_joints_name.size());
     joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
-    differential_inv_kin();
   } else {
     joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
     actuator_commands_->setZero(actuated_joints_name.size());
     actuator_commands_->Kd.fill(-1.0);
   }
-
   return actuator_commands_;
 }
 
-void WholeBodyController::updateContactJacobi() {
+void WBCLQY::updateContactJacobi() {
   Jc = matrix_t(3 * foot_names.size(), pinocchioInterface_ptr_->nv());
   for (size_t i = 0; i < foot_names.size(); ++i) {
     matrix6x_t jac;
@@ -188,7 +180,7 @@ void WholeBodyController::updateContactJacobi() {
   }
 }
 
-MatrixDB WholeBodyController::formulateFloatingBaseEulerNewtonEqu() {
+MatrixDB WBCLQY::formulateFloatingBaseEulerNewtonEqu() {
   MatrixDB eulerNewtonEqu("eulerNewtonEqu");
   auto &data = pinocchioInterface_ptr_->getData();
   size_t nv = pinocchioInterface_ptr_->nv();
@@ -207,7 +199,7 @@ MatrixDB WholeBodyController::formulateFloatingBaseEulerNewtonEqu() {
   return eulerNewtonEqu;
 }
 
-MatrixDB WholeBodyController::formulateTorqueLimitsTask() {
+MatrixDB WBCLQY::formulateTorqueLimitsTask() {
   MatrixDB limit_tau("limit_tau");
   size_t na = actuated_joints_name.size();
   limit_tau.C.setZero(na, numDecisionVars_);
@@ -217,7 +209,7 @@ MatrixDB WholeBodyController::formulateTorqueLimitsTask() {
   return limit_tau;
 }
 
-MatrixDB WholeBodyController::formulateMaintainContactTask() {
+MatrixDB WBCLQY::formulateMaintainContactTask() {
   MatrixDB contact_task("contact_task");
   size_t nc = foot_names.size();
   size_t nv = pinocchioInterface_ptr_->nv();
@@ -237,7 +229,7 @@ MatrixDB WholeBodyController::formulateMaintainContactTask() {
   return contact_task;
 }
 
-MatrixDB WholeBodyController::formulateFrictionConeTask() {
+MatrixDB WBCLQY::formulateFrictionConeTask() {
   MatrixDB friction_cone("friction_cone");
   size_t nc = foot_names.size();
   size_t nv = pinocchioInterface_ptr_->nv();
@@ -274,7 +266,7 @@ MatrixDB WholeBodyController::formulateFrictionConeTask() {
   return friction_cone;
 }
 
-MatrixDB WholeBodyController::formulateMomentumTask() {
+MatrixDB WBCLQY::formulateFloatingBaseTask() {
   size_t nv = pinocchioInterface_ptr_->nv();
   const auto policy = base_vf_.get();
   if (policy != nullptr) {
@@ -297,52 +289,11 @@ MatrixDB WholeBodyController::formulateMomentumTask() {
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
 
-<<<<<<< HEAD:src/motion/control/src/WholeBodyController.cc
     base_task.b =
         acc_fb -
         pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
     // std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
 
-=======
-    // vector6_t acc_fb;
-    // auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
-    // auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
-
-    // const scalar_t time_now_ = nodeHandle_->now().seconds() - t0;
-    // vector3_t rpy_des = rpy_traj->evaluate(time_now_);
-    // vector3_t rpy_dot_des = rpy_traj->derivative(time_now_, 1);
-    // vector3_t rpy_ddot_des = rpy_traj->derivative(time_now_, 2);
-    // vector3_t omega_des = getJacobiFromRPYToOmega(rpy_des) * rpy_dot_des;
-    // vector3_t omega_dot_des =
-    //     getJacobiFromRPYToOmega(rpy_des) * rpy_ddot_des +
-    //     getJacobiDotFromRPYToOmega(rpy_des, rpy_dot_des) * rpy_dot_des;
-
-    // auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
-    // auto base_twist =
-    // pinocchioInterface_ptr_->getFrame6dVel_local(base_name); pin::SE3
-    // pose_ref;
-    // // pose_ref.rotation() = toRotationMatrix(rpy_traj->evaluate(time_now_));
-    // // pose_ref.translation() = pos_traj->evaluate(time_now_);
-    // pose_ref.rotation().setIdentity();
-    // pose_ref.translation() << 0, 0, 0.3;
-
-    // vector6_t _spatialVelRef, _spatialAccRef;
-    // _spatialVelRef << base_pose.rotation().transpose() *
-    //                       pos_traj->derivative(time_now_, 1),
-    //     base_pose.rotation().transpose() * omega_des;
-    // _spatialAccRef << base_pose.rotation().transpose() *
-    //                       pos_traj->derivative(time_now_, 2),
-    //     base_pose.rotation().transpose() * vector3_t::Zero();
-    // // _spatialAccRef.setZero();
-    // auto pose_err = log6(base_pose.actInv(pose_ref)).toVector();
-    // auto vel_err = 0.0 * _spatialVelRef - base_twist.toVector();
-
-    // acc_fb = 60.0 * pose_err + 1.5 * vel_err + 0.0 * _spatialAccRef;
-
-    base_task.b =
-        acc_fb -
-        pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42:src/motion/atsc/src/WholeBodyController.cc
     base_task.A = weightMomentum_ * base_task.A;
     base_task.b = weightMomentum_ * base_task.b;
     return base_task;
@@ -365,33 +316,19 @@ MatrixDB WholeBodyController::formulateMomentumTask() {
   }
 }
 
-MatrixDB WholeBodyController::formulateSwingLegTask() {
+MatrixDB WBCLQY::formulateSwingTask() {
   const size_t nc = foot_names.size();
   const size_t nv = pinocchioInterface_ptr_->nv();
 
-<<<<<<< HEAD:src/motion/control/src/WholeBodyController.cc
   auto foot_traj = referenceBuffer_.get()->getFootPosTraj();
   auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
-=======
-  auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
-  vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->stateTrajectory_)
-                                .tail(actuated_joints_name.size());
-  vector_t joints_vel_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->inputTrajectory_)
-                                .tail(actuated_joints_name.size());
->>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42:src/motion/atsc/src/WholeBodyController.cc
 
   if (nc - numContacts_ <= 0 || foot_traj.size() != nc ||
       base_pos_traj.get() == nullptr) {
     return MatrixDB("swing_task");
   }
   MatrixDB swing_task("swing_task");
-  scalar_t t = nodeHandle_->now().seconds() - t0 + dt_;
+  scalar_t t = nodeHandle_->now().seconds() + dt_;
 
   matrix_t Qw =
       matrix_t::Zero(3 * (nc - numContacts_), 3 * (nc - numContacts_));
@@ -438,65 +375,22 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   return swing_task;
 }
 
-void WholeBodyController::differential_inv_kin() {
-  auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
-
-  vector_t joints_pos_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->stateTrajectory_)
-                                .tail(actuated_joints_name.size());
-
-  vector_t joints_vel_des = ocs2::LinearInterpolation::interpolate(
-                                nodeHandle_->now().seconds() - t0,
-                                activePrimalSolutionPtr_->timeTrajectory_,
-                                activePrimalSolutionPtr_->inputTrajectory_)
-                                .tail(actuated_joints_name.size());
-
-  for (size_t i = 0; i < actuated_joints_name.size(); i++) {
-    actuator_commands_->Kp(i) = 30.0;
-    actuator_commands_->Kd(i) = 1.0;
-    actuator_commands_->pos(i) = joints_pos_des(i);
-    actuator_commands_->vel(i) = joints_vel_des(i);
-  }
-}
-
-MatrixDB WholeBodyController::formulateContactForceTask() {
-  // size_t nc = foot_names.size();
-  // size_t nv = pinocchioInterface_ptr_->nv();
-
-  // MatrixDB contact_force("contact_force");
-  // contact_force.A.setZero(3 * nc, numDecisionVars_);
-  // contact_force.A.middleCols(nv, 3 * nc).setIdentity();
-
-  // contact_force.b = mpcInput.head(3 * nc);
-
-  // contact_force.A = weightContactForce_ * contact_force.A;
-  // contact_force.b = weightContactForce_ * contact_force.b;
-  // return contact_force;
-
+MatrixDB WBCLQY::formulateContactForceTask() {
   size_t nc = foot_names.size();
   size_t nv = pinocchioInterface_ptr_->nv();
-  const auto policy = base_vf_.get();
 
   MatrixDB contact_force("contact_force");
   contact_force.A.setZero(3 * nc, numDecisionVars_);
-  if (policy != nullptr) {
-    contact_force.b = policy->force_des;
-    weightContactForce_ = 5.0;
-  } else {
-    contact_force.b = mpcInput.head(3 * nc);
-    weightContactForce_ = 5.0;
-  }
-  for (size_t i = 0; i < nc; ++i) {
-    contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);
-  }
+  contact_force.A.middleCols(nv, 3 * nc).setIdentity();
+
+  contact_force.b = mpcInput.head(3 * nc);
+
   contact_force.A = weightContactForce_ * contact_force.A;
   contact_force.b = weightContactForce_ * contact_force.b;
   return contact_force;
 }
 
-void WholeBodyController::loadTasksSetting(bool verbose) {
+void WBCLQY::loadTasksSetting(bool verbose) {
   // Load task file
   weightMomentum_.setZero(6, 6);
   weightMomentum_.diagonal().fill(100);
@@ -504,7 +398,7 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   weightSwingLeg_.setZero(3, 3);
   weightSwingLeg_.diagonal().fill(200);
 
-  weightContactForce_ = 1e-2;
+  weightContactForce_ = 1e-3;
 
   frictionCoeff_ = 0.5;
 
@@ -533,7 +427,7 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   }
 }
 
-vector_t WholeBodyController::get_rbd_state() {
+vector_t WBCLQY::get_rbd_state() {
   auto activePrimalSolutionPtr_ = mpc_sol_buffer.get();
   const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
   vector_t rbdState(2 * info_.generalizedCoordinatesNum);

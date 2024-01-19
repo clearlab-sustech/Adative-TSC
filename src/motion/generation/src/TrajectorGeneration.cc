@@ -74,6 +74,10 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
   vel_cmd.setZero();
   yawd_ = 0.0;
   t0 = nodeHandle_->now().seconds();
+<<<<<<< HEAD
+=======
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"), "t0: %f", t0);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   referenceBuffer_ = std::make_shared<ReferenceBuffer>();
 
@@ -117,6 +121,7 @@ void TrajectorGeneration::setReference() {
     const scalar_t t_now = nodeHandle_->now().seconds() - t0;
     ocs2::SystemObservation node1, node2;
     const vector_t rbdState = getRbdState();
+<<<<<<< HEAD
     vector_t qpos = *(qpos_ptr_buffer.get());
     quaternion_t quat(qpos(6), qpos(3), qpos(4), qpos(5));
     vector3_t rpy_now = toEulerAngles(quat);
@@ -130,6 +135,8 @@ void TrajectorGeneration::setReference() {
       magn = 0.0 * (sin(alpha * (t_now - t0)) > 0 ? 1.0 : -1.0);
     }
     vel_cmd_world = vector3_t(magn, 0, 0); */
+=======
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
     if (first_run) {
       first_run = false;
@@ -137,6 +144,28 @@ void TrajectorGeneration::setReference() {
       pos_start.z() = 0.3;
       rpy_zyx_start = rbdState.head(3);
       rpy_zyx_start.tail(2).setZero();
+<<<<<<< HEAD
+=======
+    } else {
+      vector_t qpos = *(qpos_ptr_buffer.get());
+      quaternion_t quat(qpos(6), qpos(3), qpos(4), qpos(5));
+      pos_start += 1.0 / freq_ * quat.toRotationMatrix() * vel_cmd;
+      pos_start.z() = 0.3;
+      rpy_zyx_start.x() += 1.0 / freq_ * yawd_;
+      rpy_zyx_start.tail(2).setZero();
+    }
+
+    const auto info_ = robot_interface_ptr_->getCentroidalModelInfo();
+    node1.time = nodeHandle_->now().seconds() - t0;
+    node1.state =
+        conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
+    node1.state.head(6).setZero();
+    node1.state.head(3) = vel_cmd;
+    node1.state[3] = yawd_;
+    node1.state.segment(6, 3) = pos_start;
+    if (0.3 - node1.state[8] > 0.03) {
+      node1.state[8] += (0.02 * 0.5); // height
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
     } else {
       if ((rbdState.segment(3, 3) - pos_start).norm() < 0.2) {
         pos_start += 1.0 / freq_ * vel_cmd_world;
@@ -182,8 +211,32 @@ void TrajectorGeneration::setReference() {
       inputTrajectory.push_back(input_des);
     }
 
+<<<<<<< HEAD
     ocs2::TargetTrajectories initTargetTrajectories(
         timeTrajectory, stateTrajectory, inputTrajectory);
+=======
+    node1.state.segment(9, 3) = rpy_zyx_start;
+    node1.state.segment(10, 2).setZero();
+    node1.input = vector_t::Zero(info_.inputDim);
+    node1.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
+        -1.48, 0.1, 0.72, -1.48;
+    node1.mode = 15; // stance
+
+    node2.time =
+        nodeHandle_->now().seconds() - t0 + mpc_ptr_->settings().timeHorizon_ + 0.1;
+    node2.state = node1.state;
+    node2.state.segment(6, 3) +=
+        (mpc_ptr_->settings().timeHorizon_ + 0.1) * vel_cmd;
+    node2.state[9] += yawd_ * (mpc_ptr_->settings().timeHorizon_ + 0.1);
+    node2.input = vector_t::Zero(info_.inputDim);
+    node2.state.tail(12) << -0.1, 0.72, -1.46, 0.1, 0.72, -1.46, -0.1, 0.72,
+        -1.48, 0.1, 0.72, -1.48;
+    node2.mode = 15; // stance
+
+    ocs2::TargetTrajectories initTargetTrajectories({node1.time, node2.time},
+                                                    {node1.state, node2.state},
+                                                    {node1.input, node2.input});
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
     mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
         std::move(initTargetTrajectories));
 
@@ -315,14 +368,21 @@ void TrajectorGeneration::fitTraj() {
 
   std::vector<scalar_t> time;
   vector3_t vel_start;
+<<<<<<< HEAD
   std::vector<vector_t> rpy_t, pos_t, force_t;
+=======
+  std::vector<vector_t> rpy_t, pos_t;
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   std::map<string, std::vector<vector_t>> foot_pos_array;
   std::map<string, vector3_t> foot_vel_array;
 
   const size_t n = mpc_sol->timeTrajectory_.size();
   for (size_t i = 1; i < n; i += 3) {
     time.push_back(mpc_sol->timeTrajectory_[i]);
+<<<<<<< HEAD
     force_t.push_back(mpc_sol->inputTrajectory_[i - 1].head(12));
+=======
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
     vector_t stateDesired = mpc_sol->stateTrajectory_[i];
     vector_t inputDesired = mpc_sol->inputTrajectory_[i];
     mapping_->setPinocchioInterface(pinocchioInterface);
@@ -337,9 +397,13 @@ void TrajectorGeneration::fitTraj() {
     pinocchio::forwardKinematics(model, data, qDesired, vDesired);
 
     auto base_pose = data.oMf[model.getFrameId(base_name)];
+<<<<<<< HEAD
     vector3_t rpy_xyz(stateDesired(11), stateDesired(10), stateDesired(9));
     // rpy_t.push_back(toEulerAngles(base_pose.rotation()));
     rpy_t.push_back(rpy_xyz);
+=======
+    rpy_t.push_back(toEulerAngles(base_pose.rotation()));
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
     pos_t.push_back(base_pose.translation());
 
     if (i == 1) {
@@ -366,7 +430,11 @@ void TrajectorGeneration::fitTraj() {
       CubicSplineInterpolation::BoundaryType::first_deriv, vel_start,
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_pos->fit(time, pos_t);
+<<<<<<< HEAD
   referenceBuffer_->setOptimizedBasePosTraj(cubicspline_pos);
+=======
+  referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   /* for (size_t i = 0; i < time.size(); i++)
   {
@@ -381,6 +449,7 @@ void TrajectorGeneration::fitTraj() {
       vector3_t(0, 0, yawd_),
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_rpy->fit(time, rpy_t);
+<<<<<<< HEAD
   referenceBuffer_->setOptimizedBaseRpyTraj(cubicspline_rpy);
 
   auto cubicspline_force = std::make_shared<CubicSplineTrajectory>(12);
@@ -389,6 +458,9 @@ void TrajectorGeneration::fitTraj() {
       CubicSplineInterpolation::BoundaryType::first_deriv, vector_t::Zero(12));
   cubicspline_force->fit(time, force_t);
   referenceBuffer_->setOptimizedForceTraj(cubicspline_force);
+=======
+  referenceBuffer_->setIntegratedBaseRpyTraj(cubicspline_rpy);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   std::map<std::string, std::shared_ptr<CubicSplineTrajectory>> foot_pos_traj;
   for (auto name : foot_names) {

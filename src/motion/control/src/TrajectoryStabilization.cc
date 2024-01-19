@@ -22,8 +22,11 @@ TrajectoryStabilization::TrajectoryStabilization(
       config_["global"]["topic_prefix"].as<std::string>();
   std::string actuators_cmds_topic =
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
+<<<<<<< HEAD
   log_dir = config_["controller"]["log_dir"].as<std::string>();
 
+=======
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   freq_ = config_["controller"]["frequency"].as<scalar_t>();
   RCLCPP_INFO(nodeHandle_->get_logger(), "frequency: %f", freq_);
 
@@ -60,6 +63,10 @@ TrajectoryStabilization::TrajectoryStabilization(
   base_name = config_["model"]["base_name"].as<std::string>();
 
   t0 = nodeHandle_->now().seconds();
+<<<<<<< HEAD
+=======
+  RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"), "t0: %f", t0);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   run_.push(true);
   if (use_vector_field) {
@@ -70,7 +77,10 @@ TrajectoryStabilization::TrajectoryStabilization(
   }
   wbcPtr_ =
       std::make_shared<WholeBodyController>(nodeHandle_, robot_interface_ptr_);
+<<<<<<< HEAD
   // wbcPtr_ = std::make_shared<WBC>(nodeHandle_);
+=======
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   inner_loop_thread_ = std::thread(&TrajectoryStabilization::innerLoop, this);
 }
 
@@ -152,10 +162,15 @@ void TrajectoryStabilization::publishCmds() {
 void TrajectoryStabilization::innerLoop() {
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
+<<<<<<< HEAD
   std::fstream save_cmd(log_dir + "/cmd_log.txt",
                         std::ios::ate | std::ios::out);
   std::fstream save_state(log_dir + "/data_log.txt",
                           std::ios::ate | std::ios::out);
+=======
+  std::fstream save_cmd("cmd_log.txt", std::ios::ate | std::ios::out);
+  std::fstream save_state("data_log.txt", std::ios::ate | std::ios::out);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   benchmark::RepeatedTimer timer_;
   rclcpp::Rate loop_rate(freq_);
@@ -205,6 +220,10 @@ void TrajectoryStabilization::innerLoop() {
       wbcPtr_->update_state(qpos_ptr, qvel_ptr);
       wbcPtr_->update_mpc_sol(mpc_sol_buffer.get());
       wbcPtr_->updateReferenceBuffer(referenceBuffer_);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
       if (use_vector_field && vf_param_buffer_.get() != nullptr) {
         wbcPtr_->updateBaseVectorField(vf_param_buffer_.get());
       }
@@ -238,8 +257,11 @@ void TrajectoryStabilization::innerLoop() {
     timer_.endTimer();
     loop_rate.sleep();
   }
+<<<<<<< HEAD
   save_cmd.close();
   save_state.close();
+=======
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
   RCLCPP_INFO(rclcpp::get_logger("TrajectoryStabilization"),
               "max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
@@ -250,7 +272,11 @@ void TrajectoryStabilization::adapative_gain_loop() {
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   benchmark::RepeatedTimer timer_;
+<<<<<<< HEAD
   rclcpp::Rate loop_rate(100.0);
+=======
+  rclcpp::Rate loop_rate(200.0);
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 
   while (rclcpp::ok() && run_.get()) {
     timer_.startTimer();

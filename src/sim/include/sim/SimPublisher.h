@@ -81,6 +81,7 @@ private:
 
   std::thread spin_thread;
 
+<<<<<<< HEAD
   // const mjtNum noise_acc = 0.3;
   // const mjtNum noise_gyro = 0.05;
   // const mjtNum noise_joint_vel = 0.3;
@@ -88,6 +89,15 @@ private:
   const mjtNum noise_acc = 0.0;
   const mjtNum noise_gyro = 0.0;
   const mjtNum noise_joint_vel = 0.0;
+=======
+  const mjtNum noise_acc = 0.3;
+  const mjtNum noise_gyro = 0.05;
+  const mjtNum noise_joint_vel = 0.3;
+
+  // const mjtNum noise_acc = 0.0;
+  // const mjtNum noise_gyro = 0.0;
+  // const mjtNum noise_joint_vel = 0.0;
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42
 };
 
 } // namespace clear

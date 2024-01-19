@@ -95,5 +95,10 @@ private:
   vector_t joint_acc_;
   std::shared_ptr<ActuatorCommands> actuator_commands_;
   scalar_t t0 = 0.0;
+<<<<<<< HEAD:src/motion/control/include/control/WholeBodyController.h
+=======
+
+  std::fstream log_stream;
+>>>>>>> 77dc56d93f6ad7c572b7e85c1990f7f32b525a42:src/motion/atsc/include/atsc/WholeBodyController.h
 };
 } // namespace clear
