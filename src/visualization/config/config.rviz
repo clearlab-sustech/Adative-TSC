@@ -14,7 +14,7 @@ Panels:
         - /MarkerArray2
         - /Marker2
       Splitter Ratio: 0.5
-    Tree Height: 1186
+    Tree Height: 363
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -138,7 +138,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker
       Namespaces:
-        base: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -151,8 +151,7 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        foot_L: true
-        foot_R: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -164,8 +163,7 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        foot_L: true
-        foot_R: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -177,7 +175,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker
       Namespaces:
-        base: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -240,14 +238,14 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2247975617647171
+      Pitch: 0.20479759573936462
       Position:
         X: 2.7351362705230713
         Y: -1.635345458984375
         Z: 0.7613193392753601
       Target Frame: trunk
       Value: FPS (rviz_default_plugins)
-      Yaw: 2.208988904953003
+      Yaw: 2.658989191055298
     Saved: ~
 Window Geometry:
   Displays:

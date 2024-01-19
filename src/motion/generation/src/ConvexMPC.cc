@@ -19,7 +19,7 @@ ConvexMPC::ConvexMPC(Node::SharedPtr nodeHandle,
   foot_names = config_["model"]["foot_names"].as<std::vector<std::string>>();
   base_name = config_["model"]["base_name"].as<std::string>();
   scalar_t freq_ = config_["generation"]["frequency"].as<scalar_t>();
-  dt_ = 1.0 / freq_;
+  dt_ = 0.02;
 
   total_mass_ = pinocchioInterface_ptr_->total_mass();
   weight_.setZero(12, 12);
@@ -225,7 +225,7 @@ void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
   vector_t x_des(12);
   x_des << pos_traj->evaluate(time_k), v_des, rpy_des, omega_des;
 
-  // std::cout << "xdes " << k << ": " << x_des.transpose() << "\n";
+  std::cout << "xdes " << k << ": " << x_des.transpose() << "\n";
 
   matrix_t weight_t = weight_;
   // weight_t.topLeftCorner(3, 3) =
@@ -238,7 +238,7 @@ void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
   ocp_[k].q = -weight_t * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 2e-4 * matrix_t::Identity(3 * nf, 3 * nf);
+    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         biped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
@@ -322,12 +322,12 @@ void ConvexMPC::optimize() {
   const auto res = solver.solve(x0, ocp_, solution_);
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
-    /* for (size_t i = 0; i < solution_.size(); i++) {
+    for (size_t i = 0; i < solution_.size(); i++) {
       std::cout << "x " << i << ": " << solution_[i].x.transpose() << "\n";
     }
-    for (size_t i = 0; i < solution_.size(); i++) {
-      std::cout << "u " << i << ": " << solution_[i].u.transpose() << "\n";
-    } */
+    // for (size_t i = 0; i < solution_.size(); i++) {
+    //   std::cout << "u " << i << ": " << solution_[i].u.transpose() << "\n";
+    // }
     fitTraj(time_cur, N);
   } else {
     std::cout << "ConvexMPC: " << res << "\n";
@@ -375,24 +375,34 @@ void ConvexMPC::fitTraj(scalar_t time_cur, size_t N) {
   auto base_vel_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline);
   base_vel_traj_ptr_->set_boundary(
-      CubicSplineInterpolation::BoundaryType::first_deriv, acc_des.head(3),
-      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ * (solution_[1].x.segment(3, 3) - solution_[0].x.segment(3, 3)),
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ *
+          (solution_[N - 1].x.segment(3, 3) -
+           solution_[N - 2].x.segment(3, 3)));
   base_vel_traj_ptr_->fit(time_array, base_vel_array);
   referenceBuffer_->setOptimizedBaseVelTraj(base_vel_traj_ptr_);
 
   auto base_rpy_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline_hermite);
   base_rpy_traj_ptr_->set_boundary(
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero(),
-      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ * (solution_[1].x.segment(6, 3) - solution_[0].x.segment(6, 3)),
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ *
+          (solution_[N - 1].x.segment(6, 3) -
+           solution_[N - 2].x.segment(6, 3)));
   base_rpy_traj_ptr_->fit(time_array, base_rpy_array);
   referenceBuffer_->setOptimizedBaseRpyTraj(base_rpy_traj_ptr_);
 
   auto base_omega_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline);
   base_omega_traj_ptr_->set_boundary(
-      CubicSplineInterpolation::BoundaryType::first_deriv, acc_des.tail(3),
-      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ * (solution_[1].x.tail(3) - solution_[0].x.tail(3)),
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ * (solution_[N - 1].x.tail(3) - solution_[N - 2].x.tail(3)));
   base_omega_traj_ptr_->fit(time_array, base_omega_array);
   referenceBuffer_->setOptimizedBaseOmegaTraj(base_omega_traj_ptr_);
 

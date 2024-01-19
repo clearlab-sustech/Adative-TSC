@@ -243,9 +243,6 @@ void LipGen::getCosts(scalar_t time_cur, size_t k, size_t N,
 }
 
 void LipGen::fitTraj(scalar_t time_cur, size_t N) {
-  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
-  auto pos_ref = referenceBuffer_->getIntegratedBasePosTraj();
-
   std::vector<scalar_t> time_array;
   std::vector<vector_t> base_pos_array;
   std::vector<vector_t> base_vel_array;
@@ -260,10 +257,6 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
   }
   auto base_pos_ref_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline);
-  vector3_t acc_s, vel_e;
-  acc_s << solution_[0].u.head(2), 0.0;
-  vel_e << solution_[N].x.segment(2, 2),
-      pos_ref->derivative(time_cur + N * dt_, 1).z();
   base_pos_ref_ptr_->set_boundary(
       CubicSplineInterpolation::BoundaryType::first_deriv,
       base_vel_array.front(),
@@ -280,15 +273,13 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
                    solution_[0].x);
   acc_s << xdot.segment(2, 2), 0.0;
   xdot = 1.0 / dt_ *
-                  (ocp_[0].A * solution_[0].x + ocp_[0].B * solution_[0].u -
-                   solution_[0].x);
-  acc_s << xdot.segment(2, 2), 0.0;
+         (ocp_[N - 2].A * solution_[N - 2].x +
+          ocp_[N - 2].B * solution_[N - 2].u - solution_[N - 2].x);
+  acc_e << xdot.segment(2, 2), 0.0;
   base_vel_traj_ptr_->set_boundary(
-      CubicSplineInterpolation::BoundaryType::first_deriv,
-      acc_s.front(),
-      CubicSplineInterpolation::BoundaryType::first_deriv,
-      base_vel_array.back());
-  base_vel_traj_ptr_->fit(time_array, base_pos_array);
+      CubicSplineInterpolation::BoundaryType::first_deriv, acc_s,
+      CubicSplineInterpolation::BoundaryType::first_deriv, acc_e);
+  base_vel_traj_ptr_->fit(time_array, base_vel_array);
   referenceBuffer_->setOptimizedBaseVelTraj(base_vel_traj_ptr_);
 
   auto footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();

@@ -136,7 +136,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
   ocp_[k].q = -weight_ * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
-    ocp_[k].R = 2e-4 * matrix_t::Identity(3 * nf, 3 * nf);
+    ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
     scalar_t phase = k * dt_ / mode_schedule->duration();
     auto contact_flag =
         biped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));

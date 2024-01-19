@@ -97,7 +97,7 @@ void TrajectorGeneration::innerLoop() {
 
       generateBaseTraj();
 
-      // generateFootholds();
+      generateFootholds();
 
       generateFootTraj();
     }
@@ -112,7 +112,7 @@ void TrajectorGeneration::innerLoop() {
 
 void TrajectorGeneration::TrajectorGeneration::generateBaseTraj() {
   baseOpt_ptr->optimize();
-  lipGen_ptr->optimize();
+  // lipGen_ptr->optimize();
 }
 
 void TrajectorGeneration::generateFootholds() { footholdOpt_ptr->optimize(); }

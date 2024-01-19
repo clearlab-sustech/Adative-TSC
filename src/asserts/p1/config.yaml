@@ -51,7 +51,7 @@ gait:
 
   walk:
     modeSequence: ["LF", "RF"]
-    switchingTimes: [0.0, 0.3, 0.6]
+    switchingTimes: [0.0, 0.25, 0.5]
 
   frequency: 500.0
 
@@ -73,4 +73,4 @@ controller:
   use_vector_field: true
 
 generation:
-  frequency: 100.0
+  frequency: 200.0
