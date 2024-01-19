@@ -114,12 +114,22 @@ void TrajectorGeneration::setReference() {
     mpc_ptr_->getSolverPtr()->getReferenceManager().setTargetTrajectories(
         std::move(initTargetTrajectories));
   } else {
+    const scalar_t t_now = nodeHandle_->now().seconds() - t0;
     ocs2::SystemObservation node1, node2;
     const vector_t rbdState = getRbdState();
     vector_t qpos = *(qpos_ptr_buffer.get());
     quaternion_t quat(qpos(6), qpos(3), qpos(4), qpos(5));
-    vector3_t vel_cmd_world = quat.toRotationMatrix() * vel_cmd;
+    vector3_t rpy_now = toEulerAngles(quat);
+    rpy_now.head(2).setZero();
+    vector3_t vel_cmd_world = toRotationMatrix(rpy_now) * vel_cmd;
     vel_cmd_world.z() = 0.0;
+
+    /* scalar_t magn = 0;
+    scalar_t alpha = 0.75;
+    if (t_now > 6.0) {
+      magn = 0.0 * (sin(alpha * (t_now - t0)) > 0 ? 1.0 : -1.0);
+    }
+    vel_cmd_world = vector3_t(magn, 0, 0); */
 
     if (first_run) {
       first_run = false;
@@ -144,7 +154,6 @@ void TrajectorGeneration::setReference() {
     vector_array_t inputTrajectory;
 
     size_t N = mpc_ptr_->getTimeHorizon() / 0.1;
-    const scalar_t t_now = nodeHandle_->now().seconds() - t0;
 
     vector_t state =
         conversions_ptr_->computeCentroidalStateFromRbdModel(rbdState);
@@ -313,7 +322,7 @@ void TrajectorGeneration::fitTraj() {
   const size_t n = mpc_sol->timeTrajectory_.size();
   for (size_t i = 1; i < n; i += 3) {
     time.push_back(mpc_sol->timeTrajectory_[i]);
-    force_t.push_back(mpc_sol->inputTrajectory_[i-1].head(12));
+    force_t.push_back(mpc_sol->inputTrajectory_[i - 1].head(12));
     vector_t stateDesired = mpc_sol->stateTrajectory_[i];
     vector_t inputDesired = mpc_sol->inputTrajectory_[i];
     mapping_->setPinocchioInterface(pinocchioInterface);
@@ -376,8 +385,7 @@ void TrajectorGeneration::fitTraj() {
 
   auto cubicspline_force = std::make_shared<CubicSplineTrajectory>(12);
   cubicspline_force->set_boundary(
-      CubicSplineInterpolation::BoundaryType::first_deriv,
-      vector_t::Zero(12),
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector_t::Zero(12),
       CubicSplineInterpolation::BoundaryType::first_deriv, vector_t::Zero(12));
   cubicspline_force->fit(time, force_t);
   referenceBuffer_->setOptimizedForceTraj(cubicspline_force);

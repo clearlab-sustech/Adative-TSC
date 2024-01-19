@@ -22,7 +22,7 @@ TrajectoryStabilization::TrajectoryStabilization(
       config_["global"]["topic_prefix"].as<std::string>();
   std::string actuators_cmds_topic =
       config_["global"]["topic_names"]["actuators_cmds"].as<std::string>();
-  log_dir = config_["global"]["log_dir"].as<std::string>();
+  log_dir = config_["controller"]["log_dir"].as<std::string>();
 
   freq_ = config_["controller"]["frequency"].as<scalar_t>();
   RCLCPP_INFO(nodeHandle_->get_logger(), "frequency: %f", freq_);

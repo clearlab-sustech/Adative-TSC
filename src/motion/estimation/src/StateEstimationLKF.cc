@@ -12,7 +12,7 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
                                        .get<std::string>();
 
   auto config_ = YAML::LoadFile(config_file_);
-  log_dir = config_["global"]["log_dir"].as<std::string>();
+  log_dir = config_["controller"]["log_dir"].as<std::string>();
 
   robot_name = config_["model"]["name"].as<std::string>();
   RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "robot_name: %s",

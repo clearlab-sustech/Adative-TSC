@@ -411,10 +411,10 @@ MatrixDB WholeBodyController::formulateContactForceTask() {
   contact_force.A.setZero(3 * nc, numDecisionVars_);
   if (policy != nullptr) {
     contact_force.b = policy->force_des;
-    weightContactForce_ = 5e1;
+    weightContactForce_ = 5.0;
   } else {
     contact_force.b = mpcInput.head(3 * nc);
-    weightContactForce_ = 5e1;
+    weightContactForce_ = 5.0;
   }
   for (size_t i = 0; i < nc; ++i) {
     contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);
