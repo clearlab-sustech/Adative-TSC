@@ -58,7 +58,6 @@ private:
   std::string robot_name;
   std::vector<string> foot_names;
   vector<bool> cflag_;
-  string log_dir;
 
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer, qvel_ptr_buffer;
   mutable Buffer<sensor_msgs::msg::Imu::SharedPtr> imu_msg_buffer;

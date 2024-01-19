@@ -190,7 +190,7 @@ void TrajectorGeneration::generateFootTraj() {
                    (xf_start_[foot_name].first + xf_end_[foot_name].first));
     vector3_t middle_pos =
         0.5 * (xf_start_[foot_name].second + xf_end_[foot_name].second);
-    middle_pos.z() += contact_flag[k] ? 0.0 : 0.05;
+    middle_pos.z() += contact_flag[k] ? 0.0 : 0.1;
     pos_t.push_back(middle_pos);
     time.push_back(xf_end_[foot_name].first);
     pos_t.push_back(xf_end_[foot_name].second);
