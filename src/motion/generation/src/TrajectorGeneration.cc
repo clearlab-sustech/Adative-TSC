@@ -53,6 +53,12 @@ TrajectorGeneration::~TrajectorGeneration() {
   inner_loop_thread_.join();
 }
 
+void TrajectorGeneration::setHeightCmd(scalar_t h)
+{
+  baseOpt_ptr->setHeightCmd(h);
+}
+
+
 void TrajectorGeneration::updateCurrentState(
     std::shared_ptr<vector_t> qpos_ptr, std::shared_ptr<vector_t> qvel_ptr) {
   qpos_ptr_buffer.push(qpos_ptr);
@@ -169,7 +175,7 @@ void TrajectorGeneration::generateFootTraj() {
       xf_start_[foot_name].second = pos;
     }
 
-    auto base_pos =
+    vector_t base_pos =
         pinocchioInterface_ptr_->getFramePose(base_name).translation();
     xf_start_[foot_name].second.z() =
         std::min(xf_start_[foot_name].second.z(), base_pos.z() - 0.2);

@@ -21,6 +21,10 @@ void MotionManager::init() {
 
   joyStickPtr_ = std::make_shared<JoyStick>(this->shared_from_this());
 
+  while (!joyStickPtr_->isStart()) {
+    rclcpp::spin_some(this->shared_from_this());
+  }
+
   estimatorPtr_ =
       std::make_shared<StateEstimationLKF>(this->shared_from_this());
 
@@ -41,9 +45,14 @@ void MotionManager::init() {
   bool hardware_ = config_["estimation"]["hardware"].as<bool>();
   if (hardware_) {
     unitreeHWPtr_ = std::make_shared<UnitreeHW>(this->shared_from_this());
+    scalar_t t0 = this->now().seconds();
+    while (this->now().seconds() - t0 < 1.0) {
+      unitreeHWPtr_->switch_to_damping();
+      unitreeHWPtr_->read();
+    }
   } else {
-    // intializationPtr_->reset_simulation();
-    // rclcpp::spin_some(this->shared_from_this());
+    intializationPtr_->reset_simulation();
+    rclcpp::spin_some(this->shared_from_this());
   }
 
   inner_loop_thread_ = std::thread(&MotionManager::innerLoop, this);
@@ -57,16 +66,37 @@ void MotionManager::innerLoop() {
   const scalar_t ts = this->now().seconds();
 
   while (rclcpp::ok() && run_.get()) {
-    std::cout << "vel_cmd: " << joyStickPtr_->getLinearVelCmd().transpose()
-              << " " << joyStickPtr_->getYawVelCmd() << "\n";
 
-    if (this->now().seconds() > ts + 4.0) {
+    if (joyStickPtr_->eStop()) {
+      RCLCPP_INFO(this->get_logger(), "e-stop");
+      trajGenPtr_.reset();
+      trajectoryStabilizationPtr_.reset();
+      visPtr_.reset();
+      break;
+    }
+
+    if (gaitSchedulePtr_->getCurrentGaitName() == "stance" &&
+        joyStickPtr_->isTrotting()) {
       gaitSchedulePtr_->switchGait("trot");
+    } else if (gaitSchedulePtr_->getCurrentGaitName() == "trot" &&
+               joyStickPtr_->isStance()) {
+      gaitSchedulePtr_->switchGait("stance");
     }
 
     if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
-      trajGenPtr_->setVelCmd(joyStickPtr_->getLinearVelCmd(), joyStickPtr_->getYawVelCmd());
+      trajGenPtr_->setVelCmd(joyStickPtr_->getLinearVelCmd(),
+                             joyStickPtr_->getYawVelCmd());
     }
+
+    /* if (this->now().seconds() > ts + 6.0 &&
+        gaitSchedulePtr_->getCurrentGaitName() != "trot") {
+      gaitSchedulePtr_->switchGait("trot");
+    }
+    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
+      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.1);
+    } */
+
+    // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());
 
     if (unitreeHWPtr_ != nullptr) {
       unitreeHWPtr_->read();
@@ -106,6 +136,7 @@ void MotionManager::innerLoop() {
   if (unitreeHWPtr_ != nullptr) {
     unitreeHWPtr_->switch_to_damping();
   }
+  exit(0);
 }
 
 } // namespace clear

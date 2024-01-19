@@ -23,9 +23,9 @@ ConstructVectorField::ConstructVectorField(
   total_mass_ = pinocchioInterfacePtr_->total_mass();
   weight_.setZero(12, 12);
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
-  //     10.0, 10.0;
+      //     10.0, 10.0;
 
-  weight_.diagonal() << 40, 40, 50, 0.3, 0.3, 0.3, 30, 30, 50, 0.2, 0.2, 0.3;
+  weight_.diagonal() << 40, 40, 50, 0.1, 0.3, 0.1, 30, 30, 50, 0.2, 0.2, 0.3;
   // weight_ = 20.0 * weight_;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
@@ -69,7 +69,7 @@ void ConstructVectorField::add_linear_system(size_t k) {
   ocp_[k].A.block<3, 3>(0, 3).diagonal().fill(dt_);
   ocp_[k].A.block<3, 3>(6, 9) = dt_ * getJacobiFromOmegaToRPY(rpy);
   ocp_[k].B.setZero(12, nf * 3);
-  vector3_t xc = pos_traj->evaluate(time_k);
+  vector3_t xc = phase * pos_traj->evaluate(time_k) + (1.0 - phase) * base_pose.translation();
   for (size_t i = 0; i < nf; i++) {
     const auto &foot_name = foot_names[i];
     if (contact_flag[i]) {
@@ -245,23 +245,6 @@ ConstructVectorField::compute() {
     std::cout << "ConstructVectorField: " << res << "\n";
   }
   return feedback_law_ptr;
-}
-
-vector3_t ConstructVectorField::computeEulerAngleErr(const vector3_t &rpy_m,
-                                                     const vector3_t &rpy_d) {
-  vector3_t rpy_err = rpy_m - rpy_d;
-  if (rpy_err.norm() > 1.5 * M_PI) {
-    if (abs(rpy_err(0)) > M_PI) {
-      rpy_err(0) += (rpy_err(0) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(1)) > M_PI) {
-      rpy_err(1) += (rpy_err(1) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(2)) > M_PI) {
-      rpy_err(2) += (rpy_err(2) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-  }
-  return rpy_err;
 }
 
 } // namespace clear

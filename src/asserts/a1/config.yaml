@@ -1,5 +1,5 @@
 global:
-  topic_prefix: "simulation/"
+  topic_prefix: "a1_ysp/"
   service_names:
     sim_reset: "sim_reset"
   topic_names:
@@ -11,12 +11,13 @@ global:
     actuators_cmds: "actuators_cmds"
     mode_schedule: "mode_schedule"
     trajectories: "trajectories"
+  log_dir: "/home/clear/workspace/VF-TSC/data"
 
 model:
   name: "a1"
   package: "asserts"
-  urdf: "/a1/a1.urdf"
-  xml: "/a1/a1.xml"
+  urdf: "/a1/a1_0.urdf"
+  xml: "/a1/a1_0.xml"
   base_name: "trunk"
   foot_names: ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
   actuated_joints_name:
@@ -62,7 +63,7 @@ gait:
 
   trot:
     modeSequence: ["LF_RH", "RF_LH"]
-    switchingTimes: [0.0, 0.3, 0.6]
+    switchingTimes: [0.0, 0.35, 0.7]
 
   static_walk:
     modeSequence: ["LF_RF_RH", "RF_LH_RH", "LF_RF_LH", "LF_LH_RH"]
@@ -88,11 +89,11 @@ simulation:
 estimation:
   dt: 0.002
   use_odom: false
-  hardware: true
+  hardware: false
 
 controller:
   frequency: 500.0
-  use_vector_field: false
+  use_vector_field: true
 
 generation:
-  frequency: 50.0
+  frequency: 30.0

@@ -1,7 +1,6 @@
 #include "control/WholeBodyController.h"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <core/optimization/MathematicalProgram.h>
 #include <eiquadprog/eiquadprog-fast.hpp>
 #include <pinocchio/Orientation.h>
 #include <rcpputils/asserts.hpp>
@@ -11,8 +10,7 @@
 namespace clear {
 
 WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle)
-    : nodeHandle_(nodeHandle),
-      log_stream("log_stream_wbc.txt", std::ios::ate | std::ios::out) {
+    : nodeHandle_(nodeHandle) {
 
   const std::string config_file_ = nodeHandle_->get_parameter("/config_file")
                                        .get_parameter_value()
@@ -44,7 +42,7 @@ WholeBodyController::WholeBodyController(Node::SharedPtr nodeHandle)
   this->loadTasksSetting(false);
 }
 
-WholeBodyController::~WholeBodyController() { log_stream.close(); }
+WholeBodyController::~WholeBodyController() {}
 
 void WholeBodyController::updateReferenceBuffer(
     std::shared_ptr<ReferenceBuffer> referenceBuffer) {
@@ -81,7 +79,7 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_->setZero(actuated_joints_name.size());
 
   if (referenceBuffer_->getModeSchedule().get() == nullptr) {
-    return actuator_commands_; 
+    return actuator_commands_;
   }
 
   formulate();
@@ -91,27 +89,6 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   vector_t g = -weighedTask.A.transpose() * weighedTask.b;
 
   // Solve
-  // MathematicalProgram prog;
-  // auto var = prog.newVectorVariables(numDecisionVars_);
-  // prog.addLinearEqualityConstraints(constraints.A, constraints.b, var);
-  // prog.addLinearInEqualityConstraints(constraints.C, constraints.lb,
-  //                                     constraints.ub, var);
-  // prog.addQuadraticCost(H, g, var);
-  // vector_t tau;
-  // if (prog.solve()) {
-  //   actuator_commands_->torque =
-  //       prog.getSolution(var).tail(actuated_joints_name.size());
-  //   joint_acc_ = prog.getSolution()
-  //                    .head(pinocchioInterface_ptr_->nv())
-  //                    .tail(actuated_joints_name.size());
-  // } else {
-  //   joint_acc_.setZero(actuated_joints_name.size());
-  //   std::cerr << "wbc failed ...\n";
-  //   actuator_commands_->torque =
-  //       pinocchioInterface_ptr_->nle().tail(actuated_joints_name.size());
-  // }
-  // differential_inv_kin();
-
   eiquadprog::solvers::EiquadprogFast eiquadprog_solver;
   eiquadprog_solver.reset(numDecisionVars_, constraints.b.size(),
                           2 * constraints.lb.size());
@@ -129,6 +106,11 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
     joint_acc_ = optimal_u.head(pinocchioInterface_ptr_->nv())
                      .tail(actuated_joints_name.size());
     differential_inv_kin();
+
+    /* matrix6x_t Jbase;
+    pinocchioInterface_ptr_->getJacobia_localWorldAligned(base_name, Jbase);
+    std::cout << "base acc opt: " << (Jbase *
+    optimal_u.head(pinocchioInterface_ptr_->nv())).transpose() << "\n"; */
   } else {
     joint_acc_.setZero(actuated_joints_name.size());
     std::cerr << "wbc failed ...\n";
@@ -260,18 +242,17 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     x0 << base_pose.translation(), base_twist.linear(), rpy,
         base_twist.angular();
     acc_fb = policy->K * x0 + policy->b;
-    if (acc_fb.norm() > 20) {
+    /* if (acc_fb.norm() > 20) {
       acc_fb = 20.0 * acc_fb.normalized();
     }
     if (abs(acc_fb.z()) > 5.0) {
       acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
-    }
+    } */
     // to local coordinate
     acc_fb.head(3) = base_pose.rotation().transpose() * acc_fb.head(3);
     acc_fb.tail(3) = base_pose.rotation().transpose() * acc_fb.tail(3);
-
-  } else if(pos_traj.get() != nullptr && rpy_traj.get() != nullptr 
-            && vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
+  } else if (pos_traj.get() != nullptr && rpy_traj.get() != nullptr &&
+             vel_traj.get() != nullptr && omega_traj.get() != nullptr) {
     const scalar_t time_now_ = nodeHandle_->now().seconds();
     vector_t x0(12);
     auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
@@ -295,15 +276,14 @@ MatrixDB WholeBodyController::formulateBaseTask() {
     if (abs(acc_fb.z()) > 5.0) {
       acc_fb.z() = 5.0 * acc_fb.z() / abs(acc_fb.z());
     }
-  } else
-  {
+  } else {
     acc_fb.setZero();
   }
 
   base_task.b =
       acc_fb -
       pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
-  // std::cout << "acc_fb: " << acc_fb.transpose() << "\n";
+  /* std::cout << "acc_fb: " << acc_fb.transpose() << "\n"; */
 
   base_task.A = weightBase_ * base_task.A;
   base_task.b = weightBase_ * base_task.b;
@@ -318,7 +298,8 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   auto foot_traj = referenceBuffer_.get()->getFootPosTraj();
   auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
 
-  if (nc - numContacts_ <= 0 || foot_traj.size() != nc || base_pos_traj.get() == nullptr) {
+  if (nc - numContacts_ <= 0 || foot_traj.size() != nc ||
+      base_pos_traj.get() == nullptr) {
     return MatrixDB("swing_task");
   }
   MatrixDB swing_task("swing_task");
@@ -417,14 +398,16 @@ void WholeBodyController::differential_inv_kin() {
                .linear() -
            base_twist.linear());
 
-      if (pos_traj.get() == nullptr) {
+      /* if (pos_traj.get() == nullptr) {
         pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
         vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
       } else {
         pos_des = (foot_traj->evaluate(time_c) - pos_traj->evaluate(time_c));
         vel_des = (foot_traj->derivative(time_c, 1) -
                    pos_traj->derivative(time_c, 1));
-      }
+      } */
+      pos_des = (foot_traj->evaluate(time_c) - base_pose.translation());
+      vel_des = (foot_traj->derivative(time_c, 1) - base_twist.linear());
 
       vector3_t pos_err = (pos_des - pos_m);
       if (pos_err.norm() > 0.1) {
@@ -489,14 +472,13 @@ MatrixDB WholeBodyController::formulateContactForceTask() {
 
   MatrixDB contact_force("contact_force");
   contact_force.A.setZero(3 * nc, numDecisionVars_);
-  if(policy != nullptr)
-  {
+  if (policy != nullptr) {
     contact_force.b = policy->force_des;
-    weightContactForce_ = 5;
-  }else
-  {
-    contact_force.b = referenceBuffer_->getOptimizedForceTraj()->evaluate(nodeHandle_->now().seconds());
-    weightContactForce_ = 1e1;
+    weightContactForce_ = 5e1;
+  } else {
+    contact_force.b = referenceBuffer_->getOptimizedForceTraj()->evaluate(
+        nodeHandle_->now().seconds());
+    weightContactForce_ = 5e1;
   }
   for (size_t i = 0; i < nc; ++i) {
     contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);
@@ -526,7 +508,7 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(37);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(20.0);
+  baseKp_.diagonal().fill(30.0);
 
   baseKd_.setZero(6, 6);
   baseKd_.diagonal().fill(1.0);
@@ -563,22 +545,4 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
     std::cerr << momentumKd_ << "\n";
   }
 }
-
-vector3_t WholeBodyController::computeEulerAngleErr(const vector3_t &rpy_m,
-                                                    const vector3_t &rpy_d) {
-  vector3_t rpy_err = rpy_m - rpy_d;
-  if (rpy_err.norm() > 1.5 * M_PI) {
-    if (abs(rpy_err(0)) > M_PI) {
-      rpy_err(0) += (rpy_err(0) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(1)) > M_PI) {
-      rpy_err(1) += (rpy_err(1) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-    if (abs(rpy_err(2)) > M_PI) {
-      rpy_err(2) += (rpy_err(2) > 0 ? -2.0 : 2.0) * M_PI;
-    }
-  }
-  return rpy_err;
-}
-
 } // namespace clear

@@ -27,15 +27,7 @@ find_package(yaml-cpp REQUIRED)
 find_package(asserts REQUIRED)
 find_package(hpipm-cpp REQUIRED)
 find_package(eiquadprog REQUIRED)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(pinocchio REQUIRED pinocchio)
-link_directories(
-  ${pinocchio_LIBRARY_DIRS}
-)
-
 find_package(pinocchio_interface REQUIRED)
-find_package(tsc REQUIRED)
 
 set(TARGET_DEPENDENCE
   ament_cmake
@@ -50,7 +42,6 @@ set(TARGET_DEPENDENCE
   pinocchio
   hpipm-cpp
   pinocchio_interface
-  tsc
   eiquadprog
 )
 

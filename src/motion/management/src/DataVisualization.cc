@@ -65,7 +65,7 @@ DataVisualization::DataVisualization(Node::SharedPtr nodeHandle)
   line_strip_base.color.r = 0.0;
   line_strip_base.color.g = 0.0;
   line_strip_base.color.b = 0.0;
-  line_strip_base.ns = "trunk";
+  line_strip_base.ns = base_name;
 
   line_strip_base_ref.header.frame_id = "world";
   line_strip_base_ref.action = visualization_msgs::msg::Marker::ADD;

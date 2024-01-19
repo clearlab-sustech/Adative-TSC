@@ -25,6 +25,8 @@ public:
 
   void setVelCmd(vector3_t vd, scalar_t yawd);
 
+  void setHeightCmd(scalar_t h);
+
 private:
   void generateTrajRef();
 
@@ -40,9 +42,6 @@ private:
 
   void fitTraj(scalar_t time_cur, size_t N);
 
-  vector3_t computeEulerAngleErr(const vector3_t &rpy_m,
-                                 const vector3_t &rpy_d);
-
 private:
   Node::SharedPtr nodeHandle_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
@@ -51,8 +50,8 @@ private:
   std::string base_name;
   std::vector<std::string> foot_names;
 
-  const scalar_t h_des = 0.32;
-  const scalar_t dt_ = 0.02;
+  scalar_t h_des = 0.32;
+  scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;
   scalar_t total_mass_;
   matrix3_t Ig_;
@@ -71,6 +70,7 @@ private:
   vector3_t rpy_start;
   vector3_t pos_start;
   bool first_run = true;
+  scalar_t t0 = 0.0;
 };
 
 } // namespace clear

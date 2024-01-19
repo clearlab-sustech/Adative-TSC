@@ -12,6 +12,7 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
                                        .get<std::string>();
 
   auto config_ = YAML::LoadFile(config_file_);
+  log_dir = config_["global"]["log_dir"].as<std::string>();
 
   robot_name = config_["model"]["name"].as<std::string>();
   RCLCPP_INFO(rclcpp::get_logger("StateEstimationLKF"), "robot_name: %s",
@@ -240,6 +241,13 @@ void StateEstimationLKF::linearMotionEstimate(
 }
 
 void StateEstimationLKF::innerLoop() {
+  std::fstream save_qpos(log_dir + "/data_qpos.txt",
+                         std::ios::ate | std::ios::out);
+  std::fstream save_qvel(log_dir + "/data_qvel.txt",
+                         std::ios::ate | std::ios::out);
+  std::fstream save_cnt(log_dir + "/data_cnt.txt",
+                        std::ios::ate | std::ios::out);
+
   rclcpp::Rate loop_rate(1.0 / dt_);
 
   const scalar_t t0 = nodeHandle_->now().seconds();
@@ -302,6 +310,14 @@ void StateEstimationLKF::innerLoop() {
       qvel_ptr_buffer.push(qvel_ptr_);
     }
 
+    save_qpos << (*qpos_ptr_).transpose() << "\n";
+    save_qvel << (*qvel_ptr_).transpose() << "\n";
+    const auto touch_sensor_data = touch_msg_buffer.get()->value;
+    for (auto &data : touch_sensor_data) {
+      save_cnt << (data > 1.0) << " ";
+    }
+    save_cnt << "\n";
+
     /* RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
                        "qpos: " << (*qpos_ptr_).transpose() << "\n");
     RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
@@ -309,6 +325,9 @@ void StateEstimationLKF::innerLoop() {
 
     loop_rate.sleep();
   }
+  save_qpos.close();
+  save_qvel.close();
+  save_cnt.close();
 }
 
 std::shared_ptr<vector_t> StateEstimationLKF::getQpos() {

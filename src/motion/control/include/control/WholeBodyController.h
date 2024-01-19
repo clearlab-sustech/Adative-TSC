@@ -6,7 +6,6 @@
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/misc/Buffer.h>
 #include <core/trajectory/ReferenceBuffer.h>
-#include <fstream>
 #include <pinocchio/PinocchioInterface.h>
 #include <rclcpp/rclcpp.hpp>
 
@@ -67,9 +66,6 @@ private:
   MatrixDB formulateSwingLegTask();
   MatrixDB formulateContactForceTask();
 
-  vector3_t computeEulerAngleErr(const vector3_t &rpy_m,
-                                 const vector3_t &rpy_d);
-
   void differential_inv_kin();
 
 private:
@@ -98,7 +94,5 @@ private:
   scalar_t dt_ = 0.002;
   vector_t joint_acc_;
   std::shared_ptr<ActuatorCommands> actuator_commands_;
-
-  std::fstream log_stream;
 };
 } // namespace clear

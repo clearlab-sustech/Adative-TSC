@@ -93,10 +93,14 @@ void FootholdOptimization::add_costs(scalar_t t, size_t k) {
   vector3_t rpy_des = base_rpy_traj->evaluate(tk);
 
   vector_t x_des(3 * nf);
+  vector3_t v_des = toRotationMatrix(rpy_des).transpose() *
+                    base_pos_ref_traj->derivative(tk, 1);
   for (size_t i = 0; i < nf; i++) {
+    vector3_t pn = footholds_nominal_pos[foot_names[i]];
+    pn.y() *= (abs(v_des.y()) > 0.05 ? 1.0 : 1.0);
     x_des.segment(3 * i, 3) =
         pos_des +
-        toRotationMatrix(rpy_des) * footholds_nominal_pos[foot_names[i]];
+        toRotationMatrix(rpy_des) * pn;
     x_des(3 * i + 2) = 0.02;
   }
 
@@ -245,15 +249,14 @@ void FootholdOptimization::heuristic2() {
     scalar_t pfx_rel, pfy_rel;
     std::pair<scalar_t, vector3_t> foothold;
     foothold.first = nextStanceTime + t;
-    foothold.second =
-        base_pose.translation() +
-        (pYawCorrected + std::max(0.0, nextStanceTime) * base_twist.linear());
+    foothold.second = base_pose.translation() +
+                      (pYawCorrected + std::max(0.0, nextStanceTime) * v_des);
     pfx_rel = 0.5 * mode_schedule->duration() * v_des.x() +
-              0.1 * (base_twist.linear().x() - v_des.x()) +
+              0.01 * (base_twist.linear().x() - v_des.x()) +
               (0.5 * base_pose.translation().z() / 9.81) *
                   (base_twist.linear().y() * rpy_dot.z());
     pfy_rel = 0.5 * mode_schedule->duration() * v_des.y() +
-              0.1 * (base_twist.linear().y() - v_des.y()) +
+              0.01 * (base_twist.linear().y() - v_des.y()) +
               (0.5 * base_pose.translation().z() / 9.81) *
                   (-base_twist.linear().x() * rpy_dot.z());
     pfx_rel = std::min(std::max(pfx_rel, -p_rel_x_max), p_rel_x_max);

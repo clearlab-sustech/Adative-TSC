@@ -10,12 +10,6 @@
 
 namespace clear {
 
-enum class ButtonIndex {
-  LINEAR_VEL_Y = 0,
-  LINEAR_VEL_X = 1,
-  YAW_VEL = 3
-};
-
 class JoyStick {
 public:
   JoyStick(rclcpp::Node::SharedPtr nodeHandle);
@@ -24,16 +18,29 @@ public:
 
   scalar_t getYawVelCmd();
 
+  scalar_t getHeightCmd();
+
+  bool isStance();
+
+  bool isTrotting();
+
+  bool eStop();
+
+  bool isStart();
+
 private:
   void joy_cb(const std::shared_ptr<sensor_msgs::msg::Joy> joy_msg) const;
 
   rclcpp::Node::SharedPtr nodeHandle_;
 
-  ButtonIndex button_index_;
   Buffer<bool> e_stop_;
+  Buffer<bool> start_;
   mutable Buffer<std::shared_ptr<sensor_msgs::msg::Joy>> joy_msg_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
+
+  scalar_t h_des_ = 0.0;
+  vector3_t vel_cmd;
 };
 
 } // namespace clear
