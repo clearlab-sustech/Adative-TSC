@@ -192,6 +192,7 @@ void TrajectoryStabilization::innerLoop() {
         actuator_commands_buffer.push(wbcPtr_->optimize());
         publishCmds();
       }
+      
       auto cmds = actuator_commands_buffer.get();
       if (cmds != nullptr) {
         save_cmd << cmds->torque.transpose() << "\n";

@@ -64,13 +64,13 @@ simulation:
     drop_old_message: 10.0
 
 estimation:
-  dt: 0.002
+  dt: 0.001
   use_odom: true
   hardware: false
 
 controller:
   frequency: 500.0
-  use_vector_field: true
+  use_vector_field: false
 
 generation:
-  frequency: 200.0
+  frequency: 50.0

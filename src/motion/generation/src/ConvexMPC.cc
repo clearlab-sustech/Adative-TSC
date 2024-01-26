@@ -23,7 +23,7 @@ ConvexMPC::ConvexMPC(Node::SharedPtr nodeHandle,
 
   total_mass_ = pinocchioInterface_ptr_->total_mass();
   weight_.setZero(12, 12);
-  weight_.diagonal() << 30, 30, 60, 1.0, 0.1, 0.1, 20, 20, 10, 0.3, 0.3, 0.2;
+  weight_.diagonal() << 10, 10, 40, 0.2, 0.2, 0.1, 4, 4, 4, 0.1, 0.1, 0.1;
 
   solver_settings.mode = hpipm::HpipmMode::Speed;
   solver_settings.iter_max = 30;
@@ -57,12 +57,6 @@ void ConvexMPC::generateTrajRef() {
   const scalar_t t_now = nodeHandle_->now().seconds();
   auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
 
-  scalar_t magn = 0;
-  scalar_t alpha = 0.75;
-  if (t_now - t0 > 6.0) {
-    magn = 0.0 * (sin(alpha * (t_now - t0)) > 0 ? 1.0 : -1.0);
-  }
-
   if (first_run) {
     first_run = false;
     pos_start = base_pose_m.translation();
@@ -70,17 +64,16 @@ void ConvexMPC::generateTrajRef() {
     rpy_start = toEulerAngles(base_pose_m.rotation());
     rpy_start.head(2).setZero();
   } else {
+    std::cout << "vel_cmd: " << vel_cmd.transpose() << "\n";
     vector_t rpy_c = toEulerAngles(base_pose_m.rotation());
     if (computeEulerAngleErr(rpy_c, rpy_start).norm() < 0.3) {
       rpy_start += dt_ * vector3_t(0, 0, yawd_);
-      rpy_start.head(2).setZero();
     }
-
-    if ((base_pose_m.translation() - pos_start).norm() < 0.2) {
-      // pos_start += dt_ * toRotationMatrix(rpy_start) * vel_cmd;
-      pos_start += dt_ * vector3_t(magn, 0, 0.0);
-      pos_start.z() = h_des;
-    }
+    rpy_start.head(2).setZero();
+  
+    vector3_t vw = base_pose_m.rotation() * vel_cmd;
+    pos_start.head(2) =base_pose_m.translation().head(2) + dt_ * vw.head(2);
+    pos_start.z() = h_des;
   }
 
   std::vector<scalar_t> time;
@@ -90,40 +83,21 @@ void ConvexMPC::generateTrajRef() {
   for (size_t k = 0; k < N; k++) {
     time.push_back(t_now + 0.05 * k);
     vector3_t rpy_k = rpy_start;
-    // if (t_now - t0 > 2 * M_PI) {
-    //   rpy_k.x() = 0.2 * sin(2 * (t_now - t0 + 0.05 * k));
-    //   rpy_k.y() = 0.2 * sin(2 * (t_now - t0 + 0.05 * k));
-    //   rpy_k.z() = 0.5 * sin(2 * (t_now - t0 + 0.05 * k));
-    // }
     rpy_k.z() += 0.05 * k * yawd_;
     rpy_t.emplace_back(rpy_k);
 
-    // vector3_t vel_des = toRotationMatrix(rpy_k) * vel_cmd;
-    vector3_t vel_des = vector3_t(magn, 0, 0.0);
+    vector3_t vel_des = toRotationMatrix(rpy_k) * vel_cmd;
     vector3_t pos_k = pos_start + 0.05 * k * vel_des;
     pos_k.z() = h_des;
     pos_t.emplace_back(pos_k);
   }
 
-  /* std::cout << "############# "
-            << "base traj des"
-            << " ##############\n";
-  for (size_t i = 0; i < time.size(); i++)
-  {
-    std::cout << " t: " << time[i] - time.front()
-              << " rpy: " << rpy_t[i].transpose() << "\n";
-  } */
-
   auto cubicspline_pos = std::make_shared<CubicSplineTrajectory>(3);
-  // cubicspline_pos->set_boundary(
-  //     CubicSplineInterpolation::BoundaryType::first_deriv,
-  //     base_pose_m.rotation() * vel_cmd,
-  //     CubicSplineInterpolation::BoundaryType::second_deriv,
-  //     vector3_t::Zero());
   cubicspline_pos->set_boundary(
       CubicSplineInterpolation::BoundaryType::first_deriv,
-      vector3_t(magn, 0, 0.0),
-      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
+      base_pose_m.rotation() * vel_cmd,
+      CubicSplineInterpolation::BoundaryType::second_deriv,
+      vector3_t::Zero());
   cubicspline_pos->fit(time, pos_t);
   referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
 
@@ -132,11 +106,6 @@ void ConvexMPC::generateTrajRef() {
       CubicSplineInterpolation::BoundaryType::first_deriv,
       vector3_t(0, 0, yawd_),
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
-  // cubicspline_rpy->set_boundary(
-  //     CubicSplineInterpolation::BoundaryType::first_deriv,
-  //     vector3_t(0.4 * cos(2 * (t_now - t0)), 0.4 * cos(2 * (t_now - t0)),
-  //               cos(2 * (t_now - t0))),
-  // CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_rpy->fit(time, rpy_t);
   referenceBuffer_->setIntegratedBaseRpyTraj(cubicspline_rpy);
 }
@@ -225,7 +194,7 @@ void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
   vector_t x_des(12);
   x_des << pos_traj->evaluate(time_k), v_des, rpy_des, omega_des;
 
-  std::cout << "xdes " << k << ": " << x_des.transpose() << "\n";
+  // std::cout << "xdes " << k << ": " << x_des.transpose() << "\n";
 
   matrix_t weight_t = weight_;
   // weight_t.topLeftCorner(3, 3) =
@@ -311,20 +280,15 @@ void ConvexMPC::optimize() {
   hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
 
   vector_t x0(12);
-  vector3_t omega0 = getJacobiFromRPYToOmega(rpy_des_start) *
-                     rpy_traj->derivative(time_cur, 1);
-  // x0 << pos_traj->evaluate(time_cur), pos_traj->derivative(time_cur, 1),
-  //     rpy_des_start, omega0;
-
   x0 << base_pose.translation(), base_twist.linear(), rpy_m,
       base_twist.angular();
 
   const auto res = solver.solve(x0, ocp_, solution_);
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
-    for (size_t i = 0; i < solution_.size(); i++) {
-      std::cout << "x " << i << ": " << solution_[i].x.transpose() << "\n";
-    }
+    // for (size_t i = 0; i < solution_.size(); i++) {
+    //   std::cout << "x " << i << ": " << solution_[i].x.transpose() << "\n";
+    // }
     // for (size_t i = 0; i < solution_.size(); i++) {
     //   std::cout << "u " << i << ": " << solution_[i].u.transpose() << "\n";
     // }

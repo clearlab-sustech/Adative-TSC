@@ -78,7 +78,9 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   actuator_commands_ = std::make_shared<ActuatorCommands>();
   actuator_commands_->setZero(actuated_joints_name.size());
 
-  if (referenceBuffer_->getModeSchedule().get() == nullptr) {
+  if (referenceBuffer_->getModeSchedule().get() == nullptr ||
+      referenceBuffer_->getOptimizedForceTraj() == nullptr ||
+      referenceBuffer_->getFootPosTraj().empty()) {
     return actuator_commands_;
   }
 
@@ -119,6 +121,48 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
   }
 
   return actuator_commands_;
+}
+
+void WholeBodyController::simpleCtrl() {
+
+  const scalar_t t_now = nodeHandle_->now().seconds();
+
+  actuator_commands_->torque =
+      -Jc.block(0, 6, 6, 6).transpose() *
+          referenceBuffer_->getOptimizedForceTraj()->evaluate(t_now) +
+      pinocchioInterface_ptr_->nle().tail(6);
+
+  for (int i = 0; i < 2; i++) {
+    if (contactFlag_[i]) // stance
+    {
+      actuator_commands_->Kp.segment(3 * i, 3).setZero();
+      actuator_commands_->Kd.segment(3 * i, 3).setZero();
+      actuator_commands_->pos.segment(3 * i, 3) =
+          pinocchioInterface_ptr_->qpos().segment(3 * i + 7, 3);
+      actuator_commands_->vel.segment(3 * i, 3).setZero();
+    } else // swing
+    {
+      auto foot_traj = referenceBuffer_->getFootPosTraj();
+      auto base_vel_traj = referenceBuffer_->getOptimizedBaseVelTraj();
+
+      vector3_t foot_pos =
+          pinocchioInterface_ptr_->getFramePose(foot_names[i]).translation();
+
+      actuator_commands_->Kp.segment(3 * i, 3) << 30, 30, 30;
+      actuator_commands_->Kd.segment(3 * i, 3) << 8.0, 8.0, 8.0;
+
+      matrix3_t J_inv = Jc.block<3, 3>(3 * i, i * 3 + 6).inverse();
+      vector3_t delta_q =
+          J_inv * (foot_traj[foot_names[i]]->evaluate(t_now) - foot_pos);
+      vector3_t qd_des =
+          J_inv * (foot_traj[foot_names[i]]->derivative(t_now, 1) -
+                   base_vel_traj->evaluate(t_now));
+
+      actuator_commands_->pos.segment(3 * i, 3) =
+          pinocchioInterface_ptr_->qpos().segment(3 * i + 7, 3) + delta_q;
+      actuator_commands_->vel.segment(3 * i, 3) = qd_des;
+    }
+  }
 }
 
 void WholeBodyController::updateContactJacobi() {

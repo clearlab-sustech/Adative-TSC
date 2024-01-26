@@ -28,7 +28,9 @@ FootholdOptimization::FootholdOptimization(
     footholds_nominal_pos[foot] =
         pinocchioInterface_ptr_->getFramePose(foot).translation();
     footholds_nominal_pos[foot].z() = 0.0;
-    footholds_nominal_pos[foot].y() *= 0.8;
+    // footholds_nominal_pos[foot].y() *= 0.8;
+    std::cout << foot << ": " << footholds_nominal_pos[foot].transpose()
+              << "\n";
   }
 
   nf = foot_names.size();
@@ -166,7 +168,7 @@ void FootholdOptimization::optimize() {
   } else {
     std::cout << "FootholdOptimization: " << res << "\n";
   }
-  heuristic1();
+  heuristic2();
   referenceBuffer_->setFootholds(footholds_);
 }
 
@@ -215,43 +217,43 @@ void FootholdOptimization::heuristic2() {
   auto base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
   auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
-
-  vector3_t v_des = base_pos_ref_traj->derivative(t, 1);
-
   const auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);
   const auto base_twist =
       pinocchioInterface_ptr_->getFrame6dVel_localWorldAligned(base_name);
+  const scalar_t gait_cycle = mode_schedule->duration();
+  auto contact_flag =
+      biped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(0.0));
 
-  vector3_t rpy_dot =
-      getJacobiFromOmegaToRPY(toEulerAngles(base_pose.rotation())) *
-      base_twist.angular();
+  vector3_t v_des = base_pos_ref_traj->derivative(t, 1);
+  vector3_t rpy_dot_des = base_rpy_traj->derivative(t, 1);
 
-  auto swtr = biped::getTimeOfNextTouchDown(0, mode_schedule);
+  auto ntc = biped::getTimeOfNextTouchDown(0, mode_schedule);
 
   const scalar_t p_rel_x_max = 0.5f;
-  const scalar_t p_rel_y_max = 0.2f;
+  const scalar_t p_rel_y_max = 0.3f;
 
   for (size_t i = 0; i < nf; i++) {
     const auto &foot_name = foot_names[i];
-    const scalar_t nextStanceTime = swtr[i];
+    const scalar_t swingTimeRemain = contact_flag[i] ? 0.0 : ntc[i];
 
     vector3_t pYawCorrected =
-        toRotationMatrix(base_rpy_traj->evaluate(t + nextStanceTime)) *
+        toRotationMatrix(base_rpy_traj->evaluate(t + gait_cycle / 2.0)) *
         footholds_nominal_pos[foot_name];
 
     scalar_t pfx_rel, pfy_rel;
     std::pair<scalar_t, vector3_t> foothold;
-    foothold.first = nextStanceTime + t;
+    foothold.first = ntc[i] + t;
     foothold.second = base_pose.translation() +
-                      (pYawCorrected + std::max(0.0, nextStanceTime) * base_twist.linear());
-    pfx_rel = nextStanceTime * v_des.x() +
-              0.1 * (base_twist.linear().x() - v_des.x()) +
+                      (pYawCorrected + std::max(0.0, swingTimeRemain) * v_des);
+
+    pfx_rel = 0.5 * gait_cycle * base_twist.linear().x() +
+              0.16 * (base_twist.linear().x() - v_des.x()) +
               (0.5 * base_pose.translation().z() / 9.81) *
-                  (base_twist.linear().y() * rpy_dot.z());
-    pfy_rel = nextStanceTime * v_des.y() +
-              0.05 * (base_twist.linear().y() - v_des.y()) +
+                  (base_twist.linear().y() * rpy_dot_des.z());
+    pfy_rel = 0.5 * gait_cycle * base_twist.linear().y() +
+              0.16 * (base_twist.linear().y() - v_des.y()) +
               (0.5 * base_pose.translation().z() / 9.81) *
-                  (-base_twist.linear().x() * rpy_dot.z());
+                  (-base_twist.linear().x() * rpy_dot_des.z());
     pfx_rel = std::min(std::max(pfx_rel, -p_rel_x_max), p_rel_x_max);
     pfy_rel = std::min(std::max(pfy_rel, -p_rel_y_max), p_rel_y_max);
     foothold.second.x() += pfx_rel;

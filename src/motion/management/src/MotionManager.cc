@@ -107,7 +107,7 @@ void MotionManager::innerLoop() {
     } */
 
     scalar_t horizon_time_ =
-        min(2.0, max(1.0, gaitSchedulePtr_->currentGaitCycle()));
+        min(2.0, max(0.3, gaitSchedulePtr_->currentGaitCycle()));
 
     auto mode_schedule_ptr = gaitSchedulePtr_->eval(horizon_time_);
 

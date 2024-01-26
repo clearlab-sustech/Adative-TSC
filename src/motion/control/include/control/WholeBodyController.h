@@ -68,6 +68,8 @@ private:
 
   void differential_inv_kin();
 
+  void simpleCtrl();
+
 private:
   Node::SharedPtr nodeHandle_;
   std::shared_ptr<ReferenceBuffer> referenceBuffer_;
