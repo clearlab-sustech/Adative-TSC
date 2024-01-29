@@ -1,0 +1,91 @@
+global:
+  topic_prefix: "PF_A_ysp/"
+  service_names:
+    sim_reset: "sim_reset"
+  topic_names:
+    joints_state: "joints_state"
+    imu: "imu_data"
+    odom: "odom"
+    estimated_states: "estimated_states"
+    actuators_cmds: "actuators_cmds"
+    mode_schedule: "mode_schedule"
+    trajectories: "trajectories"
+  log_dir: "/home/clear-lab/ysp/exp_data/walk_around"
+
+model:
+  name: "biped"
+  package: "asserts"
+  urdf: "/biped/biped.urdf"
+  xml: "/biped/biped.xml"
+  base_name: "base"
+  foot_names: ["foot_L_Link", "foot_R_Link"]
+  actuated_joints_name:
+    [
+      "abad_L_Joint",
+      "hip_L_Joint",
+      "knee_L_Joint",
+      "abad_R_Joint",
+      "hip_R_Joint",
+      "knee_R_Joint",
+    ]
+  default:
+    joint_pos:
+      [
+        0.0,
+       -0.152,
+        0.351,
+        0.0,
+        0.152,
+       -0.351,
+      ]
+    base_pos: [0, 0, 0.57]
+    base_quat: [1, 0, 0, 0]
+  
+  joint_limit:
+    abad_L_Joint: 0.785398163
+    hip_L_Joint: -1.047197551
+    knee_L_Joint: 1.256637061
+    abad_R_Joint: -0.785398163
+    hip_R_Joint: 1.047197551
+    knee_R_Joint: -1.256637061
+
+  joint_offset:
+    abad_L_Joint: 1.04712
+    hip_L_Joint: 0.0132306
+    knee_L_Joint: 0.153885
+    abad_R_Joint: -0.564388
+    hip_R_Joint: 0.156282
+    knee_R_Joint: 0.304354
+
+gait:
+  list: ["stance", "walk"]
+
+  stance:
+    modeSequence: ["STANCE"]
+    switchingTimes: [0.0, 0.5]
+
+  walk:
+    modeSequence: ["LF", "RF"]
+    switchingTimes: [0.0, 0.25, 0.5]
+
+  frequency: 500.0
+
+simulation:
+  frequency: # Hz
+    joints_state: 500.0
+    imu: 400.0
+    touch_sensor: 500.0
+    odom: 30.0
+    drop_old_message: 10.0
+
+estimation:
+  dt: 0.001
+  use_odom: false
+  hardware: false
+
+controller:
+  frequency: 1000.0
+  use_vector_field: true
+
+generation:
+  frequency: 200.0

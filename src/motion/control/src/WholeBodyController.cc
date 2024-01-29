@@ -337,7 +337,7 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
   const size_t nv = pinocchioInterface_ptr_->nv();
 
   auto foot_traj = referenceBuffer_->getFootPosTraj();
-  auto base_pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_pos_traj = referenceBuffer_->getLipBasePosTraj();
 
   if (nc - numContacts_ <= 0 || foot_traj.size() != nc ||
       base_pos_traj.get() == nullptr) {
@@ -389,7 +389,7 @@ MatrixDB WholeBodyController::formulateSwingLegTask() {
 
 void WholeBodyController::differential_inv_kin() {
   auto foot_traj_array = referenceBuffer_->getFootPosTraj();
-  auto pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
+  auto pos_traj = referenceBuffer_.get()->getLipBasePosTraj();
 
   if (foot_traj_array.empty() || pos_traj.get() == nullptr) {
     return;
@@ -511,11 +511,11 @@ MatrixDB WholeBodyController::formulateContactForceTask() {
   contact_force.A.setZero(3 * nc, numDecisionVars_);
   if (policy != nullptr) {
     contact_force.b = policy->force_des;
-    // weightContactForce_ = 5e1;
+    weightContactForce_ = 5e1;
   } else {
     contact_force.b = referenceBuffer_->getOptimizedForceTraj()->evaluate(
         nodeHandle_->now().seconds());
-    // weightContactForce_ = 5e1;
+    weightContactForce_ = 5e1;
   }
   for (size_t i = 0; i < nc; ++i) {
     contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);

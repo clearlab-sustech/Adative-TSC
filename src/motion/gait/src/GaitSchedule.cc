@@ -218,7 +218,7 @@ std::shared_ptr<ModeSchedule> GaitSchedule::eval(scalar_t time_period) {
     time_l -= gait_duration;
   }
   auto modeSchedule =
-      std::make_shared<ModeSchedule>(duration, eventPhases, modeSequence);
+      std::make_shared<ModeSchedule>(duration, eventPhases, modeSequence, gait_duration);
   if (!modeSchedule->isValidModeSequence()) {
     throw std::runtime_error(
         "GaitSchedule::eval >>> modeSchedule is not valid");

@@ -58,6 +58,7 @@ TrajectorGeneration::~TrajectorGeneration() {
 
 void TrajectorGeneration::setHeightCmd(scalar_t h) {
   baseOpt_ptr->setHeightCmd(h);
+  lipGen_ptr->setHeightCmd(h);
 }
 
 void TrajectorGeneration::updateCurrentState(
@@ -97,7 +98,7 @@ void TrajectorGeneration::innerLoop() {
 
       generateBaseTraj();
 
-      generateFootholds();
+      // generateFootholds();
 
       generateFootTraj();
     }
@@ -111,8 +112,8 @@ void TrajectorGeneration::innerLoop() {
 }
 
 void TrajectorGeneration::TrajectorGeneration::generateBaseTraj() {
+  lipGen_ptr->optimize();
   baseOpt_ptr->optimize();
-  // lipGen_ptr->optimize();
 }
 
 void TrajectorGeneration::generateFootholds() { footholdOpt_ptr->optimize(); }
@@ -224,7 +225,9 @@ void TrajectorGeneration::generateFootTraj() {
 }
 
 void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
+  lipGen_ptr->setVelCmd(vd, yawd);
   baseOpt_ptr->setVelCmd(vd, yawd);
+
 }
 
 } // namespace clear

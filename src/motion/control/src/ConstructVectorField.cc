@@ -23,7 +23,7 @@ ConstructVectorField::ConstructVectorField(
   total_mass_ = pinocchioInterfacePtr_->total_mass();
   weight_.setZero(12, 12);
   // weight_.diagonal() << 100, 100, 100, 20.0, 20.0, 20.0, 200, 200, 200, 10.0,
-      //     10.0, 10.0;
+  //     10.0, 10.0;
 
   weight_.diagonal() << 30, 30, 60, 1.0, 0.1, 0.1, 20, 20, 10, 0.3, 0.3, 0.2;
   // weight_ = 20.0 * weight_;
@@ -51,7 +51,7 @@ void ConstructVectorField::updateReferenceBuffer(
 
 void ConstructVectorField::add_linear_system(size_t k) {
   const scalar_t time_k = time_now_ + k * dt_;
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto pos_traj = referenceBuffer_->getLipBasePosTraj();
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto foot_traj = referenceBuffer_->getFootPosTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
@@ -69,7 +69,8 @@ void ConstructVectorField::add_linear_system(size_t k) {
   ocp_[k].A.block<3, 3>(0, 3).diagonal().fill(dt_);
   ocp_[k].A.block<3, 3>(6, 9) = dt_ * getJacobiFromOmegaToRPY(rpy);
   ocp_[k].B.setZero(12, nf * 3);
-  vector3_t xc = phase * pos_traj->evaluate(time_k) + (1.0 - phase) * base_pose.translation();
+  vector3_t xc = phase * pos_traj->evaluate(time_k) +
+                 (1.0 - phase) * base_pose.translation();
   for (size_t i = 0; i < nf; i++) {
     const auto &foot_name = foot_names[i];
     if (contact_flag[i]) {
@@ -83,7 +84,6 @@ void ConstructVectorField::add_linear_system(size_t k) {
 
   ocp_[k].b.setZero(12);
   ocp_[k].b(5) += -dt_ * grav_;
-  
 }
 
 void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
@@ -118,7 +118,8 @@ void ConstructVectorField::add_state_input_constraints(size_t k, size_t N) {
 void ConstructVectorField::add_cost(size_t k, size_t N) {
   const size_t nf = foot_names.size();
   const scalar_t time_k = time_now_ + k * dt_;
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto pos_traj = referenceBuffer_->getLipBasePosTraj();
+  auto vel_traj = referenceBuffer_->getLipBaseVelTraj();
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
 
@@ -128,7 +129,7 @@ void ConstructVectorField::add_cost(size_t k, size_t N) {
       getJacobiFromRPYToOmega(rpy_des) * rpy_traj->derivative(time_k, 1);
 
   vector_t x_des(12);
-  x_des << pos_traj->evaluate(time_k), pos_traj->derivative(time_k, 1), rpy_des,
+  x_des << pos_traj->evaluate(time_k), vel_traj->evaluate(time_k), rpy_des,
       omega_des;
 
   ocp_[k].Q = weight_;
@@ -170,11 +171,11 @@ ConstructVectorField::compute() {
   if (!referenceBuffer_->isReady()) {
     return feedback_law_ptr;
   }
-  
+
   time_now_ = nodeHandle_->now().seconds();
 
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
-  
+
   size_t N = rpy_traj->duration() / dt_;
   ocp_.resize(N + 1);
 

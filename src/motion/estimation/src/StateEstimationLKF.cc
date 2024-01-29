@@ -1,5 +1,6 @@
 #include "estimation/StateEstimationLKF.h"
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <core/gait/LegLogic.h>
 #include <yaml-cpp/yaml.h>
 
 namespace clear {
@@ -51,14 +52,6 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
         std::bind(&StateEstimationLKF::imuCallback, this,
                   std::placeholders::_1));
 
-    std::string touch_sensor_topic =
-        config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
-    touch_subscription_ =
-        nodeHandle_->create_subscription<trans::msg::TouchSensor>(
-            topic_prefix + touch_sensor_topic, qos,
-            std::bind(&StateEstimationLKF::touchCallback, this,
-                      std::placeholders::_1));
-
     std::string joints_topic =
         config_["global"]["topic_names"]["joints_state"].as<std::string>();
     joints_state_subscription_ =
@@ -88,7 +81,7 @@ StateEstimationLKF::~StateEstimationLKF() {
 
 void StateEstimationLKF::setup() {
   x_est.setZero();
-  x_est.z() = 0.1;
+  x_est.z() = 0.5;
   ps_.setZero();
   vs_.setZero();
 
@@ -106,28 +99,27 @@ void StateEstimationLKF::setup() {
   C_.setZero();
   C_.block<3, 6>(0, 0) = C1;
   C_.block<3, 6>(3, 0) = C1;
-  C_.block<3, 6>(6, 0) = C1;
-  C_.block<3, 6>(9, 0) = C1;
-  C_.block<12, 12>(0, 6).diagonal().fill(-1.0);
-  C_.block<3, 6>(12, 0) = C2;
-  C_.block<3, 6>(15, 0) = C2;
-  C_.block<3, 6>(18, 0) = C2;
-  C_.block<3, 6>(21, 0) = C2;
-  C_(24, 8) = 1.0;
-  C_(25, 11) = 1.0;
-  C_(26, 14) = 1.0;
-  C_(27, 17) = 1.0;
+  C_.block<6, 6>(0, 6).diagonal().fill(-1.0);
+  C_.block<3, 6>(6, 0) = C2;
+  C_.block<3, 6>(9, 0) = C2;
+  C_(12, 8) = 1.0;
+  C_(13, 11) = 1.0;
 
   Sigma_.setZero();
   Sigma_.diagonal().fill(100.0);
   Q0_.setIdentity();
   Q0_.topLeftCorner(3, 3).diagonal().fill(dt_ / 20.0);
   Q0_.block<3, 3>(3, 3).diagonal().fill(dt_ * 9.81 / 20.0);
-  Q0_.bottomRightCorner(12, 12).diagonal().fill(dt_);
+  Q0_.bottomRightCorner(6, 6).diagonal().fill(dt_);
   R0_.setIdentity();
 }
 
 void StateEstimationLKF::setContactFlag(vector<bool> flag) { cflag_ = flag; }
+
+void StateEstimationLKF::updateModeSchedule(
+    std::shared_ptr<ModeSchedule> mode_schedule) {
+  mode_schedule_buffer_.push(mode_schedule);
+}
 
 void StateEstimationLKF::angularMotionEstimate(
     const sensor_msgs::msg::Imu &imu_data, std::shared_ptr<vector_t> qpos,
@@ -157,18 +149,18 @@ void StateEstimationLKF::linearMotionEstimate(
   scalar_t noise_vimu = 0.02;
   scalar_t noise_pfoot = 0.002;
   scalar_t noise_pimu_rel_foot = 0.001;
-  scalar_t noise_vimu_rel_foot = 0.02;
+  scalar_t noise_vimu_rel_foot = 0.1;
   scalar_t noise_zfoot = 0.001;
 
-  matrix_t Q = matrix_t::Identity(18, 18);
+  matrix_t Q = matrix_t::Identity(12, 12);
   Q.topLeftCorner(3, 3) = Q0_.topLeftCorner(3, 3) * noise_pimu;
   Q.block<3, 3>(3, 3) = Q0_.block<3, 3>(3, 3) * noise_vimu;
-  Q.block<12, 12>(6, 6) = Q0_.block<12, 12>(6, 6) * noise_pfoot;
+  Q.block<6, 6>(6, 6) = Q0_.block<6, 6>(6, 6) * noise_pfoot;
 
-  matrix_t R = matrix_t::Identity(28, 28);
-  R.topLeftCorner(12, 12) = R0_.topLeftCorner(12, 12) * noise_pimu_rel_foot;
-  R.block<12, 12>(12, 12) = R0_.block<12, 12>(12, 12) * noise_vimu_rel_foot;
-  R.block<4, 4>(24, 24) = R0_.block<4, 4>(24, 24) * noise_zfoot;
+  matrix_t R = matrix_t::Identity(14, 14);
+  R.topLeftCorner(6, 6) = R0_.topLeftCorner(6, 6) * noise_pimu_rel_foot;
+  R.block<6, 6>(6, 6) = R0_.block<6, 6>(6, 6) * noise_vimu_rel_foot;
+  R.block<2, 2>(12, 12) = R0_.block<2, 2>(12, 12) * noise_zfoot;
 
   size_t q_idx = 0;
   size_t idx1 = 0;
@@ -180,11 +172,15 @@ void StateEstimationLKF::linearMotionEstimate(
   v0 << x_est[3], x_est[4], x_est[5];
 
   pinocchioInterface_ptr->updateRobotState(*qpos, *qvel);
-  const auto touch_sensor_data = touch_msg_buffer.get()->value;
+  auto mode_schedule = mode_schedule_buffer_.get();
+  auto contact_flag =
+      biped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(0.0));
+  auto ntlo = biped::getTimeOfNextLiftOff(0, mode_schedule);
+  const scalar_t gait_cycle = mode_schedule->gaitCycle();
 
   bool release_ = (abs(w_acc.z()) < 1.0);
-  for (auto &data : touch_sensor_data) {
-    release_ &= (data < 2.0);
+  for (auto &flag : contact_flag) {
+    release_ &= (!flag);
   }
 
   for (size_t i = 0; i < foot_names.size(); i++) {
@@ -197,15 +193,22 @@ void StateEstimationLKF::linearMotionEstimate(
 
     int i1 = 3 * i;
     q_idx = 6 + i1;
-    idx1 = 12 + i1;
-    idx2 = 24 + i;
+    idx1 = 6 + i1;
+    idx2 = 12 + i;
 
-    scalar_t trust;
-    if (touch_sensor_data[i] > 2.0 || release_) {
-      trust = 1.0;
+    scalar_t trust = 1.0;
+    if (contact_flag[i] || release_) {
+      const scalar_t trust_window = 0.15;
+      scalar_t contact_phase = 1.0 - ntlo[i] / (0.5 * gait_cycle);
+      if (contact_phase < trust_window) {
+        trust = contact_phase / trust_window;
+      } else if (contact_phase > (1.0 - trust_window)) {
+        trust = (1.0 - contact_phase) / trust_window;
+      }
     } else {
-      trust = std::max(touch_sensor_data[i] / 2.0, 0.0);
+      trust = 0.0;
     }
+
     scalar_t high_suspect_number = 500.0;
 
     Q.block<3, 3>(q_idx, q_idx) = (1.0 + (1.0 - trust) * high_suspect_number) *
@@ -218,7 +221,7 @@ void StateEstimationLKF::linearMotionEstimate(
     vs_.segment(i1, 3) = (1.0 - trust) * v0 + trust * (-v_f);
   }
 
-  Eigen::Matrix<scalar_t, 28, 1> y;
+  Eigen::Matrix<scalar_t, 14, 1> y;
   y << ps_, vs_, pzs;
   vector_t x_pred = A_ * x_est + B_ * w_acc;
 
@@ -227,12 +230,12 @@ void StateEstimationLKF::linearMotionEstimate(
   vector_t correct = S.lu().solve(y - C_ * x_pred);
   x_est = x_pred + Sigma_bar * C_.transpose() * correct;
   matrix_t SC_ = S.lu().solve(C_);
-  Sigma_ = (matrix_t::Identity(18, 18) - Sigma_bar * C_.transpose() * SC_) *
+  Sigma_ = (matrix_t::Identity(12, 12) - Sigma_bar * C_.transpose() * SC_) *
            Sigma_bar;
   Sigma_ = 0.5 * (Sigma_ + Sigma_.transpose());
   if (Sigma_.topLeftCorner(2, 2).determinant() > 1e-6) {
-    Sigma_.topRightCorner(2, 16).setZero();
-    Sigma_.bottomLeftCorner(16, 2).setZero();
+    Sigma_.topRightCorner(2, 10).setZero();
+    Sigma_.bottomLeftCorner(10, 2).setZero();
     Sigma_.topLeftCorner(2, 2) *= 0.1;
   }
   qpos->head(3) = x_est.head(3);
@@ -245,7 +248,7 @@ void StateEstimationLKF::innerLoop() {
   const scalar_t t0 = nodeHandle_->now().seconds();
   while (rclcpp::ok() && run_.get()) {
     if (imu_msg_buffer.get().get() == nullptr ||
-        touch_msg_buffer.get().get() == nullptr ||
+        mode_schedule_buffer_.get().get() == nullptr ||
         joint_state_msg_buffer.get().get() == nullptr ||
         (use_odom_ && odom_msg_buffer.get().get() == nullptr)) {
       continue;
@@ -326,13 +329,6 @@ void StateEstimationLKF::imuCallback(
   }
 }
 
-void StateEstimationLKF::touchCallback(
-    const trans::msg::TouchSensor::SharedPtr msg) const {
-  if (msg->header.frame_id == robot_name) {
-    touch_msg_buffer.push(msg);
-  }
-}
-
 void StateEstimationLKF::jointCallback(
     const sensor_msgs::msg::JointState::SharedPtr msg) const {
   if (msg->header.frame_id == robot_name) {
@@ -343,12 +339,6 @@ void StateEstimationLKF::jointCallback(
 void StateEstimationLKF::setImuMsg(sensor_msgs::msg::Imu::SharedPtr msg) {
   if (msg->header.frame_id == robot_name) {
     imu_msg_buffer.push(msg);
-  }
-}
-
-void StateEstimationLKF::setTouchMsg(trans::msg::TouchSensor::SharedPtr msg) {
-  if (msg->header.frame_id == robot_name) {
-    touch_msg_buffer.push(msg);
   }
 }
 

@@ -10,11 +10,14 @@ namespace clear {
 
 ModeSchedule::ModeSchedule(scalar_t duration,
                            std::vector<scalar_t> &eventPhases,
-                           std::vector<size_t> &modeSequence)
+                           std::vector<size_t> &modeSequence,
+                           scalar_t gait_cycle)
     : duration_(duration), eventPhases_(std::move(eventPhases)),
-      modeSequence_(std::move(modeSequence)) {}
+      modeSequence_(std::move(modeSequence)), gait_cycle_(gait_cycle) {}
 
 scalar_t ModeSchedule::duration() const { return duration_; }
+
+scalar_t ModeSchedule::gaitCycle() const { return gait_cycle_; }
 
 const std::vector<scalar_t> &ModeSchedule::eventPhases() const {
   return eventPhases_;

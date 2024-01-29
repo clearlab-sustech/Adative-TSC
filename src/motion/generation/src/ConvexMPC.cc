@@ -75,7 +75,7 @@ void ConvexMPC::generateTrajRef() {
       pos_start += dt_ * vw;
       pos_start.z() = h_des;
     } */
-    pos_start.head(2) =base_pose_m.translation().head(2) + dt_ * vw.head(2);
+    pos_start.head(2) = base_pose_m.translation().head(2) + dt_ * vw.head(2);
     pos_start.z() = h_des;
   }
 
@@ -101,7 +101,7 @@ void ConvexMPC::generateTrajRef() {
       base_pose_m.rotation() * vel_cmd,
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_pos->fit(time, pos_t);
-  referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
+  // referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
 
   auto cubicspline_rpy = std::make_shared<CubicSplineTrajectory>(3);
   cubicspline_rpy->set_boundary(
@@ -115,7 +115,7 @@ void ConvexMPC::generateTrajRef() {
 void ConvexMPC::getDynamics(scalar_t time_cur, size_t k,
                             const std::shared_ptr<ModeSchedule> mode_schedule) {
   const scalar_t time_k = time_cur + k * dt_;
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto pos_traj = referenceBuffer_->getLipBasePosTraj();
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto foot_traj = referenceBuffer_->getFootPosTraj();
 
@@ -183,30 +183,25 @@ void ConvexMPC::getInequalityConstraints(
 void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
                          const std::shared_ptr<ModeSchedule> mode_schedule) {
   const size_t nf = foot_names.size();
-  const scalar_t time_k = time_cur + k * dt_;
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  const scalar_t time_k = time_cur + (k + 1) * dt_;
+  auto pos_traj = referenceBuffer_->getLipBasePosTraj();
+  auto vel_traj = referenceBuffer_->getLipBaseVelTraj();
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
 
   vector3_t rpy_des =
       rpy_traj->evaluate(time_k) - rpy_traj->evaluate(time_cur) + rpy_des_start;
   vector3_t omega_des =
       getJacobiFromRPYToOmega(rpy_des) * rpy_traj->derivative(time_k, 1);
-  vector3_t v_des = pos_traj->derivative(time_k, 1);
+  vector3_t v_des = vel_traj->evaluate(time_k);
 
   vector_t x_des(12);
   x_des << pos_traj->evaluate(time_k), v_des, rpy_des, omega_des;
 
   // std::cout << "xdes " << k << ": " << x_des.transpose() << "\n";
 
-  matrix_t weight_t = weight_;
-  // weight_t.topLeftCorner(3, 3) =
-  //     skew(v_des).transpose() * weight_t.topLeftCorner(3, 3) * skew(v_des);
-  // weight_t.block<3, 3>(3, 3) =
-  //     skew(v_des).transpose() * weight_t.block<3, 3>(3, 3) * skew(v_des);
-
-  ocp_[k].Q = weight_t;
+  ocp_[k].Q = weight_;
   ocp_[k].S = matrix_t::Zero(3 * nf, 12);
-  ocp_[k].q = -weight_t * x_des;
+  ocp_[k].q = -weight_ * x_des;
   ocp_[k].r.setZero(3 * nf);
   if (k < N) {
     ocp_[k].R = 1e-5 * matrix_t::Identity(3 * nf, 3 * nf);
@@ -231,8 +226,8 @@ void ConvexMPC::getCosts(scalar_t time_cur, size_t k, size_t N,
     }
     ocp_[k].r = -ocp_[k].R * force_des;
   } else {
-    // ocp_[k].Q = 1e2 * weight_;
-    // ocp_[k].q = 1e2 * weight_ * x_des;
+    // ocp_[k].Q = 1e2 * ocp_[k].Q;
+    // ocp_[k].q = 1e2 * ocp_[k].q;
   }
 }
 
@@ -248,7 +243,7 @@ void ConvexMPC::optimize() {
     return;
   }
 
-  auto pos_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto pos_traj = referenceBuffer_->getLipBasePosTraj();
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
 
   size_t N = mode_schedule->duration() / dt_;

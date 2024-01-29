@@ -198,7 +198,8 @@ void TrajectoryStabilization::innerLoop() {
         save_cmd << cmds->torque.transpose() << "\n";
       }
 
-      auto base_pos = referenceBuffer_->getIntegratedBasePosTraj();
+      auto base_pos = referenceBuffer_->getLipBasePosTraj();
+      auto base_vel = referenceBuffer_->getLipBaseVelTraj();
       auto base_rpy = referenceBuffer_->getIntegratedBaseRpyTraj();
       if (base_pos.get() != nullptr && base_rpy.get() != nullptr) {
         const scalar_t t = nodeHandle_->now().seconds();
@@ -209,7 +210,7 @@ void TrajectoryStabilization::innerLoop() {
                    << base_twist.linear().transpose() << " "
                    << base_twist.angular().transpose() << " "
                    << base_pos->evaluate(t).transpose() << " "
-                   << base_pos->derivative(t, 1).transpose() << " "
+                   << base_vel->evaluate(t).transpose() << " "
                    << (getJacobiFromRPYToOmega(base_rpy->evaluate(t)) *
                        base_rpy->derivative(t, 1))
                           .transpose()

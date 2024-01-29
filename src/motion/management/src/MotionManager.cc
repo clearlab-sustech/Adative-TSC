@@ -19,9 +19,6 @@ void MotionManager::init() {
   intializationPtr_ =
       std::make_shared<Initialization>(this->shared_from_this());
 
-  // intializationPtr_->reset_simulation();
-  // rclcpp::spin_some(this->shared_from_this());
-
   joyStickPtr_ = std::make_shared<JoyStick>(this->shared_from_this());
 
   // while (!joyStickPtr_->isStart()) {
@@ -50,19 +47,19 @@ void MotionManager::init() {
                                        .get_parameter_value()
                                        .get<std::string>();
 
-  // auto config_ = YAML::LoadFile(config_file_);
-  // bool hardware_ = config_["estimation"]["hardware"].as<bool>();
-  // if (hardware_) {
-  //   mrosHWPtr_ = std::make_shared<MrosHW>(this->shared_from_this());
-  //   scalar_t t0 = this->now().seconds();
-  //   while (this->now().seconds() - t0 < 1.0) {
-  //     mrosHWPtr_->switch_to_damping();
-  //     mrosHWPtr_->read();
-  //   }
-  // } else {
-  //   intializationPtr_->reset_simulation();
-  //   rclcpp::spin_some(this->shared_from_this());
-  // }
+  auto config_ = YAML::LoadFile(config_file_);
+  bool hardware_ = config_["estimation"]["hardware"].as<bool>();
+  if (hardware_) {
+    mrosHWPtr_ = std::make_shared<MrosHW>(this->shared_from_this());
+    scalar_t t0 = this->now().seconds();
+    while (this->now().seconds() - t0 < 1.0) {
+      mrosHWPtr_->switch_to_damping();
+      mrosHWPtr_->read();
+    }
+  } else {
+    // intializationPtr_->reset_simulation();
+    // rclcpp::spin_some(this->shared_from_this());
+  }
 
   inner_loop_thread_ = std::thread(&MotionManager::innerLoop, this);
   run_.push(true);
@@ -71,7 +68,7 @@ void MotionManager::init() {
 void MotionManager::innerLoop() {
   std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-  rclcpp::Rate loop_rate(500.0);
+  rclcpp::Rate loop_rate(1000.0);
   const scalar_t ts = this->now().seconds();
 
   while (rclcpp::ok() && run_.get()) {
@@ -89,27 +86,27 @@ void MotionManager::innerLoop() {
                              joyStickPtr_->getYawVelCmd());
     }
 
-    /* if (this->now().seconds() > ts + 6.0 &&
-        gaitSchedulePtr_->getCurrentGaitName() != "trot") {
-      gaitSchedulePtr_->switchGait("trot");
+    // if (this->now().seconds() > ts + 6.0 &&
+    //     gaitSchedulePtr_->getCurrentGaitName() != "trot") {
+    //   gaitSchedulePtr_->switchGait("trot");
+    // }
+    if (this->now().seconds() > ts + 6.0) {
+      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.0);
     }
-    if (gaitSchedulePtr_->getCurrentGaitName() == "trot") {
-      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.1);
-    } */
 
     // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());
-
-    /* if (mrosHWPtr_ != nullptr) {
-      mrosHWPtr_->read();
-      estimatorPtr_->setImuMsg(mrosHWPtr_->get_imu_msg());
-      estimatorPtr_->setTouchMsg(mrosHWPtr_->get_touch_msg());
-      estimatorPtr_->setJointsMsg(mrosHWPtr_->get_joint_msg());
-    } */
 
     scalar_t horizon_time_ =
         min(2.0, max(0.3, gaitSchedulePtr_->currentGaitCycle()));
 
     auto mode_schedule_ptr = gaitSchedulePtr_->eval(horizon_time_);
+
+    estimatorPtr_->updateModeSchedule(mode_schedule_ptr);
+    if (mrosHWPtr_ != nullptr) {
+      mrosHWPtr_->read();
+      estimatorPtr_->setImuMsg(mrosHWPtr_->get_imu_msg());
+      estimatorPtr_->setJointsMsg(mrosHWPtr_->get_joint_msg());
+    }
 
     trajGenPtr_->updateCurrentState(estimatorPtr_->getQpos(),
                                     estimatorPtr_->getQvel());
@@ -126,10 +123,10 @@ void MotionManager::innerLoop() {
                                 estimatorPtr_->getQvel());
     visPtr_->updateReferenceBuffer(trajGenPtr_->getReferenceBuffer());
 
-    /* if (mrosHWPtr_ != nullptr) {
+    if (mrosHWPtr_ != nullptr) {
       mrosHWPtr_->set_actuator_cmds(trajectoryStabilizationPtr_->getCmds());
       mrosHWPtr_->send();
-    } */
+    }
 
     loop_rate.sleep();
   }

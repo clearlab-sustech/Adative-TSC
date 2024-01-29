@@ -203,7 +203,7 @@ void DataVisualization::publishFootholds() {
 }
 
 void DataVisualization::publishBaseTrajectory() {
-  auto base_pos_traj_int = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_pos_traj_int = referenceBuffer_->getLipBasePosTraj();
   auto base_pos_traj = referenceBuffer_->getOptimizedBasePosTraj();
   if (base_pos_traj_int == nullptr || base_pos_traj == nullptr)
     return;

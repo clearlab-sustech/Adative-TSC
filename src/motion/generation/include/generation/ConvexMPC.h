@@ -50,7 +50,7 @@ private:
   std::string base_name;
   std::vector<std::string> foot_names;
 
-  scalar_t h_des = 0.53;
+  scalar_t h_des = 0.58;
   scalar_t dt_ = 0.02;
   const scalar_t grav_ = 9.81;
   scalar_t total_mass_;

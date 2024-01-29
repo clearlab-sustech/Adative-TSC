@@ -85,7 +85,7 @@ void FootholdOptimization::add_costs(scalar_t t, size_t k) {
   auto base_rpy_traj = referenceBuffer_->getOptimizedBaseRpyTraj();
 
   if (base_pos_ref_traj.get() == nullptr) {
-    base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
+    base_pos_ref_traj = referenceBuffer_->getLipBasePosTraj();
   }
   if (base_rpy_traj.get() == nullptr) {
     base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
@@ -116,7 +116,7 @@ void FootholdOptimization::add_costs(scalar_t t, size_t k) {
 
 void FootholdOptimization::optimize() {
   footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();
-  auto base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_pos_ref_traj = referenceBuffer_->getLipBasePosTraj();
   auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
   if (mode_schedule.get() == nullptr || base_pos_ref_traj.get() == nullptr ||
@@ -176,7 +176,7 @@ void FootholdOptimization::heuristic1() {
 
   const scalar_t t = nodeHandle_->now().seconds();
 
-  auto base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_pos_ref_traj = referenceBuffer_->getLipBasePosTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
 
   vector3_t v_des = base_pos_ref_traj->derivative(t, 1);
@@ -214,7 +214,7 @@ void FootholdOptimization::heuristic2() {
 
   const scalar_t t = nodeHandle_->now().seconds();
 
-  auto base_pos_ref_traj = referenceBuffer_->getIntegratedBasePosTraj();
+  auto base_pos_ref_traj = referenceBuffer_->getLipBasePosTraj();
   auto base_rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
   const auto base_pose = pinocchioInterface_ptr_->getFramePose(base_name);

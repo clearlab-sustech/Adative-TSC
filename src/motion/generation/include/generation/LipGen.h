@@ -24,7 +24,7 @@ public:
 
   void optimize();
 
-  void setVelCmd(vector3_t vel);
+  void setVelCmd(vector3_t vd, scalar_t yawd);
 
   void setHeightCmd(scalar_t h);
 
@@ -47,6 +47,7 @@ private:
   Node::SharedPtr nodeHandle_;
   std::shared_ptr<PinocchioInterface> pinocchioInterface_ptr_;
   std::shared_ptr<ReferenceBuffer> referenceBuffer_;
+  std::shared_ptr<CubicSplineTrajectory> pos_ref_ptr_;
 
   std::string base_name;
   std::vector<std::string> foot_names;
@@ -64,6 +65,7 @@ private:
   hpipm::OcpQpIpmSolverSettings solver_settings;
 
   vector3_t vel_cmd;
+  scalar_t yawd_ = 0.0;
 
   vector3_t pos_start;
   bool first_run = true;

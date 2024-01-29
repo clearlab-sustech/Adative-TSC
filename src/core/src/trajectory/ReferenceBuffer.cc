@@ -9,26 +9,30 @@ ReferenceBuffer::~ReferenceBuffer() {}
 
 void ReferenceBuffer::clearAll() {
   integ_base_rpy_buffer_.clear();
-  integ_base_pos_buffer_.clear();
+  lip_base_pos_buffer_.clear();
+  lip_base_vel_buffer_.clear();
   optimized_base_pos_buffer_.clear();
   optimized_base_rpy_buffer_.clear();
   optimized_base_vel_buffer_.clear();
   optimized_base_omega_buffer_.clear();
   foot_rpy_buffer_.clear();
   foot_pos_buffer_.clear();
+  lip_foot_pos_buffer_.clear();
   joints_pos_buffer_.clear();
 }
 
 bool ReferenceBuffer::isReady() { 
   bool is_ready_ = true;
   is_ready_ &= (integ_base_rpy_buffer_.get()!=nullptr);
-  is_ready_ &= (integ_base_pos_buffer_.get()!=nullptr);
+  is_ready_ &= (lip_base_pos_buffer_.get()!=nullptr);
+  is_ready_ &= (lip_base_vel_buffer_.get()!=nullptr);
   is_ready_ &= (optimized_base_pos_buffer_.get()!=nullptr);
   is_ready_ &= (optimized_base_rpy_buffer_.get()!=nullptr);
   is_ready_ &= (optimized_base_vel_buffer_.get()!=nullptr);
   is_ready_ &= (optimized_base_omega_buffer_.get()!=nullptr);
   is_ready_ &= (mode_schedule_buffer_.get()!=nullptr);
   is_ready_ &= !foot_pos_buffer_.get().empty();
+  is_ready_ &= !lip_foot_pos_buffer_.get().empty();
   is_ready_ &= !footholds_buffer_.get().empty();
   return is_ready_; 
 }
@@ -39,8 +43,13 @@ ReferenceBuffer::getIntegratedBaseRpyTraj() const {
 }
 
 std::shared_ptr<CubicSplineTrajectory>
-ReferenceBuffer::getIntegratedBasePosTraj() const {
-  return integ_base_pos_buffer_.get();
+ReferenceBuffer::getLipBasePosTraj() const {
+  return lip_base_pos_buffer_.get();
+}
+
+std::shared_ptr<CubicSplineTrajectory>
+ReferenceBuffer::getLipBaseVelTraj() const {
+  return lip_base_vel_buffer_.get();
 }
 
 std::shared_ptr<CubicSplineTrajectory>
@@ -57,7 +66,7 @@ ReferenceBuffer::getOptimizedBasePosTraj() const {
   if (optimized_base_pos_buffer_.get() != nullptr) {
     return optimized_base_pos_buffer_.get();
   } else {
-    return integ_base_pos_buffer_.get();
+    return lip_base_vel_buffer_.get();
   }
 }
 
@@ -87,6 +96,11 @@ ReferenceBuffer::getFootPosTraj() const {
   return foot_pos_buffer_.get();
 }
 
+std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>
+ReferenceBuffer::getLipFootPosTraj() const {
+  return lip_foot_pos_buffer_.get();
+}
+
 std::shared_ptr<CubicSplineTrajectory>
 ReferenceBuffer::getJointsPosTraj() const {
   return joints_pos_buffer_.get();
@@ -106,9 +120,14 @@ void ReferenceBuffer::setIntegratedBaseRpyTraj(
   integ_base_rpy_buffer_.push(base_rpy_traj);
 }
 
-void ReferenceBuffer::setIntegratedBasePosTraj(
+void ReferenceBuffer::setLipBasePosTraj(
     std::shared_ptr<CubicSplineTrajectory> base_pos_traj) {
-  integ_base_pos_buffer_.push(base_pos_traj);
+  lip_base_pos_buffer_.push(base_pos_traj);
+}
+
+void ReferenceBuffer::setLipBaseVelTraj(
+    std::shared_ptr<CubicSplineTrajectory> base_vel_traj) {
+  lip_base_vel_buffer_.push(base_vel_traj);
 }
 
 void ReferenceBuffer::setOptimizedBasePosTraj(
@@ -147,6 +166,12 @@ void ReferenceBuffer::setFootPosTraj(
     std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>
         foot_pos_traj) {
   foot_pos_buffer_.push(foot_pos_traj);
+}
+
+void ReferenceBuffer::setLipFootPosTraj(
+    std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>
+        foot_pos_traj) {
+  lip_foot_pos_buffer_.push(foot_pos_traj);
 }
 
 void ReferenceBuffer::setJointsPosTraj(

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "generation/LegLogic.h"
+#include <core/gait/LegLogic.h>
 #include <core/gait/ModeSchedule.h>
 #include <core/gait/MotionPhaseDefinition.h>
 #include <core/trajectory/ReferenceBuffer.h>

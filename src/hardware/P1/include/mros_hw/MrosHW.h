@@ -12,7 +12,6 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <trans/msg/actuator_cmds.hpp>
-#include <trans/msg/touch_sensor.hpp>
 #include <vector>
 
 using namespace std;
@@ -22,17 +21,11 @@ namespace clear {
 
 class MrosHW {
 public:
-  std::map<std::string, size_t> jointsName2IndexMap{};
-
-  std::map<size_t, std::string> jointsIndex2NameMap{};
-
   MrosHW(Node::SharedPtr node_handle);
 
   ~MrosHW();
 
   sensor_msgs::msg::Imu::SharedPtr get_imu_msg();
-
-  trans::msg::TouchSensor::SharedPtr get_touch_msg();
 
   sensor_msgs::msg::JointState::SharedPtr get_joint_msg();
 
@@ -49,11 +42,10 @@ private:
 
   Node::SharedPtr nodeHandle_;
   std::string robot_type_;
-
+  std::vector<std::string> actuated_joints_name;
 
   sensor_msgs::msg::JointState::SharedPtr joints_state_ptr;
   sensor_msgs::msg::Imu::SharedPtr imu_data_ptr;
-  trans::msg::TouchSensor::SharedPtr touch_sensor_ptr;
 
   Buffer<trans::msg::ActuatorCmds::SharedPtr> actuator_cmd_msg_buffer;
 
@@ -74,6 +66,7 @@ private:
 
   std::vector<scalar_t> jointLimits_;   // NOLINT(modernize-avoid-c-arrays)
   std::vector<scalar_t> jointOffsets_;  // NOLINT(modernize-avoid-c-arrays)
+  std::map<std::string, size_t> jointsName2IndexMap;
 
   // Used for temporarily cache data from atomic operations
   mros::controller_msgs::IMUData robotImu_;

@@ -54,8 +54,6 @@ private:
 
   void odomCallback();
 
-  void touchCallback();
-
   void jointCallback();
 
   void
@@ -71,7 +69,6 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr
       joint_state_publisher_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
-  rclcpp::Publisher<trans::msg::TouchSensor>::SharedPtr touch_publisher_;
 
   rclcpp::Subscription<trans::msg::ActuatorCmds>::SharedPtr
       actuator_cmd_subscription_;

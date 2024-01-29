@@ -11,14 +11,17 @@ private:
   scalar_t duration_;
   std::vector<scalar_t> eventPhases_;
   std::vector<size_t> modeSequence_;
+  scalar_t gait_cycle_;
 
 public:
   ModeSchedule(scalar_t duration, std::vector<scalar_t> &eventPhases,
-               std::vector<size_t> &modeSequence);
+               std::vector<size_t> &modeSequence, scalar_t gait_cycle = 1.0);
 
   ~ModeSchedule() = default;
 
   scalar_t duration() const;
+
+  scalar_t gaitCycle() const;
 
   const std::vector<scalar_t> &eventPhases() const;
 

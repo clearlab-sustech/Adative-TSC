@@ -1,5 +1,5 @@
 #include "generation/LipGen.h"
-#include "generation/LegLogic.h"
+#include <core/gait/LegLogic.h>
 #include <rcpputils/asserts.hpp>
 #include <yaml-cpp/yaml.h>
 
@@ -30,7 +30,8 @@ LipGen::LipGen(Node::SharedPtr nodeHandle,
         pinocchioInterface_ptr_->getFramePose(foot).translation();
     footholds_nominal_pos[foot].z() = 0.0;
     footholds_nominal_pos[foot].y() *= 0.8;
-    footholds_nominal_pos[foot].x() = pinocchioInterface_ptr_->getCoMPos().x();
+    footholds_nominal_pos[foot].x() =
+        pinocchioInterface_ptr_->getCoMPos().x() - 0.02;
     RCLCPP_INFO_STREAM(rclcpp::get_logger("FootholdOptimization"),
                        foot << " nominal pos: "
                             << footholds_nominal_pos[foot].transpose());
@@ -57,19 +58,16 @@ LipGen::LipGen(Node::SharedPtr nodeHandle,
 LipGen::~LipGen() {}
 
 void LipGen::optimize() {
-  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
-  auto pos_ref = referenceBuffer_->getIntegratedBasePosTraj();
-  if (pos_ref == nullptr || rpy_traj == nullptr) {
-    return;
-  }
-
-  const scalar_t time_cur = nodeHandle_->now().seconds();
-
-  size_t N = pos_ref->duration() / dt_;
-  ocp_.resize(N + 1);
 
   const std::shared_ptr<ModeSchedule> mode_schedule =
       referenceBuffer_->getModeSchedule();
+  if (mode_schedule == nullptr) {
+    return;
+  }
+  generateTrajRef();
+  const scalar_t time_cur = nodeHandle_->now().seconds();
+  size_t N = mode_schedule->duration() / dt_;
+  ocp_.resize(N + 1);
   for (size_t k = 0; k <= N; k++) {
     if (k < N) {
       getDynamics(time_cur, k, mode_schedule);
@@ -87,10 +85,10 @@ void LipGen::optimize() {
   hpipm::OcpQpIpmSolver solver(ocp_, solver_settings);
 
   auto pos_m = pinocchioInterface_ptr_->getFramePose(base_name).translation();
-  vector3_t pos_d = pos_ref->evaluate(time_cur);
-  if ((pos_d - pos_m).norm() > 0.05) {
-    pos_m = 0.05 * (pos_d - pos_m).normalized() + pos_m;
-  }
+  // vector3_t pos_d = pos_ref_ptr_->evaluate(time_cur);
+  // if ((pos_d - pos_m).norm() > 0.02) {
+  //   pos_m = 0.02 * (pos_d - pos_m).normalized() + pos_m;
+  // }
 
   size_t nf = foot_names.size();
   vector_t x0(4 + 2 * nf);
@@ -108,16 +106,19 @@ void LipGen::optimize() {
 
   if (res == hpipm::HpipmStatus::Success ||
       res == hpipm::HpipmStatus::MaxIterReached) {
-    std::cout << "###########################################"
-              << "\n";
-    for (auto &sol : solution_) {
-      std::cout << "forward: " << sol.x.transpose() << "\n";
-    }
+    // std::cout << "###########################################"
+    //           << "\n";
+    // for (auto &sol : solution_) {
+    //   std::cout << "forward: " << sol.x.transpose() << "\n";
+    // }
     fitTraj(time_cur, N);
   }
 }
 
-void LipGen::setVelCmd(vector3_t vel) { vel_cmd = vel; }
+void LipGen::setVelCmd(vector3_t vd, scalar_t yawd) {
+  vel_cmd = vd;
+  yawd_ = yawd;
+}
 
 void LipGen::setHeightCmd(scalar_t h) { h_des = h; }
 
@@ -125,43 +126,42 @@ void LipGen::generateTrajRef() {
   const scalar_t t_now = nodeHandle_->now().seconds();
   auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
 
-  scalar_t magn = 0;
-  scalar_t alpha = 0.75;
-  if (t_now - t0 > 6.0) {
-    magn = 0.0 * (sin(alpha * (t_now - t0)) > 0 ? 1.0 : -1.0);
-  }
-
   if (first_run) {
     first_run = false;
     pos_start = base_pose_m.translation();
     pos_start.z() = h_des;
   } else {
+    vector3_t vw = base_pose_m.rotation() * vel_cmd;
     if ((base_pose_m.translation() - pos_start).norm() < 0.2) {
-      pos_start += dt_ * vector3_t(magn, 0, 0.0);
+      pos_start += dt_ * vw;
       pos_start.z() = h_des;
     }
+    // pos_start.head(2) = base_pose_m.translation().head(2) + dt_ * vw.head(2);
+    pos_start.z() = h_des;
   }
 
   std::vector<scalar_t> time;
-  std::vector<vector_t> pos_t;
+  std::vector<vector_t> rpy_t, pos_t;
   scalar_t horizon_time = referenceBuffer_->getModeSchedule()->duration();
   size_t N = horizon_time / 0.05;
+  vector_t rpy_c = toEulerAngles(base_pose_m.rotation());
   for (size_t k = 0; k < N; k++) {
     time.push_back(t_now + 0.05 * k);
-    // vector3_t vel_des = toRotationMatrix(rpy_k) * vel_cmd;
-    vector3_t vel_des = vector3_t(magn, 0, 0.0);
+    vector3_t rpy_k = rpy_c;
+    rpy_k.z() += 0.05 * k * yawd_;
+
+    vector3_t vel_des = toRotationMatrix(rpy_k) * vel_cmd;
     vector3_t pos_k = pos_start + 0.05 * k * vel_des;
     pos_k.z() = h_des;
     pos_t.emplace_back(pos_k);
   }
 
-  auto cubicspline_pos = std::make_shared<CubicSplineTrajectory>(3);
-  cubicspline_pos->set_boundary(
+  pos_ref_ptr_ = std::make_shared<CubicSplineTrajectory>(3);
+  pos_ref_ptr_->set_boundary(
       CubicSplineInterpolation::BoundaryType::first_deriv,
-      vector3_t(magn, 0, 0.0),
+      base_pose_m.rotation() * vel_cmd,
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
-  cubicspline_pos->fit(time, pos_t);
-  referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
+  pos_ref_ptr_->fit(time, pos_t);
 }
 
 void LipGen::getDynamics(scalar_t time_cur, size_t k,
@@ -206,24 +206,33 @@ void LipGen::getInequalityConstraints(
     ocp_[k].ubu_mask.setOnes(4);
     ocp_[k].lbu = -10.0 * vector_t::Ones(4);
     ocp_[k].ubu = 10.0 * vector_t::Ones(4);
+
+    ocp_[k].C = matrix_t::Zero(2, 8);
+    ocp_[k].C.leftCols(2).setIdentity();
+    ocp_[k].C.rightCols(2).diagonal().fill(-1);
+    ocp_[k].D.setZero(2, 4);
+    ocp_[k].lg = -0.3 * vector2_t::Ones();
+    ocp_[k].ug = 0.3 * vector2_t::Ones();
+    ocp_[k].lg_mask.setOnes(2);
+    ocp_[k].ug_mask.setOnes(2);
   }
 }
 
 void LipGen::getCosts(scalar_t time_cur, size_t k, size_t N,
                       const std::shared_ptr<ModeSchedule> mode_schedule) {
   const scalar_t time_k = time_cur + k * dt_;
-  auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
-  auto pos_ref = referenceBuffer_->getIntegratedBasePosTraj();
+  vector3_t base_pos_des = pos_ref_ptr_->evaluate(time_k);
+  vector3_t base_vel_des = pos_ref_ptr_->derivative(time_k, 1);
 
-  vector3_t base_pos_des = pos_ref->evaluate(time_k);
-  vector3_t base_vel_des = pos_ref->derivative(time_k, 1);
-  vector3_t base_rpy_des = rpy_traj->evaluate(time_k);
-  matrix3_t wRb = toRotationMatrix(base_rpy_des);
+  auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
+  vector3_t rpy_k = toEulerAngles(base_pose_m.rotation()) +
+                    0.05 * k * yawd_ * vector3_t::UnitZ();
+  matrix3_t wRb = toRotationMatrix(rpy_k);
 
   vector_t x_des = vector_t::Zero(8);
   x_des.head(4) << base_pos_des.head(2), base_vel_des.head(2);
   weight_.setZero(8, 8);
-  weight_.diagonal() << 100, 100, 20, 20.0, 500, 5000, 500, 5000;
+  weight_.diagonal() << 20, 10, 4.0, 1.0, 500, 500, 500, 500;
   for (size_t i = 0; i < 2; i++) {
     vector3_t shift = wRb * footholds_nominal_pos[foot_names[i]];
     x_des.segment(4 + 2 * i, 2) = shift.head(2) + base_pos_des.head(2);
@@ -246,6 +255,8 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
   std::vector<scalar_t> time_array;
   std::vector<vector_t> base_pos_array;
   std::vector<vector_t> base_vel_array;
+  std::vector<vector_t> foot_pos_array1;
+  std::vector<vector_t> foot_pos_array2;
 
   for (size_t k = 1; k <= N; k++) {
     vector3_t pos, vel;
@@ -254,7 +265,14 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
     time_array.emplace_back(time_cur + k * dt_);
     base_pos_array.emplace_back(pos);
     base_vel_array.emplace_back(vel);
+
+    vector3_t fpos1, fpos2;
+    fpos1 << solution_[k].x.segment(4, 2), 0.02;
+    fpos2 << solution_[k].x.tail(2), 0.02;
+    foot_pos_array1.emplace_back(fpos1);
+    foot_pos_array2.emplace_back(fpos2);
   }
+
   auto base_pos_ref_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline);
   base_pos_ref_ptr_->set_boundary(
@@ -263,24 +281,19 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
       CubicSplineInterpolation::BoundaryType::first_deriv,
       base_vel_array.back());
   base_pos_ref_ptr_->fit(time_array, base_pos_array);
-  referenceBuffer_->setOptimizedBasePosTraj(base_pos_ref_ptr_);
+  referenceBuffer_->setLipBasePosTraj(base_pos_ref_ptr_);
 
   auto base_vel_traj_ptr_ = std::make_shared<CubicSplineTrajectory>(
       3, CubicSplineInterpolation::SplineType::cspline);
-  vector3_t acc_s, acc_e;
-  vector_t xdot = 1.0 / dt_ *
-                  (ocp_[0].A * solution_[0].x + ocp_[0].B * solution_[0].u -
-                   solution_[0].x);
-  acc_s << xdot.segment(2, 2), 0.0;
-  xdot = 1.0 / dt_ *
-         (ocp_[N - 2].A * solution_[N - 2].x +
-          ocp_[N - 2].B * solution_[N - 2].u - solution_[N - 2].x);
-  acc_e << xdot.segment(2, 2), 0.0;
   base_vel_traj_ptr_->set_boundary(
-      CubicSplineInterpolation::BoundaryType::first_deriv, acc_s,
-      CubicSplineInterpolation::BoundaryType::first_deriv, acc_e);
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ * (solution_[1].x.segment(2, 2) - solution_[0].x.segment(2, 2)),
+      CubicSplineInterpolation::BoundaryType::first_deriv,
+      1.0 / dt_ *
+          (solution_[N - 1].x.segment(2, 2) -
+           solution_[N - 2].x.segment(2, 2)));
   base_vel_traj_ptr_->fit(time_array, base_vel_array);
-  referenceBuffer_->setOptimizedBaseVelTraj(base_vel_traj_ptr_);
+  referenceBuffer_->setLipBaseVelTraj(base_vel_traj_ptr_);
 
   auto footholds_ = std::map<std::string, std::pair<scalar_t, vector3_t>>();
   auto swtr =
@@ -293,6 +306,25 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
     footholds_[foot_names[i]].second.z() = 0.02;
   }
   referenceBuffer_->setFootholds(footholds_);
+
+  std::map<std::string, std::shared_ptr<CubicSplineTrajectory>> foot_pos_traj;
+  auto cubicspline_fpos1 = std::make_shared<CubicSplineTrajectory>(
+      3, CubicSplineInterpolation::SplineType::cspline);
+  cubicspline_fpos1->set_boundary(
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero(),
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+  cubicspline_fpos1->fit(time_array, foot_pos_array1);
+  foot_pos_traj[foot_names[0]] = std::move(cubicspline_fpos1);
+
+  auto cubicspline_fpos2 = std::make_shared<CubicSplineTrajectory>(
+      3, CubicSplineInterpolation::SplineType::cspline);
+  cubicspline_fpos2->set_boundary(
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero(),
+      CubicSplineInterpolation::BoundaryType::first_deriv, vector3_t::Zero());
+  cubicspline_fpos2->fit(time_array, foot_pos_array2);
+  foot_pos_traj[foot_names[1]] = std::move(cubicspline_fpos2);
+  referenceBuffer_->setLipFootPosTraj(foot_pos_traj);
+
 }
 
 } // namespace clear

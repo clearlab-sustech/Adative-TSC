@@ -40,11 +40,6 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
   odom_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>(
       name_prefix + odom_topic, qos);
 
-  std::string touch_sensor_topic =
-      config_["global"]["topic_names"]["touch_sensor"].as<std::string>();
-  touch_publisher_ = this->create_publisher<trans::msg::TouchSensor>(
-      name_prefix + touch_sensor_topic, qos);
-
   mjtNum freq_imu = config_["simulation"]["frequency"]["imu"].as<mjtNum>();
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_imu},
@@ -60,12 +55,6 @@ SimPublisher::SimPublisher(mj::Simulate *sim, const std::string config_yaml)
   timers_.emplace_back(this->create_wall_timer(
       std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_odom},
       std::bind(&SimPublisher::odomCallback, this)));
-
-  mjtNum freq_touch_sensor =
-      config_["simulation"]["frequency"]["touch_sensor"].as<mjtNum>();
-  timers_.emplace_back(this->create_wall_timer(
-      std::chrono::duration<mjtNum, std::milli>{1000.0 / freq_touch_sensor},
-      std::bind(&SimPublisher::touchCallback, this)));
 
   mjtNum freq_drop_old_message =
       config_["simulation"]["frequency"]["drop_old_message"].as<mjtNum>();
@@ -199,26 +188,6 @@ void SimPublisher::imuCallback() {
       }
     }
     imu_publisher_->publish(message);
-  }
-}
-
-void SimPublisher::touchCallback() {
-  if (sim_->d_ != nullptr) {
-    auto message = trans::msg::TouchSensor();
-    message.header.frame_id = &sim_->m_->names[0];
-    message.header.stamp = rclcpp::Clock().now();
-    {
-      const std::unique_lock<std::recursive_mutex> lock(sim_->mtx);
-      for (int i = 0; i < sim_->m_->nsensor; i++) {
-        if (sim_->m_->sensor_type[i] == mjtSensor::mjSENS_TOUCH) {
-          message.names.emplace_back(
-              mj_id2name(sim_->m_, mjtObj::mjOBJ_SENSOR, i));
-          message.value.emplace_back(
-              sim_->d_->sensordata[sim_->m_->sensor_adr[i]]);
-        }
-      }
-    }
-    touch_publisher_->publish(message);
   }
 }
 
