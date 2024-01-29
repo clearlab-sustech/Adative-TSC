@@ -64,14 +64,17 @@ void ConvexMPC::generateTrajRef() {
     rpy_start = toEulerAngles(base_pose_m.rotation());
     rpy_start.head(2).setZero();
   } else {
-    std::cout << "vel_cmd: " << vel_cmd.transpose() << "\n";
     vector_t rpy_c = toEulerAngles(base_pose_m.rotation());
     if (computeEulerAngleErr(rpy_c, rpy_start).norm() < 0.3) {
       rpy_start += dt_ * vector3_t(0, 0, yawd_);
     }
     rpy_start.head(2).setZero();
-  
+
     vector3_t vw = base_pose_m.rotation() * vel_cmd;
+    /* if ((base_pose_m.translation() - pos_start).norm() < 0.2) {
+      pos_start += dt_ * vw;
+      pos_start.z() = h_des;
+    } */
     pos_start.head(2) =base_pose_m.translation().head(2) + dt_ * vw.head(2);
     pos_start.z() = h_des;
   }
@@ -96,8 +99,7 @@ void ConvexMPC::generateTrajRef() {
   cubicspline_pos->set_boundary(
       CubicSplineInterpolation::BoundaryType::first_deriv,
       base_pose_m.rotation() * vel_cmd,
-      CubicSplineInterpolation::BoundaryType::second_deriv,
-      vector3_t::Zero());
+      CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   cubicspline_pos->fit(time, pos_t);
   referenceBuffer_->setIntegratedBasePosTraj(cubicspline_pos);
 

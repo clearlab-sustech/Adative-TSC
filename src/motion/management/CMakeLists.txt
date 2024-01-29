@@ -31,6 +31,7 @@ find_package(gait)
 find_package(generation)
 find_package(control)
 find_package(tf2_ros)
+find_package(mros)
 find_package(hardware)
 
 set(TARGET_DEPENDENCE
@@ -51,10 +52,8 @@ set(TARGET_DEPENDENCE
   control
   tf2_ros
   hardware
+  mros
 )
-
-add_library(libunitree_legged_sdk SHARED IMPORTED)
-set_target_properties(libunitree_legged_sdk PROPERTIES IMPORTED_LOCATION ${CMAKE_INSTALL_PREFIX}/lib/libunitree_legged_sdk_amd64.so)
 
 file(GLOB_RECURSE source ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc)
 

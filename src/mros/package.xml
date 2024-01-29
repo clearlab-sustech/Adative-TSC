@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>mros</name>
+    <version>0.0.0</version>
+    <description>colcon warrper of mros</description>
+    <maintainer email="luohxisme@gmail.com">Haoxiang Luo</maintainer>
+    <license>todo</license>
+    <buildtool_depend>ament_cmake</buildtool_depend>
+
+    <test_depend>ament_lint_auto</test_depend>
+    <test_depend>ament_lint_common</test_depend>
+
+    <export>
+    </export>
+</package>

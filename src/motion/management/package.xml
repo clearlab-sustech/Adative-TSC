@@ -28,6 +28,7 @@
   <depend>visualization_msgs</depend>
   <depend>hardware</depend>
   <depend>joy</depend>
+  <depend>mros</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

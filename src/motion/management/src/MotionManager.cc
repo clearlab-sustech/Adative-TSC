@@ -53,11 +53,11 @@ void MotionManager::init() {
   // auto config_ = YAML::LoadFile(config_file_);
   // bool hardware_ = config_["estimation"]["hardware"].as<bool>();
   // if (hardware_) {
-  //   unitreeHWPtr_ = std::make_shared<UnitreeHW>(this->shared_from_this());
+  //   mrosHWPtr_ = std::make_shared<MrosHW>(this->shared_from_this());
   //   scalar_t t0 = this->now().seconds();
   //   while (this->now().seconds() - t0 < 1.0) {
-  //     unitreeHWPtr_->switch_to_damping();
-  //     unitreeHWPtr_->read();
+  //     mrosHWPtr_->switch_to_damping();
+  //     mrosHWPtr_->read();
   //   }
   // } else {
   //   intializationPtr_->reset_simulation();
@@ -99,11 +99,11 @@ void MotionManager::innerLoop() {
 
     // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());
 
-    /* if (unitreeHWPtr_ != nullptr) {
-      unitreeHWPtr_->read();
-      estimatorPtr_->setImuMsg(unitreeHWPtr_->get_imu_msg());
-      estimatorPtr_->setTouchMsg(unitreeHWPtr_->get_touch_msg());
-      estimatorPtr_->setJointsMsg(unitreeHWPtr_->get_joint_msg());
+    /* if (mrosHWPtr_ != nullptr) {
+      mrosHWPtr_->read();
+      estimatorPtr_->setImuMsg(mrosHWPtr_->get_imu_msg());
+      estimatorPtr_->setTouchMsg(mrosHWPtr_->get_touch_msg());
+      estimatorPtr_->setJointsMsg(mrosHWPtr_->get_joint_msg());
     } */
 
     scalar_t horizon_time_ =
@@ -126,16 +126,16 @@ void MotionManager::innerLoop() {
                                 estimatorPtr_->getQvel());
     visPtr_->updateReferenceBuffer(trajGenPtr_->getReferenceBuffer());
 
-    /* if (unitreeHWPtr_ != nullptr) {
-      unitreeHWPtr_->set_actuator_cmds(trajectoryStabilizationPtr_->getCmds());
-      unitreeHWPtr_->send();
+    /* if (mrosHWPtr_ != nullptr) {
+      mrosHWPtr_->set_actuator_cmds(trajectoryStabilizationPtr_->getCmds());
+      mrosHWPtr_->send();
     } */
 
     loop_rate.sleep();
   }
 
-  if (unitreeHWPtr_ != nullptr) {
-    unitreeHWPtr_->switch_to_damping();
+  if (mrosHWPtr_ != nullptr) {
+    mrosHWPtr_->switch_to_damping();
   }
   exit(0);
 }
