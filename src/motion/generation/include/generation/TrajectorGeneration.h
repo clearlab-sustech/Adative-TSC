@@ -37,7 +37,7 @@ public:
 private:
   void innerLoop();
 
-  void generateBaseTraj();
+  void innerLipLoop();
 
   void generateFootholds();
 
@@ -55,7 +55,7 @@ private:
   Buffer<std::shared_ptr<vector_t>> qpos_ptr_buffer;
   Buffer<std::shared_ptr<vector_t>> qvel_ptr_buffer;
 
-  std::thread inner_loop_thread_;
+  std::thread inner_loop_thread_, inner_lip_loop_thread_;
   Buffer<bool> run_;
   scalar_t freq_;
   std::string base_name;

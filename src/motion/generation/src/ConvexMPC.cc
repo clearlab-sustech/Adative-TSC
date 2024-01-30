@@ -238,12 +238,13 @@ void ConvexMPC::optimize() {
 
   const scalar_t time_cur = nodeHandle_->now().seconds();
   auto mode_schedule = referenceBuffer_->getModeSchedule();
+  auto pos_traj = referenceBuffer_->getLipBasePosTraj();
 
-  if (referenceBuffer_->getFootPosTraj().empty() || mode_schedule == nullptr) {
+  if (referenceBuffer_->getFootPosTraj().empty() || pos_traj == nullptr ||
+      mode_schedule == nullptr) {
     return;
   }
 
-  auto pos_traj = referenceBuffer_->getLipBasePosTraj();
   auto rpy_traj = referenceBuffer_->getIntegratedBaseRpyTraj();
 
   size_t N = mode_schedule->duration() / dt_;

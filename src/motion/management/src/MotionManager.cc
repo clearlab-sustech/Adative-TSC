@@ -91,7 +91,7 @@ void MotionManager::innerLoop() {
     //   gaitSchedulePtr_->switchGait("trot");
     // }
     if (this->now().seconds() > ts + 6.0) {
-      trajGenPtr_->setVelCmd(vector3_t(0.2, 0.0, 0.0), 0.0);
+      trajGenPtr_->setVelCmd(vector3_t(0.4, 0.1, 0.0), 0.2);
     }
 
     // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());

@@ -48,6 +48,8 @@ TrajectorGeneration::TrajectorGeneration(Node::SharedPtr nodeHandle)
                                         referenceBuffer_);
 
   run_.push(true);
+  inner_lip_loop_thread_ =
+      std::thread(&TrajectorGeneration::innerLipLoop, this);
   inner_loop_thread_ = std::thread(&TrajectorGeneration::innerLoop, this);
 }
 
@@ -96,7 +98,7 @@ void TrajectorGeneration::innerLoop() {
       std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
       pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
 
-      generateBaseTraj();
+      baseOpt_ptr->optimize();
 
       // generateFootholds();
 
@@ -111,9 +113,33 @@ void TrajectorGeneration::innerLoop() {
               timer_.getAverageInMilliseconds());
 }
 
-void TrajectorGeneration::TrajectorGeneration::generateBaseTraj() {
-  lipGen_ptr->optimize();
-  baseOpt_ptr->optimize();
+void TrajectorGeneration::innerLipLoop() {
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  benchmark::RepeatedTimer timer_;
+  rclcpp::Rate loop_rate(freq_);
+
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"), "start lip loop");
+
+  while (rclcpp::ok() && run_.get()) {
+    timer_.startTimer();
+    if (qpos_ptr_buffer.get().get() == nullptr ||
+        qvel_ptr_buffer.get().get() == nullptr ||
+        referenceBuffer_->getModeSchedule() == nullptr) {
+      continue;
+    } else {
+      std::shared_ptr<vector_t> qpos_ptr = qpos_ptr_buffer.get();
+      std::shared_ptr<vector_t> qvel_ptr = qvel_ptr_buffer.get();
+      pinocchioInterface_ptr_->updateRobotState(*qpos_ptr, *qvel_ptr);
+      lipGen_ptr->optimize();
+    }
+    timer_.endTimer();
+    loop_rate.sleep();
+  }
+  RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"),
+              "[TrajectorGeneration] max time %f ms,  average time %f ms",
+              timer_.getMaxIntervalInMilliseconds(),
+              timer_.getAverageInMilliseconds());
 }
 
 void TrajectorGeneration::generateFootholds() { footholdOpt_ptr->optimize(); }
@@ -227,7 +253,6 @@ void TrajectorGeneration::generateFootTraj() {
 void TrajectorGeneration::setVelCmd(vector3_t vd, scalar_t yawd) {
   lipGen_ptr->setVelCmd(vd, yawd);
   baseOpt_ptr->setVelCmd(vd, yawd);
-
 }
 
 } // namespace clear

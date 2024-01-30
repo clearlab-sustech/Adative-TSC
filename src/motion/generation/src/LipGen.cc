@@ -232,7 +232,13 @@ void LipGen::getCosts(scalar_t time_cur, size_t k, size_t N,
   vector_t x_des = vector_t::Zero(8);
   x_des.head(4) << base_pos_des.head(2), base_vel_des.head(2);
   weight_.setZero(8, 8);
-  weight_.diagonal() << 20, 10, 4.0, 1.0, 500, 500, 500, 500;
+  weight_.diagonal() << 20, 4, 4.0, 0.1, 500, 500, 500, 500;
+  weight_.topLeftCorner<2, 2>() = wRb.topLeftCorner<2, 2>() *
+                                  weight_.topLeftCorner<2, 2>() *
+                                  wRb.topLeftCorner<2, 2>().transpose();
+  weight_.block<2, 2>(2, 2) = wRb.topLeftCorner<2, 2>() *
+                              weight_.block<2, 2>(2, 2) *
+                              wRb.topLeftCorner<2, 2>().transpose();
   for (size_t i = 0; i < 2; i++) {
     vector3_t shift = wRb * footholds_nominal_pos[foot_names[i]];
     x_des.segment(4 + 2 * i, 2) = shift.head(2) + base_pos_des.head(2);
@@ -324,7 +330,6 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
   cubicspline_fpos2->fit(time_array, foot_pos_array2);
   foot_pos_traj[foot_names[1]] = std::move(cubicspline_fpos2);
   referenceBuffer_->setLipFootPosTraj(foot_pos_traj);
-
 }
 
 } // namespace clear

@@ -69,6 +69,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr
       joints_state_subscription_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_est_publisher_;
 
   std::thread inner_loop_thread_;
   Buffer<bool> run_;

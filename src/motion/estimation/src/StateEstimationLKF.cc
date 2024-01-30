@@ -40,11 +40,10 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
   }
 
   bool hardware_ = config_["estimation"]["hardware"].as<bool>();
-
+  auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
+  std::string topic_prefix =
+      config_["global"]["topic_prefix"].as<std::string>();
   if (!hardware_) {
-    auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
-    std::string topic_prefix =
-        config_["global"]["topic_prefix"].as<std::string>();
     std::string imu_topic =
         config_["global"]["topic_names"]["imu"].as<std::string>();
     imu_subscription_ = nodeHandle_->create_subscription<sensor_msgs::msg::Imu>(
@@ -68,6 +67,10 @@ StateEstimationLKF::StateEstimationLKF(Node::SharedPtr nodeHandle)
             std::bind(&StateEstimationLKF::odomCallback, this,
                       std::placeholders::_1));
   }
+  std::string odom_topic =
+      config_["global"]["topic_names"]["odom"].as<std::string>();
+  odom_est_publisher_ = nodeHandle_->create_publisher<nav_msgs::msg::Odometry>(
+      topic_prefix + odom_topic + "_est", qos);
 
   inner_loop_thread_ = std::thread(&StateEstimationLKF::innerLoop, this);
   run_.push(true);
@@ -304,6 +307,29 @@ void StateEstimationLKF::innerLoop() {
       qpos_ptr_buffer.push(qpos_ptr_);
       qvel_ptr_buffer.push(qvel_ptr_);
     }
+    auto message = nav_msgs::msg::Odometry();
+    {
+      message.header.frame_id = robot_name;
+      message.header.stamp = nodeHandle_->now();
+      message.pose.pose.position.x = qpos_ptr_->x();
+      message.pose.pose.position.y = qpos_ptr_->y();
+      message.pose.pose.position.z = qpos_ptr_->z();
+      message.pose.pose.orientation.w = (*qpos_ptr_)[6];
+      message.pose.pose.orientation.x = (*qpos_ptr_)[3];
+      message.pose.pose.orientation.y = (*qpos_ptr_)[4];
+      message.pose.pose.orientation.z = (*qpos_ptr_)[5];
+
+      Eigen::Quaternion<scalar_t> quat((*qpos_ptr_)[6], (*qpos_ptr_)[3],
+                                       (*qpos_ptr_)[4], (*qpos_ptr_)[5]);
+      vector3_t vel_world = quat.toRotationMatrix() * qvel_ptr_->head(3);
+      message.twist.twist.linear.x = vel_world.x();
+      message.twist.twist.linear.y = vel_world.y();
+      message.twist.twist.linear.z = vel_world.z();
+      message.twist.twist.angular.x = (*qvel_ptr_)[3];
+      message.twist.twist.angular.y = (*qvel_ptr_)[4];
+      message.twist.twist.angular.z = (*qvel_ptr_)[5];
+    }
+    odom_est_publisher_->publish(message);
 
     /* RCLCPP_INFO_STREAM(rclcpp::get_logger("StateEstimationLKF"),
                        "qpos: " << (*qpos_ptr_).transpose() << "\n");
