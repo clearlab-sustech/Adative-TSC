@@ -110,7 +110,7 @@ std::shared_ptr<ActuatorCommands> WholeBodyController::optimize() {
     differential_inv_kin();
 
     /* matrix6x_t Jbase;
-    pinocchioInterface_ptr_->getJacobia_localWorldAligned(base_name, Jbase);
+    pinocchioInterface_ptr_->getJacobia_local(base_name, Jbase);
     std::cout << "base acc opt: " << (Jbase *
     optimal_u.head(pinocchioInterface_ptr_->nv())).transpose() << "\n"; */
   } else {
@@ -324,7 +324,7 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   base_task.b =
       acc_fb -
       pinocchioInterface_ptr_->getFrame6dAcc_local(base_name).toVector();
-  /* std::cout << "acc_fb: " << acc_fb.transpose() << "\n"; */
+  // std::cout << "acc_fb: " << base_task.b.transpose() << "\n";
 
   base_task.A = weightBase_ * base_task.A;
   base_task.b = weightBase_ * base_task.b;
@@ -529,7 +529,7 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   // Load task file
   weightMomentum_.setZero(6, 6);
   weightBase_.setZero(6, 6);
-  weightBase_.diagonal().fill(100);
+    weightBase_.diagonal().fill(100);
 
   weightSwingLeg_.setZero(3, 3);
   weightSwingLeg_.diagonal().fill(200);

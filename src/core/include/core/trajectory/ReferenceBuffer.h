@@ -19,6 +19,8 @@ public:
 
   std::shared_ptr<CubicSplineTrajectory> getIntegratedBaseRpyTraj() const;
 
+  std::shared_ptr<CubicSplineTrajectory> getIntegratedBasePosTraj() const;
+
   std::shared_ptr<CubicSplineTrajectory> getLipBasePosTraj() const;
 
   std::shared_ptr<CubicSplineTrajectory> getLipBaseVelTraj() const;
@@ -50,6 +52,9 @@ public:
 
   void setIntegratedBaseRpyTraj(
       std::shared_ptr<CubicSplineTrajectory> base_rpy_traj);
+
+  void setIntegratedBasePosTraj(
+      std::shared_ptr<CubicSplineTrajectory> base_pos_traj);
 
   void setLipBasePosTraj(std::shared_ptr<CubicSplineTrajectory> base_pos_traj);
 
@@ -90,6 +95,8 @@ public:
 
 private:
   Buffer<std::shared_ptr<CubicSplineTrajectory>> integ_base_rpy_buffer_;
+  Buffer<std::shared_ptr<CubicSplineTrajectory>> integ_base_pos_buffer_;
+
   Buffer<std::shared_ptr<CubicSplineTrajectory>> lip_base_pos_buffer_;
   Buffer<std::shared_ptr<CubicSplineTrajectory>> lip_base_vel_buffer_;
   Buffer<std::map<std::string, std::shared_ptr<CubicSplineTrajectory>>>

@@ -132,11 +132,12 @@ void LipGen::generateTrajRef() {
     pos_start.z() = h_des;
   } else {
     vector3_t vw = base_pose_m.rotation() * vel_cmd;
-    if ((base_pose_m.translation() - pos_start).norm() < 0.2) {
+    /* if ((base_pose_m.translation() - pos_start).norm() < 0.2) {
       pos_start += dt_ * vw;
       pos_start.z() = h_des;
-    }
+    } */
     // pos_start.head(2) = base_pose_m.translation().head(2) + dt_ * vw.head(2);
+    pos_start += dt_ * vel_cmd;
     pos_start.z() = h_des;
   }
 
@@ -162,6 +163,7 @@ void LipGen::generateTrajRef() {
       base_pose_m.rotation() * vel_cmd,
       CubicSplineInterpolation::BoundaryType::second_deriv, vector3_t::Zero());
   pos_ref_ptr_->fit(time, pos_t);
+  referenceBuffer_->setIntegratedBasePosTraj(pos_ref_ptr_);
 }
 
 void LipGen::getDynamics(scalar_t time_cur, size_t k,
@@ -178,7 +180,7 @@ void LipGen::getDynamics(scalar_t time_cur, size_t k,
 
   ocp_[k].B.setZero(8, 4);
   ocp_[k].B.bottomRows(4).diagonal().fill(dt_);
-  if (nc = 1) {
+  if (nc == 1) {
     if (contact_flag[0]) {
       ocp_[k].A.block<2, 2>(2, 4).diagonal().fill(-lmd * dt_);
       ocp_[k].B.block<2, 2>(4, 0).setZero();
@@ -196,6 +198,11 @@ void LipGen::getDynamics(scalar_t time_cur, size_t k,
 
 void LipGen::getInequalityConstraints(
     size_t k, size_t N, const std::shared_ptr<ModeSchedule> mode_schedule) {
+  scalar_t phase = k * dt_ / mode_schedule->duration();
+  auto contact_flag =
+      biped::modeNumber2StanceLeg(mode_schedule->getModeFromPhase(phase));
+  size_t nc = std::count(contact_flag.cbegin(), contact_flag.cend(), true);
+
   if (k < N) {
     ocp_[k].idxbu.clear();
     for (size_t i = 0; i < 2; i++) {
@@ -207,14 +214,34 @@ void LipGen::getInequalityConstraints(
     ocp_[k].lbu = -10.0 * vector_t::Ones(4);
     ocp_[k].ubu = 10.0 * vector_t::Ones(4);
 
-    ocp_[k].C = matrix_t::Zero(2, 8);
-    ocp_[k].C.leftCols(2).setIdentity();
-    ocp_[k].C.rightCols(2).diagonal().fill(-1);
-    ocp_[k].D.setZero(2, 4);
-    ocp_[k].lg = -0.3 * vector2_t::Ones();
-    ocp_[k].ug = 0.3 * vector2_t::Ones();
-    ocp_[k].lg_mask.setOnes(2);
-    ocp_[k].ug_mask.setOnes(2);
+    ocp_[k].C = matrix_t::Zero(4, 8);
+    ocp_[k].C.topRows(2).leftCols(2).setIdentity();
+
+    if (nc == 1) {
+      if (contact_flag[0]) {
+        ocp_[k].C.topRows(2).middleCols(4, 2).diagonal().fill(-1);
+      } else {
+        ocp_[k].C.topRows(2).rightCols(2).diagonal().fill(-1);
+      }
+    } else if (nc == 2) {
+      ocp_[k].C.topRows(2).middleCols(4, 2).diagonal().fill(-0.5);
+      ocp_[k].C.topRows(2).rightCols(2).diagonal().fill(-0.5);
+    }
+
+    ocp_[k].C.bottomRows(2) =
+        1.0 / dt_ * (ocp_[k].A - matrix_t::Identity(8, 8)).middleRows(2, 2);
+
+    ocp_[k].D.setZero(4, 4);
+    ocp_[k].D.bottomRows(2) = 1.0 / dt_ * ocp_[k].B.middleRows(2, 2);
+
+    ocp_[k].lg.setZero(4);
+    ocp_[k].ug.setZero(4);
+    ocp_[k].lg.head(2) = -0.3 * vector2_t::Ones();
+    ocp_[k].ug.head(2) = 0.3 * vector2_t::Ones();
+    ocp_[k].lg.tail(2) = -5.0 * vector2_t::Ones();
+    ocp_[k].ug.tail(2) = 5.0 * vector2_t::Ones();
+    ocp_[k].lg_mask.setOnes(4);
+    ocp_[k].ug_mask.setOnes(4);
   }
 }
 
@@ -226,7 +253,7 @@ void LipGen::getCosts(scalar_t time_cur, size_t k, size_t N,
 
   auto base_pose_m = pinocchioInterface_ptr_->getFramePose(base_name);
   vector3_t rpy_k = toEulerAngles(base_pose_m.rotation()) +
-                    0.05 * k * yawd_ * vector3_t::UnitZ();
+                    dt_ * k * yawd_ * vector3_t::UnitZ();
   matrix3_t wRb = toRotationMatrix(rpy_k);
 
   vector_t x_des = vector_t::Zero(8);
@@ -264,7 +291,7 @@ void LipGen::fitTraj(scalar_t time_cur, size_t N) {
   std::vector<vector_t> foot_pos_array1;
   std::vector<vector_t> foot_pos_array2;
 
-  for (size_t k = 1; k <= N; k++) {
+  for (size_t k = 0; k <= N; k++) {
     vector3_t pos, vel;
     pos << solution_[k].x.head(2), h_des;
     vel << solution_[k].x.segment(2, 2), 0.0;

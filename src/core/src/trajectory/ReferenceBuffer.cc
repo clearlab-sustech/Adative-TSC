@@ -43,6 +43,11 @@ ReferenceBuffer::getIntegratedBaseRpyTraj() const {
 }
 
 std::shared_ptr<CubicSplineTrajectory>
+ReferenceBuffer::getIntegratedBasePosTraj() const {
+  return integ_base_pos_buffer_.get();
+}
+
+std::shared_ptr<CubicSplineTrajectory>
 ReferenceBuffer::getLipBasePosTraj() const {
   return lip_base_pos_buffer_.get();
 }
@@ -118,6 +123,11 @@ std::shared_ptr<ModeSchedule> ReferenceBuffer::getModeSchedule() const {
 void ReferenceBuffer::setIntegratedBaseRpyTraj(
     std::shared_ptr<CubicSplineTrajectory> base_rpy_traj) {
   integ_base_rpy_buffer_.push(base_rpy_traj);
+}
+
+void ReferenceBuffer::setIntegratedBasePosTraj(
+    std::shared_ptr<CubicSplineTrajectory> base_pos_traj) {
+  integ_base_pos_buffer_.push(base_pos_traj);
 }
 
 void ReferenceBuffer::setLipBasePosTraj(

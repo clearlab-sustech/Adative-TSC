@@ -57,8 +57,8 @@ void MotionManager::init() {
       mrosHWPtr_->read();
     }
   } else {
-    // intializationPtr_->reset_simulation();
-    // rclcpp::spin_some(this->shared_from_this());
+    intializationPtr_->reset_simulation();
+    rclcpp::spin_some(this->shared_from_this());
   }
 
   inner_loop_thread_ = std::thread(&MotionManager::innerLoop, this);
@@ -90,8 +90,15 @@ void MotionManager::innerLoop() {
     //     gaitSchedulePtr_->getCurrentGaitName() != "trot") {
     //   gaitSchedulePtr_->switchGait("trot");
     // }
-    if (this->now().seconds() > ts + 6.0) {
-      trajGenPtr_->setVelCmd(vector3_t(0.4, 0.1, 0.0), 0.2);
+    /* if (this->now().seconds() > ts + 4.0 && this->now().seconds() < ts + 8.0)
+    { trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.3 *
+    (this->now().seconds() - ts - 4.0) / 4.0); } else if (this->now().seconds()
+    > ts + 8.0) { trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.3);
+    } */
+    if (this->now().seconds() > ts + 2 * M_PI) {
+      scalar_t t = this->now().seconds() - ts - 2 * M_PI;
+      trajGenPtr_->setVelCmd(vector3_t(0.4 * sin(2 * t), 0.3 * sin(t), 0.0),
+                             0.3 * sin(t));
     }
 
     // trajGenPtr_->setHeightCmd(joyStickPtr_->getHeightCmd());

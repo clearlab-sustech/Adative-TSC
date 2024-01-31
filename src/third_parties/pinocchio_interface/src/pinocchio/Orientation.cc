@@ -61,7 +61,7 @@ namespace clear
                                  const vector3_t &rpy_d)
   {
     vector3_t rpy_err = rpy_m - rpy_d;
-    if (rpy_err.norm() > 1.5 * M_PI)
+    while (rpy_err.norm() > 1.5 * M_PI)
     {
       if (abs(rpy_err(0)) > M_PI)
       {
