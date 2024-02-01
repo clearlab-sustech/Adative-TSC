@@ -19,15 +19,15 @@ model:
   urdf: "/p1/PF_A.urdf"
   xml: "/p1/PF_A.xml"
   base_name: "base"
-  foot_names: ["foot_L", "foot_R"]
+  foot_names: ["foot_L_Link", "foot_R_Link"]
   actuated_joints_name:
     [
-      "abad_L_joint",
-      "hip_L_joint",
-      "knee_L_joint",
-      "abad_R_joint",
-      "hip_R_joint",
-      "knee_R_joint",
+      "abad_L_Joint",
+      "hip_L_Joint",
+      "knee_L_Joint",
+      "abad_R_Joint",
+      "hip_R_Joint",
+      "knee_R_Joint",
     ]
   default:
     joint_pos:
@@ -70,7 +70,7 @@ estimation:
 
 controller:
   frequency: 1000.0
-  use_vector_field: false
+  use_vector_field: true
 
 generation:
   frequency: 50.0

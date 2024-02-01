@@ -137,7 +137,7 @@ void TrajectorGeneration::innerLipLoop() {
     loop_rate.sleep();
   }
   RCLCPP_INFO(rclcpp::get_logger("TrajectorGeneration"),
-              "[TrajectorGeneration] max time %f ms,  average time %f ms",
+              "[TrajectorGeneration Lip] max time %f ms,  average time %f ms",
               timer_.getMaxIntervalInMilliseconds(),
               timer_.getAverageInMilliseconds());
 }

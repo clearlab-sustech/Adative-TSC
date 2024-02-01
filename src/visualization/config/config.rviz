@@ -14,7 +14,7 @@ Panels:
         - /MarkerArray2
         - /Marker2
       Splitter Ratio: 0.5
-    Tree Height: 363
+    Tree Height: 1186
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -54,7 +54,7 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 0.6000000238418579
+    - Alpha: 0.30000001192092896
       Class: rviz_default_plugins/RobotModel
       Collision Enabled: false
       Description File: ""
@@ -72,12 +72,12 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        abad_L:
+        abad_L_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        abad_R:
+        abad_R_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -87,45 +87,36 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        foot_L:
+        foot_L_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        foot_R:
+        foot_R_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hip_L:
+        hip_L_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hip_R:
+        hip_R_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        knee_L:
+        knee_L_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        knee_R:
+        knee_R_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        limx_imu:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        world:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -151,8 +142,8 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        foot_L: true
-        foot_R: true
+        foot_L_Link: true
+        foot_R_Link: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -164,8 +155,8 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        foot_L: true
-        foot_R: true
+        foot_L_Link: true
+        foot_R_Link: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -240,14 +231,14 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2947975993156433
+      Pitch: 0.2847975790500641
       Position:
-        X: -0.7787299156188965
-        Y: -2.6622254848480225
-        Z: 1.0337423086166382
+        X: -0.29424765706062317
+        Y: -2.8019564151763916
+        Z: 0.6497818231582642
       Target Frame: base
       Value: FPS (rviz_default_plugins)
-      Yaw: 1.2689831256866455
+      Yaw: 1.5289827585220337
     Saved: ~
 Window Geometry:
   Displays:

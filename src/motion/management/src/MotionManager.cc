@@ -57,8 +57,8 @@ void MotionManager::init() {
       mrosHWPtr_->read();
     }
   } else {
-    intializationPtr_->reset_simulation();
-    rclcpp::spin_some(this->shared_from_this());
+    // intializationPtr_->reset_simulation();
+    // rclcpp::spin_some(this->shared_from_this());
   }
 
   inner_loop_thread_ = std::thread(&MotionManager::innerLoop, this);
@@ -97,7 +97,7 @@ void MotionManager::innerLoop() {
     } */
     if (this->now().seconds() > ts + 2 * M_PI) {
       scalar_t t = this->now().seconds() - ts - 2 * M_PI;
-      trajGenPtr_->setVelCmd(vector3_t(0.4 * sin(2 * t), 0.3 * sin(t), 0.0),
+      trajGenPtr_->setVelCmd(vector3_t(0.2 * sin(2 * t), 0.3 * sin(t), 0.0),
                              0.3 * sin(t));
     }
 

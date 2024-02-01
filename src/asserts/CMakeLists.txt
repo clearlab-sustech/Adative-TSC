@@ -18,9 +18,6 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY biped
-  DESTINATION share/${PROJECT_NAME})
-
 install(DIRECTORY p1
   DESTINATION share/${PROJECT_NAME})
 
