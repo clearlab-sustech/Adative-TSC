@@ -271,9 +271,9 @@ MatrixDB WholeBodyController::formulateBaseTask() {
   base_task.A.leftCols(nv) = J;
 
   vector6_t acc_fb;
-  auto pos_traj = referenceBuffer_.get()->getOptimizedBasePosTraj();
-  auto rpy_traj = referenceBuffer_.get()->getOptimizedBaseRpyTraj();
-  auto vel_traj = referenceBuffer_.get()->getOptimizedBaseVelTraj();
+  auto pos_traj = referenceBuffer_.get()->getLipBasePosTraj();
+  auto rpy_traj = referenceBuffer_.get()->getIntegratedBaseRpyTraj();
+  auto vel_traj = referenceBuffer_.get()->getLipBaseVelTraj();
   auto omega_traj = referenceBuffer_.get()->getOptimizedBaseOmegaTraj();
 
   if (policy != nullptr) {
@@ -511,11 +511,11 @@ MatrixDB WholeBodyController::formulateContactForceTask() {
   contact_force.A.setZero(3 * nc, numDecisionVars_);
   if (policy != nullptr) {
     contact_force.b = policy->force_des;
-    weightContactForce_ = 5e1;
+    weightContactForce_ = 5;
   } else {
     contact_force.b = referenceBuffer_->getOptimizedForceTraj()->evaluate(
         nodeHandle_->now().seconds());
-    weightContactForce_ = 5e1;
+    weightContactForce_ = 5;
   }
   for (size_t i = 0; i < nc; ++i) {
     contact_force.A.block<3, 3>(3 * i, nv + 3 * i) = matrix_t::Identity(3, 3);
@@ -545,10 +545,14 @@ void WholeBodyController::loadTasksSetting(bool verbose) {
   swingKd_.diagonal().fill(37);
 
   baseKp_.setZero(6, 6);
-  baseKp_.diagonal().fill(30.0);
+  baseKp_.diagonal() << 30, 30, 60, 80, 80, 80; // 1
+  // baseKp_.diagonal() << 60, 60, 100, 120, 120, 120; // 2
+  baseKp_.diagonal() << 200, 200, 200, 320, 320, 320; // 3
 
   baseKd_.setZero(6, 6);
-  baseKd_.diagonal().fill(1.0);
+  baseKd_.diagonal() << 3.0, 3.0, 3.0,  10.0, 10.0, 10.0; // 1
+  // baseKd_.diagonal() << 16.0, 16.0, 20.0,  20.0, 20.0, 20.0; // 2
+  baseKd_.diagonal() << 16.0, 16.0, 20.0, 40.0, 40.0, 40.0; // 3
 
   momentumKp_.setZero(6, 6);
   momentumKp_.diagonal().fill(0);

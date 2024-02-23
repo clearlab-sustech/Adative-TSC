@@ -90,14 +90,14 @@ void MotionManager::innerLoop() {
     //     gaitSchedulePtr_->getCurrentGaitName() != "trot") {
     //   gaitSchedulePtr_->switchGait("trot");
     // }
-    /* if (this->now().seconds() > ts + 4.0 && this->now().seconds() < ts + 8.0)
-    { trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.3 *
-    (this->now().seconds() - ts - 4.0) / 4.0); } else if (this->now().seconds()
-    > ts + 8.0) { trajGenPtr_->setVelCmd(vector3_t(0.0, 0.0, 0.0), 0.3);
-    } */
+    // if (this->now().seconds() > ts + 4.0 && this->now().seconds() < ts + 8.0) {
+    //   trajGenPtr_->setVelCmd(vector3_t(0.0, 0.4 * (this->now().seconds() - ts - 4.0) / 4.0, 0.0), 0.0);
+    // } else if (this->now().seconds() > ts + 8.0) {
+    //   trajGenPtr_->setVelCmd(vector3_t(0.0, 0.4, 0.0), 0.0);
+    // }
     if (this->now().seconds() > ts + 2 * M_PI) {
       scalar_t t = this->now().seconds() - ts - 2 * M_PI;
-      trajGenPtr_->setVelCmd(vector3_t(0.2 * sin(2 * t), 0.3 * sin(t), 0.0),
+      trajGenPtr_->setVelCmd(vector3_t(0.4 * sin(2 * t), 0.2 * sin(t), 0.0),
                              0.3 * sin(t));
     }
 

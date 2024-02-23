@@ -269,8 +269,8 @@ class DataPlot:
 
 
 if __name__ == "__main__":
-    path1 = '/home/poplar/Desktop/VF-TSC/src/data/sim/lateral/atsc/data_log.txt'
-    path2 = '/home/poplar/Desktop/VF-TSC/src/data/sim/lateral/wbc/data_log.txt'
+    path1 = '/home/poplar/Desktop/VF-TSC/src/data/sim/t7/atsc2/data_log.txt'
+    path2 = '/home/poplar/Desktop/VF-TSC/src/data/sim/t7/wbc3/data_log.txt'
     d = DataPlot(path1, path2)
     d.errMSE()
     plt.show()

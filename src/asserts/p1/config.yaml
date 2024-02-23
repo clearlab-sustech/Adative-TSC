@@ -11,7 +11,7 @@ global:
     actuators_cmds: "actuators_cmds"
     mode_schedule: "mode_schedule"
     trajectories: "trajectories"
-  log_dir: "/home/poplar/Desktop/VF-TSC/src/data/sim/lateral/wbc"
+  log_dir: "/home/poplar/Desktop/VF-TSC/src/data/sim/t7/wbc3"
 
 model:
   name: "PF_A"
@@ -70,7 +70,7 @@ estimation:
 
 controller:
   frequency: 1000.0
-  use_vector_field: true
+  use_vector_field: false
 
 generation:
   frequency: 50.0

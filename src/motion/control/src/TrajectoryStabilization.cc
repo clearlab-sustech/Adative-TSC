@@ -211,8 +211,8 @@ void TrajectoryStabilization::innerLoop() {
         save_state << base_pose.translation().transpose() << " "
                    << base_twist.linear().transpose() << " "
                    << base_twist.angular().transpose() << " "
-                   << base_pos->evaluate(t).transpose() << " "
-                   << base_pos->derivative(t, 1).transpose() << " "
+                   << base_pos_lip->evaluate(t).transpose() << " "
+                   << base_pos_lip->derivative(t, 1).transpose() << " "
                    << (getJacobiFromRPYToOmega(base_rpy->evaluate(t)) *
                        base_rpy->derivative(t, 1))
                           .transpose()
